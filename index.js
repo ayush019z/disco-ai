@@ -9,13 +9,13 @@ const client = new Client({
   ]
 });
 
-// Groq works with the OpenAI SDK
+// Groq AI (free tier)
 const ai = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
-// Optional simple NSFW filter
+// Simple NSFW filter
 const blockedWords = [
   'porn', 'nude', 'sex', 'hentai', 'onlyfans', 'rape'
 ];
@@ -45,11 +45,13 @@ client.on('messageCreate', async (message) => {
     }
 
     const prompt = encodeURIComponent(promptText);
-    const url = `https://image.pollinations.ai/prompt/${prompt}`;
+
+    // Direct image URL that Discord previews correctly
+    const imageUrl =
+      `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&nologo=true&model=flux`;
 
     return message.reply({
-      content: `🎨 Generating image for: **${promptText}**`,
-      files: [url]
+      content: `🎨 **${promptText}**\\n${imageUrl}`
     });
   }
 
@@ -59,7 +61,7 @@ client.on('messageCreate', async (message) => {
   if (!message.mentions.has(client.user)) return;
 
   const question = message.content
-    .replace(/<@!?\\d+>/, '')
+    .replace(/<@!?\\\\d+>/, '')
     .trim();
 
   if (!question) {
