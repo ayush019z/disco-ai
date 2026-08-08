@@ -9,57 +9,77 @@ const client = new Client({
   ]
 });
 
-// Groq AI (free tier)
+// Groq AI
 const ai = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
-// Simple NSFW filter
+// Block inappropriate text and image prompts
 const blockedWords = [
-  'porn', 'nude', 'sex', 'hentai', 'onlyfans', 'rape'
+  'porn', 'nude', 'sex', 'hentai', 'onlyfans', 'rape',
+  'boobs', 'breasts', 'sexy', 'underwear', 'lingerie',
+  'bikini', 'topless', 'naked', 'nsfw', 'fetish'
 ];
+
+// Simple cooldown (5 seconds)
+const cooldowns = new Map();
 
 client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
-  // Ignore bots
   if (message.author.bot) return;
 
   // =========================
-// IMAGE GENERATION COMMAND
-// =========================
-if (message.content.startsWith('!image ')) {
-  const promptText = message.content.slice(7).trim();
+  // COOLDOWN
+  // =========================
+  const now = Date.now();
+  const last = cooldowns.get(message.author.id) || 0;
 
-  if (!promptText) {
-    return message.reply('Please provide a prompt.');
+  if (now - last < 5000) {
+    return message.reply('⏳ Please wait 5 seconds before using the bot again.');
   }
 
-  const lower = promptText.toLowerCase();
-
-  if (blockedWords.some(word => lower.includes(word))) {
-    return message.reply('❌ NSFW prompts are not allowed.');
-  }
-
-  const prompt = encodeURIComponent(promptText);
-
-  const imageUrl =
-    `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&nologo=true&model=flux`;
-
-  return message.reply({
-    embeds: [
-      {
-        image: { url: imageUrl }
-      }
-    ]
-  });
-}
+  cooldowns.set(message.author.id, now);
 
   // =========================
-  // TEXT AI (MENTION BOT)
+  // IMAGE GENERATION
+  // =========================
+  if (message.content.startsWith('!image ')) {
+    const promptText = message.content.slice(7).trim();
+
+    if (!promptText) {
+      return message.reply('Please provide a prompt.');
+    }
+
+    const lower = promptText.toLowerCase();
+
+    // Block NSFW prompts
+    if (blockedWords.some(w => lower.includes(w))) {
+      return message.reply('❌ NSFW or inappropriate image prompts are not allowed.');
+    }
+
+    const prompt = encodeURIComponent(promptText);
+
+    const imageUrl =
+      `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&nologo=true&model=flux`;
+
+    return message.reply({
+      embeds: [
+        {
+          title: '🎨 AI Generated Image',
+          description: promptText,
+          image: { url: imageUrl },
+          color: 0x00FFFF
+        }
+      ]
+    });
+  }
+
+  // =========================
+  // TEXT AI
   // =========================
   if (!message.mentions.has(client.user)) return;
 
@@ -73,7 +93,8 @@ if (message.content.startsWith('!image ')) {
 
   const lower = question.toLowerCase();
 
-  if (blockedWords.some(word => lower.includes(word))) {
+  // Block NSFW text
+  if (blockedWords.some(w => lower.includes(w))) {
     return message.reply('❌ NSFW or inappropriate questions are not allowed.');
   }
 
@@ -85,7 +106,8 @@ if (message.content.startsWith('!image ')) {
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful Discord assistant.'
+          content:
+            'You are a helpful, family-friendly Discord assistant. Refuse sexual, violent, or illegal content.'
         },
         {
           role: 'user',
@@ -101,9 +123,8 @@ if (message.content.startsWith('!image ')) {
 
   } catch (error) {
     console.error(error);
-    await message.reply('Sorry, I could not answer that.');
+    await message.reply('⚠️ Sorry, I could not answer that.');
   }
 });
 
-// Start the bot
 client.login(process.env.DISCORD_TOKEN);
