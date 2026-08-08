@@ -15,6 +15,11 @@ const ai = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
+// Optional simple NSFW filter
+const blockedWords = [
+  'porn', 'nude', 'sex', 'hentai', 'onlyfans', 'rape'
+];
+
 client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
@@ -23,16 +28,48 @@ client.on('messageCreate', async (message) => {
   // Ignore bots
   if (message.author.bot) return;
 
-  // Respond only when the bot is mentioned
+  // =========================
+  // IMAGE GENERATION COMMAND
+  // =========================
+  if (message.content.startsWith('!image ')) {
+    const promptText = message.content.slice(7).trim();
+
+    if (!promptText) {
+      return message.reply('Please provide a prompt.');
+    }
+
+    const lower = promptText.toLowerCase();
+
+    if (blockedWords.some(word => lower.includes(word))) {
+      return message.reply('❌ NSFW prompts are not allowed.');
+    }
+
+    const prompt = encodeURIComponent(promptText);
+    const url = `https://image.pollinations.ai/prompt/${prompt}`;
+
+    return message.reply({
+      content: `🎨 Generating image for: **${promptText}**`,
+      files: [url]
+    });
+  }
+
+  // =========================
+  // TEXT AI (MENTION BOT)
+  // =========================
   if (!message.mentions.has(client.user)) return;
 
-  // Remove the mention from the message
   const question = message.content
     .replace(/<@!?\\d+>/, '')
     .trim();
 
   if (!question) {
     return message.reply('Ask me something!');
+  }
+
+  const lower = question.toLowerCase();
+
+  if (blockedWords.some(word => lower.includes(word))) {
+    return message.reply('❌ NSFW or inappropriate questions are not allowed.');
   }
 
   try {
@@ -65,4 +102,3 @@ client.on('messageCreate', async (message) => {
 
 // Start the bot
 client.login(process.env.DISCORD_TOKEN);
-
