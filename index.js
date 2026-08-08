@@ -15,7 +15,7 @@ const ai = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
