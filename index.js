@@ -29,31 +29,34 @@ client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
   // =========================
-  // IMAGE GENERATION COMMAND
-  // =========================
-  if (message.content.startsWith('!image ')) {
-    const promptText = message.content.slice(7).trim();
+// IMAGE GENERATION COMMAND
+// =========================
+if (message.content.startsWith('!image ')) {
+  const promptText = message.content.slice(7).trim();
 
-    if (!promptText) {
-      return message.reply('Please provide a prompt.');
-    }
-
-    const lower = promptText.toLowerCase();
-
-    if (blockedWords.some(word => lower.includes(word))) {
-      return message.reply('❌ NSFW prompts are not allowed.');
-    }
-
-    const prompt = encodeURIComponent(promptText);
-
-    // Direct image URL that Discord previews correctly
-    const imageUrl =
-      `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&nologo=true&model=flux`;
-
-    return message.reply({
-      content: `🎨 **${promptText}**\\n${imageUrl}`
-    });
+  if (!promptText) {
+    return message.reply('Please provide a prompt.');
   }
+
+  const lower = promptText.toLowerCase();
+
+  if (blockedWords.some(word => lower.includes(word))) {
+    return message.reply('❌ NSFW prompts are not allowed.');
+  }
+
+  const prompt = encodeURIComponent(promptText);
+
+  const imageUrl =
+    `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&nologo=true&model=flux`;
+
+  return message.reply({
+    embeds: [
+      {
+        image: { url: imageUrl }
+      }
+    ]
+  });
+}
 
   // =========================
   // TEXT AI (MENTION BOT)
