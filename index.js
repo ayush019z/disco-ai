@@ -4,6 +4,11 @@ const {
   Events
 } = require('discord.js');
 
+const cooldowns = new Map();
+const userMemory = new Map();
+const greetedUsers = new Set();
+const activeSuperOvers = new Map();
+
 const OpenAI = require('openai');
 
 const client = new Client({
@@ -263,7 +268,6 @@ client.on('messageCreate', async (message) => {
   // =========================
 // SUPER OVER GAME (Replace your old one with this)
 // =========================
-const activeSuperOvers = new Map();
 
 // Start game
 if (message.content.toLowerCase() === '!superover') {
