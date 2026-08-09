@@ -3,9 +3,12 @@ const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 const commands = [
   new SlashCommandBuilder()
     .setName('info')
-    .setDescription('Show information about the bot')
-    .toJSON()
-];
+    .setDescription('Show information about the bot'),
+
+  new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Show all bot commands and how to use them')
+].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
