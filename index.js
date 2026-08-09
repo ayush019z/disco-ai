@@ -44,9 +44,47 @@ client.on(Events.InteractionCreate, async interaction => {
 
   if (interaction.commandName === 'info') {
     await interaction.reply({
-      content:
-        '🤖 **AI Bot**\\n👤 Creator: **@ayush.rajj**\\n🧠 Memory: **2 hours per user**\\n💬 AI Chat: **Enabled**\\n🖼️ Image Generation: **Enabled**',
-      ephemeral: false
+      embeds: [
+        {
+          title: '🤖 AI Bot',
+          description: 'A smart Discord assistant with temporary memory, AI chat, and image generation.',
+          color: 0x00FFFF,
+          thumbnail: {
+            url: client.user.displayAvatarURL()
+          },
+          fields: [
+            {
+              name: '👤 Creator',
+              value: '**@ayush.rajj**',
+              inline: true
+            },
+            {
+              name: '🧠 Memory',
+              value: '**2 hours per user**',
+              inline: true
+            },
+            {
+              name: '💬 AI Chat',
+              value: '**Enabled**',
+              inline: true
+            },
+            {
+              name: '🖼️ Image Generation',
+              value: '**Enabled**',
+              inline: true
+            },
+            {
+              name: '⚡ Reply Style',
+              value: 'Short by default, detailed when asked.',
+              inline: false
+            }
+          ],
+          footer: {
+            text: 'Made with Discord.js + Groq'
+          },
+          timestamp: new Date().toISOString()
+        }
+      ]
     });
   }
 });
