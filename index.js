@@ -261,20 +261,18 @@ client.on('messageCreate', async (message) => {
   }
 
   // =========================
-// SUPER OVER GAME (Interactive)
+// SUPER OVER GAME (Replace your old one with this)
 // =========================
 const activeSuperOvers = new Map();
 
+// Start game
 if (message.content.toLowerCase() === '!superover') {
-  // Random target between 8 and 22
-  const target = Math.floor(Math.random() * 15) + 8;
-
   const outcomes = [0, 1, 2, 3, 4, 6];
   let score = 0;
   let wickets = 0;
   const balls = [];
 
-  // First 5 balls auto-play
+  // First 5 balls
   for (let i = 0; i < 5; i++) {
     const outChance = Math.random();
 
@@ -289,15 +287,17 @@ if (message.content.toLowerCase() === '!superover') {
     }
   }
 
+  // Always need at least 1 run on last ball
+  const target = score + Math.floor(Math.random() * 6) + 1;
   const needed = target - score;
 
-  // Save game
+  // Save game for this user
   activeSuperOvers.set(message.author.id, {
     target,
     score,
     wickets,
     balls,
-    expires: Date.now() + 15000 // 15 seconds
+    expires: Date.now() + 15000 // 15 sec
   });
 
   return message.reply({
@@ -322,17 +322,17 @@ if (message.content.toLowerCase() === '!superover') {
           inline: true
         },
         {
-          name: 'Choose your shot',
+          name: 'Type your shot',
           value:
-            '`defensive` 🛡️\\n' +
-            '`drive` 🏏\\n' +
-            '`loft` 🚀\\n' +
+            '`defensive` 🛡️\n' +
+            '`drive` 🏏\n' +
+            '`loft` 🚀\n' +
             '`scoop` 🪄',
           inline: false
         }
       ],
       footer: {
-        text: 'Reply within 15 seconds'
+        text: 'Reply with defensive, drive, loft, or scoop within 15 seconds'
       }
     }]
   });
@@ -343,7 +343,7 @@ if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase
   const game = activeSuperOvers.get(message.author.id);
 
   if (!game || Date.now() > game.expires) {
-    return; // no active game
+    return;
   }
 
   activeSuperOvers.delete(message.author.id);
@@ -352,7 +352,7 @@ if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase
 
   let finalBall;
 
-  // Different probabilities per shot
+  // Risk / reward
   if (shot === 'defensive') {
     finalBall = [0, 1, 1, 2, 2, 'W'][Math.floor(Math.random() * 6)];
   } else if (shot === 'drive') {
@@ -413,7 +413,11 @@ if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase
   const isImageCommand = message.content.startsWith('!image ');
   const isMention = message.mentions.has(client.user);
 
-  if (!isImageCommand && !isMention) return;
+  if (
+  !isImageCommand &&
+  !isMention &&
+  !['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase())
+) return;
 
   uniqueUsers.add(message.author.id);
 
