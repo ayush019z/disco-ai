@@ -235,32 +235,47 @@ client.on('messageCreate', async (message) => {
   // =========================
   // SUMMARIZE REPLIED MESSAGE
   // =========================
-  if ((lower === 'summarize' || lower === 'summarise') && message.reference) {
-    try {
-      const replied = await message.channel.messages.fetch(message.reference.messageId);
+  const isSummaryRequest =
+  (lower === 'summarize' || lower === 'summarise') &&
+  message.reference &&
+  message.reference.messageId;
 
-      await message.channel.sendTyping();
+if (isSummaryRequest) {
+  try {
+    // Fetch the message being replied to
+    const repliedMessage = await message.channel.messages.fetch(
+      message.reference.messageId
+    );
 
-      const response = await ai.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content: 'Summarize the following message in 3-5 short bullet points.'
-          },
-          {
-            role: 'user',
-            content: replied.content
-          }
-        ],
-        max_tokens: 120
-      });
-
-      return message.reply(response.choices[0].message.content);
-    } catch (e) {
-      return message.reply('⚠️ Could not summarize that message.');
+    if (!repliedMessage || !repliedMessage.content) {
+      return message.reply('⚠️ That message has no text to summarize.');
     }
+
+    await message.channel.sendTyping();
+
+    const response = await ai.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Summarize the following message in 3-5 concise bullet points.'
+        },
+        {
+          role: 'user',
+          content: repliedMessage.content
+        }
+      ],
+      max_tokens: 120
+    });
+
+    return message.reply(response.choices[0].message.content);
+
+  } catch (error) {
+    console.error(error);
+    return message.reply('⚠️ Could not summarize that message.');
   }
+}
 
   // =========================
   // FORGET MEMORY
