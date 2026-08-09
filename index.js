@@ -47,7 +47,6 @@ const startTime = Date.now();
 // =========================
 // IMAGE COOLDOWN
 // =========================
-const cooldowns = new Map();
 
 // =========================
 // MEMORY (2 HOURS)
