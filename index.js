@@ -209,13 +209,13 @@ client.on('messageCreate', async (message) => {
     greetedUsers.add(message.author.id);
 
     await message.reply(
-      '👋 Hi! I’m **AI Bot**.\\n\\n' +
-      '💬 Mention me to ask anything\\n' +
-      '🖼️ Use `!image prompt` for images\\n' +
-      '📄 Reply with `!sum` to summarize\\n' +
-      '🏏 Play `!superover`\\n' +
-      'ℹ️ Use `/help` for all features\\n\\n' +
-      'I remember our conversation for **2 hours**.'
+      '👋 Hi! I’m **AI Bot**.\n\n' +
+'💬 Mention me to ask anything\n' +
+'🖼️ Use `!image prompt` for images\n' +
+'📄 Reply with `!sum` to summarize\n' +
+'🏏 Play `!superover`\n' +
+'ℹ️ Use `/help` for all features\n\n' +
+'I remember our conversation for **2 hours**.'
     );
   }
 
