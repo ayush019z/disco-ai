@@ -137,7 +137,7 @@ client.on(Events.InteractionCreate, async interaction => {
             },
             {
               name: '📄 Summarize a message',
-              value: 'Reply to a message with `@Ai-bot summarize`',
+              value: 'Reply to a message with `!sum`',
               inline: false
             },
             {
@@ -206,19 +206,14 @@ client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
   // =========================
-// SUMMARIZE (must be first)
-// Reply to a message with @Ai-bot summarize
-// =========================
-if (
-  message.reference?.messageId &&
-  message.mentions.has(client.user)
-) {
-  const textWithoutMention = message.content
-    .replace(/<@!?\\d+>/g, '')
-    .trim()
-    .toLowerCase();
-
-  if (textWithoutMention === 'summarize' || textWithoutMention === 'summarise') {
+  // REPLY SUMMARY
+  // Reply to a message with !sum or !summary
+  // =========================
+  if (
+    message.reference?.messageId &&
+    (message.content.toLowerCase() === '!sum' ||
+     message.content.toLowerCase() === '!summary')
+  ) {
     try {
       const repliedMessage = await message.channel.messages.fetch(
         message.reference.messageId
@@ -253,7 +248,6 @@ if (
       return message.reply('⚠️ Could not summarize that message.');
     }
   }
-}
 
   const isImageCommand = message.content.startsWith('!image ');
   const isMention = message.mentions.has(client.user);
@@ -276,65 +270,63 @@ if (
   cooldowns.set(message.author.id, now);
 
   // Remove mention from text
-const question = message.content
-  .replace(/<@!?\\d+>/g, '')
-  .trim();
+  const question = message.content
+    .replace(/<@!?\\d+>/g, '')
+    .trim();
 
-const lower = question.toLowerCase();
+  const lower = question.toLowerCase();
 
+  // =========================
+  // FORGET MEMORY
+  // =========================
+  if (lower === 'forget everything i said') {
+    userMemory.delete(message.author.id);
+    return message.reply('🧠 I have forgotten our previous conversation.');
+  }
 
+  // =========================
+  // PING WHEN ONLY MENTIONED
+  // =========================
+  if (!question) {
+    const ping = client.ws.ping;
 
-// =========================
-// FORGET MEMORY
-// =========================
-if (lower === 'forget everything i said') {
-  userMemory.delete(message.author.id);
-  return message.reply('🧠 I have forgotten our previous conversation.');
-}
+    let status = '🟢 Excellent';
+    if (ping > 80) status = '🟡 Good';
+    if (ping > 150) status = '🔴 Slow';
 
-// =========================
-// PING WHEN ONLY MENTIONED
-// =========================
-if (!question) {
-  const ping = client.ws.ping;
-
-  let status = '🟢 Excellent';
-  if (ping > 80) status = '🟡 Good';
-  if (ping > 150) status = '🔴 Slow';
-
-  return message.reply({
-    embeds: [
-      {
-        title: '🤖 AI Bot Status',
-        color: ping > 150 ? 0xFF0000 : ping > 80 ? 0xFFFF00 : 0x00FFAA,
-        thumbnail: {
-          url: client.user.displayAvatarURL()
-        },
-        fields: [
-          {
-            name: '📶 Ping',
-            value: `**${ping} ms**`,
-            inline: true
+    return message.reply({
+      embeds: [
+        {
+          title: '🤖 AI Bot Status',
+          color: ping > 150 ? 0xFF0000 : ping > 80 ? 0xFFFF00 : 0x00FFAA,
+          thumbnail: {
+            url: client.user.displayAvatarURL()
           },
-          {
-            name: '⚡ Status',
-            value: `**${status}**`,
-            inline: true
+          fields: [
+            {
+              name: '📶 Ping',
+              value: `**${ping} ms**`,
+              inline: true
+            },
+            {
+              name: '⚡ Status',
+              value: `**${status}**`,
+              inline: true
+            },
+            {
+              name: '🧠 Memory',
+              value: '**2h active**',
+              inline: true
+            }
+          ],
+          footer: {
+            text: 'Mention me with a question to start chatting'
           },
-          {
-            name: '🧠 Memory',
-            value: '**2h active**',
-            inline: true
-          }
-        ],
-        footer: {
-          text: 'Mention me with a question to start chatting'
-        },
-        timestamp: new Date().toISOString()
-      }
-    ]
-  });
-}
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+  }
 
   // =========================
   // IMAGE GENERATION
@@ -425,9 +417,7 @@ if (!question) {
 
     messagesAnswered++;
 
-    await message.reply({
-      content: answer
-    });
+    await message.reply(answer);
 
   } catch (error) {
     console.error(error);
