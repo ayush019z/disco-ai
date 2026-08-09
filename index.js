@@ -226,28 +226,25 @@ client.on('messageCreate', async (message) => {
   cooldowns.set(message.author.id, now);
 
   // Remove mention from text
-  const question = message.content
-    .replace(/<@!?\\\\d+>/, '')
-    .trim();
+const question = message.content
+  .replace(/<@!?\\d+>/g, '')
+  .trim();
 
-  const lower = question.toLowerCase();
+const lower = question.toLowerCase();
 
-  // =========================
-  // SUMMARIZE REPLIED MESSAGE
-  // =========================
-  const isSummaryRequest =
-  (lower === 'summarize' || lower === 'summarise') &&
-  message.reference &&
-  message.reference.messageId;
-
-if (isSummaryRequest) {
+// =========================
+// SUMMARIZE REPLIED MESSAGE
+// =========================
+if (
+  message.reference?.messageId &&
+  (lower === 'summarize' || lower === 'summarise')
+) {
   try {
-    // Fetch the message being replied to
     const repliedMessage = await message.channel.messages.fetch(
       message.reference.messageId
     );
 
-    if (!repliedMessage || !repliedMessage.content) {
+    if (!repliedMessage.content) {
       return message.reply('⚠️ That message has no text to summarize.');
     }
 
@@ -277,57 +274,57 @@ if (isSummaryRequest) {
   }
 }
 
-  // =========================
-  // FORGET MEMORY
-  // =========================
-  if (lower === 'forget everything i said') {
-    userMemory.delete(message.author.id);
-    return message.reply('🧠 I have forgotten our previous conversation.');
-  }
+// =========================
+// FORGET MEMORY
+// =========================
+if (lower === 'forget everything i said') {
+  userMemory.delete(message.author.id);
+  return message.reply('🧠 I have forgotten our previous conversation.');
+}
 
-  // =========================
-  // PING WHEN ONLY MENTIONED
-  // =========================
-  if (!question) {
-    const ping = client.ws.ping;
+// =========================
+// PING WHEN ONLY MENTIONED
+// =========================
+if (!question) {
+  const ping = client.ws.ping;
 
-    let status = '🟢 Excellent';
-    if (ping > 80) status = '🟡 Good';
-    if (ping > 150) status = '🔴 Slow';
+  let status = '🟢 Excellent';
+  if (ping > 80) status = '🟡 Good';
+  if (ping > 150) status = '🔴 Slow';
 
-    return message.reply({
-      embeds: [
-        {
-          title: '🤖 AI Bot Status',
-          color: ping > 150 ? 0xFF0000 : ping > 80 ? 0xFFFF00 : 0x00FFAA,
-          thumbnail: {
-            url: client.user.displayAvatarURL()
+  return message.reply({
+    embeds: [
+      {
+        title: '🤖 AI Bot Status',
+        color: ping > 150 ? 0xFF0000 : ping > 80 ? 0xFFFF00 : 0x00FFAA,
+        thumbnail: {
+          url: client.user.displayAvatarURL()
+        },
+        fields: [
+          {
+            name: '📶 Ping',
+            value: `**${ping} ms**`,
+            inline: true
           },
-          fields: [
-            {
-              name: '📶 Ping',
-              value: `**${ping} ms**`,
-              inline: true
-            },
-            {
-              name: '⚡ Status',
-              value: `**${status}**`,
-              inline: true
-            },
-            {
-              name: '🧠 Memory',
-              value: '**2h active**',
-              inline: true
-            }
-          ],
-          footer: {
-            text: 'Mention me with a question to start chatting'
+          {
+            name: '⚡ Status',
+            value: `**${status}**`,
+            inline: true
           },
-          timestamp: new Date().toISOString()
-        }
-      ]
-    });
-  }
+          {
+            name: '🧠 Memory',
+            value: '**2h active**',
+            inline: true
+          }
+        ],
+        footer: {
+          text: 'Mention me with a question to start chatting'
+        },
+        timestamp: new Date().toISOString()
+      }
+    ]
+  });
+}
 
   // =========================
   // IMAGE GENERATION
