@@ -42,7 +42,6 @@ const blockedWords = [
 let messagesAnswered = 0;
 let imagesGenerated = 0;
 const uniqueUsers = new Set();
-const greetedUsers = new Set();
 const startTime = Date.now();
 
 // =========================
