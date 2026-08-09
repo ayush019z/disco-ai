@@ -7,7 +7,11 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Show all bot commands and how to use them')
+    .setDescription('Show all bot commands and how to use them'),
+
+  new SlashCommandBuilder()
+    .setName('stats')
+    .setDescription('Show bot statistics and ping')
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -21,7 +25,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
       { body: commands }
     );
 
-    console.log('Slash commands registered.');
+    console.log('Slash commands registered successfully.');
   } catch (error) {
     console.error(error);
   }
