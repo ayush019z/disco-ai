@@ -38,26 +38,15 @@ client.once(Events.ClientReady, () => {
 // =========================
 // SLASH COMMANDS
 // =========================
+
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === 'info') {
-    return interaction.reply({
-      embeds: [
-        {
-          title: '🤖 AI Bot Info',
-          fields: [
-            { name: 'Creator', value: '@ayush.rajj', inline: true },
-            { name: 'Memory', value: '2 hours per user', inline: true },
-            { name: 'AI Chat', value: 'Groq Llama 3.3 70B', inline: true },
-            { name: 'Image Generation', value: 'Enabled', inline: true }
-          ],
-          color: 0x00FFFF,
-          footer: {
-            text: 'Made with Discord.js + Groq'
-          }
-        }
-      ]
+    await interaction.reply({
+      content:
+        '🤖 **AI Bot**\\n👤 Creator: **@ayush.rajj**\\n🧠 Memory: **2 hours per user**\\n💬 AI Chat: **Enabled**\\n🖼️ Image Generation: **Enabled**',
+      ephemeral: false
     });
   }
 });
