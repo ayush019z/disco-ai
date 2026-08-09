@@ -257,17 +257,6 @@ client.on('messageCreate', async (message) => {
 
   uniqueUsers.add(message.author.id);
 
-  // =========================
-  // COOLDOWN
-  // =========================
-  const now = Date.now();
-  const last = cooldowns.get(message.author.id) || 0;
-
-  if (now - last < 5000) {
-    return message.reply('⏳ Please wait 5 seconds before using the bot again.');
-  }
-
-  cooldowns.set(message.author.id, now);
 
   // Remove mention from text
   const question = message.content
@@ -332,6 +321,15 @@ client.on('messageCreate', async (message) => {
   // IMAGE GENERATION
   // =========================
   if (isImageCommand) {
+    const now = Date.now();
+const last = cooldowns.get(message.author.id) || 0;
+
+if (now - last < 5000) {
+  return message.reply('🖼️ Please wait 5 seconds before generating another image.');
+}
+
+cooldowns.set(message.author.id, now);
+    
     if (blockedWords.some(w => lower.includes(w))) {
       return message.reply('❌ NSFW or inappropriate image prompts are not allowed.');
     }
