@@ -261,58 +261,155 @@ client.on('messageCreate', async (message) => {
   }
 
   // =========================
-  // SUPER OVER GAME
-  // =========================
-  if (message.content.toLowerCase() === '!superover') {
-    const outcomes = [0, 1, 2, 3, 4, 6];
-    let score = 0;
-    let wickets = 0;
-    const balls = [];
+// SUPER OVER GAME (Interactive)
+// =========================
+const activeSuperOvers = new Map();
 
-    for (let i = 0; i < 6; i++) {
-      const outChance = Math.random();
+if (message.content.toLowerCase() === '!superover') {
+  // Random target between 8 and 22
+  const target = Math.floor(Math.random() * 15) + 8;
 
-      if (outChance < 0.12) {
-        wickets++;
-        balls.push('W');
-        if (wickets === 2) break;
-      } else {
-        const run = outcomes[Math.floor(Math.random() * outcomes.length)];
-        score += run;
-        balls.push(run);
-      }
+  const outcomes = [0, 1, 2, 3, 4, 6];
+  let score = 0;
+  let wickets = 0;
+  const balls = [];
+
+  // First 5 balls auto-play
+  for (let i = 0; i < 5; i++) {
+    const outChance = Math.random();
+
+    if (outChance < 0.12) {
+      wickets++;
+      balls.push('W');
+      if (wickets === 2) break;
+    } else {
+      const run = outcomes[Math.floor(Math.random() * outcomes.length)];
+      score += run;
+      balls.push(run);
     }
-
-    let result = '😬 Tough outing.';
-    if (score >= 15) result = '🔥 Your team wins the Super Over!';
-    else if (score >= 10) result = '⚡ Competitive Super Over!';
-
-    return message.reply({
-      embeds: [{
-        title: '🏏 Super Over',
-        description: '**Target:** 15 runs',
-        color: 0x00FFFF,
-        fields: [
-          {
-            name: 'Balls',
-            value: balls.join(' • ')
-          },
-          {
-            name: 'Score',
-            value: `**${score}/${wickets}**`,
-            inline: true
-          },
-          {
-            name: 'Result',
-            value: result
-          }
-        ],
-        footer: {
-          text: 'Type !superover to play again'
-        }
-      }]
-    });
   }
+
+  const needed = target - score;
+
+  // Save game
+  activeSuperOvers.set(message.author.id, {
+    target,
+    score,
+    wickets,
+    balls,
+    expires: Date.now() + 15000 // 15 seconds
+  });
+
+  return message.reply({
+    embeds: [{
+      title: '🏏 Super Over',
+      description: `**Target:** ${target}`,
+      color: 0x00FFFF,
+      fields: [
+        {
+          name: 'First 5 Balls',
+          value: balls.join(' • '),
+          inline: false
+        },
+        {
+          name: 'Score',
+          value: `**${score}/${wickets}**`,
+          inline: true
+        },
+        {
+          name: 'Need',
+          value: `**${needed} off 1 ball**`,
+          inline: true
+        },
+        {
+          name: 'Choose your shot',
+          value:
+            '`defensive` 🛡️\\n' +
+            '`drive` 🏏\\n' +
+            '`loft` 🚀\\n' +
+            '`scoop` 🪄',
+          inline: false
+        }
+      ],
+      footer: {
+        text: 'Reply within 15 seconds'
+      }
+    }]
+  });
+}
+
+// Handle final shot
+if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase())) {
+  const game = activeSuperOvers.get(message.author.id);
+
+  if (!game || Date.now() > game.expires) {
+    return; // no active game
+  }
+
+  activeSuperOvers.delete(message.author.id);
+
+  const shot = message.content.toLowerCase();
+
+  let finalBall;
+
+  // Different probabilities per shot
+  if (shot === 'defensive') {
+    finalBall = [0, 1, 1, 2, 2, 'W'][Math.floor(Math.random() * 6)];
+  } else if (shot === 'drive') {
+    finalBall = [0, 1, 2, 3, 4, 'W'][Math.floor(Math.random() * 6)];
+  } else if (shot === 'loft') {
+    finalBall = [0, 0, 2, 4, 6, 'W'][Math.floor(Math.random() * 6)];
+  } else {
+    // scoop
+    finalBall = [0, 0, 4, 6, 6, 'W'][Math.floor(Math.random() * 6)];
+  }
+
+  let finalScore = game.score;
+  let finalWickets = game.wickets;
+
+  if (finalBall === 'W') {
+    finalWickets++;
+  } else {
+    finalScore += finalBall;
+  }
+
+  const won = finalScore >= game.target;
+
+  return message.reply({
+    embeds: [{
+      title: '🏏 Final Ball',
+      color: won ? 0x00FF88 : 0xFF4444,
+      fields: [
+        {
+          name: 'Shot',
+          value:
+            shot === 'defensive' ? '🛡️ Defensive' :
+            shot === 'drive' ? '🏏 Straight Drive' :
+            shot === 'loft' ? '🚀 Lofted Shot' :
+            '🪄 Scoop',
+          inline: true
+        },
+        {
+          name: 'Ball 6',
+          value: finalBall === 'W' ? '💥 WICKET' : `**${finalBall}**`,
+          inline: true
+        },
+        {
+          name: 'Final Score',
+          value: `**${finalScore}/${finalWickets}**`,
+          inline: true
+        },
+        {
+          name: 'Result',
+          value: won
+            ? '🔥 **YOU WIN THE SUPER OVER!**'
+            : '😬 **YOU LOSE THE SUPER OVER!**',
+          inline: false
+        }
+      ]
+    }]
+  });
+}
   const isImageCommand = message.content.startsWith('!image ');
   const isMention = message.mentions.has(client.user);
 
