@@ -32,6 +32,14 @@ const blockedWords = [
 ];
 
 // =========================
+// STATS
+// =========================
+let messagesAnswered = 0;
+let imagesGenerated = 0;
+const uniqueUsers = new Set();
+const startTime = Date.now();
+
+// =========================
 // COOLDOWN
 // =========================
 const cooldowns = new Map();
@@ -128,30 +136,61 @@ client.on(Events.InteractionCreate, async interaction => {
               inline: false
             },
             {
+              name: '📄 Summarize a message',
+              value: 'Reply to a message with `@Ai-bot summarize`',
+              inline: false
+            },
+            {
+              name: '🧠 Forget memory',
+              value: '`@Ai-bot forget everything I said`',
+              inline: false
+            },
+            {
               name: 'ℹ️ Bot information',
               value: '`/info`',
               inline: false
             },
             {
-              name: '❓ Help menu',
-              value: '`/help`',
-              inline: false
-            },
-            {
-              name: '🧠 Memory',
-              value:
-                'The bot remembers your conversation for **2 hours** and continues the chat within that time.',
-              inline: false
-            },
-            {
-              name: '🚫 Safety',
-              value:
-                'NSFW or inappropriate text and image prompts are automatically blocked.',
+              name: '📊 Bot statistics',
+              value: '`/stats`',
               inline: false
             }
           ],
           footer: {
             text: 'Created by @ayush.rajj'
+          },
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+  }
+
+  // /stats
+  if (interaction.commandName === 'stats') {
+    const ping = client.ws.ping;
+    const uptimeMs = Date.now() - startTime;
+    const hours = Math.floor(uptimeMs / 3600000);
+    const minutes = Math.floor((uptimeMs % 3600000) / 60000);
+
+    let status = '🟢 Excellent';
+    if (ping > 80) status = '🟡 Good';
+    if (ping > 150) status = '🔴 Slow';
+
+    await interaction.reply({
+      embeds: [
+        {
+          title: '📊 AI Bot Stats',
+          color: 0x00FFFF,
+          fields: [
+            { name: '💬 Messages', value: String(messagesAnswered), inline: true },
+            { name: '🖼️ Images', value: String(imagesGenerated), inline: true },
+            { name: '👥 Users', value: String(uniqueUsers.size), inline: true },
+            { name: '📶 Ping', value: `${ping} ms`, inline: true },
+            { name: '⚡ Status', value: status, inline: true },
+            { name: '⏱️ Uptime', value: `${hours}h ${minutes}m`, inline: true }
+          ],
+          footer: {
+            text: 'Made by @ayush.rajj'
           },
           timestamp: new Date().toISOString()
         }
@@ -172,6 +211,8 @@ client.on('messageCreate', async (message) => {
   // Ignore all other messages
   if (!isImageCommand && !isMention) return;
 
+  uniqueUsers.add(message.author.id);
+
   // =========================
   // COOLDOWN
   // =========================
@@ -184,34 +225,115 @@ client.on('messageCreate', async (message) => {
 
   cooldowns.set(message.author.id, now);
 
+  // Remove mention from text
+  const question = message.content
+    .replace(/<@!?\\\\d+>/, '')
+    .trim();
+
+  const lower = question.toLowerCase();
+
+  // =========================
+  // SUMMARIZE REPLIED MESSAGE
+  // =========================
+  if ((lower === 'summarize' || lower === 'summarise') && message.reference) {
+    try {
+      const replied = await message.channel.messages.fetch(message.reference.messageId);
+
+      await message.channel.sendTyping();
+
+      const response = await ai.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: 'Summarize the following message in 3-5 short bullet points.'
+          },
+          {
+            role: 'user',
+            content: replied.content
+          }
+        ],
+        max_tokens: 120
+      });
+
+      return message.reply(response.choices[0].message.content);
+    } catch (e) {
+      return message.reply('⚠️ Could not summarize that message.');
+    }
+  }
+
+  // =========================
+  // FORGET MEMORY
+  // =========================
+  if (lower === 'forget everything i said') {
+    userMemory.delete(message.author.id);
+    return message.reply('🧠 I have forgotten our previous conversation.');
+  }
+
+  // =========================
+  // PING WHEN ONLY MENTIONED
+  // =========================
+  if (!question) {
+    const ping = client.ws.ping;
+
+    let status = '🟢 Excellent';
+    if (ping > 80) status = '🟡 Good';
+    if (ping > 150) status = '🔴 Slow';
+
+    return message.reply({
+      embeds: [
+        {
+          title: '🤖 AI Bot Status',
+          color: ping > 150 ? 0xFF0000 : ping > 80 ? 0xFFFF00 : 0x00FFAA,
+          thumbnail: {
+            url: client.user.displayAvatarURL()
+          },
+          fields: [
+            {
+              name: '📶 Ping',
+              value: `**${ping} ms**`,
+              inline: true
+            },
+            {
+              name: '⚡ Status',
+              value: `**${status}**`,
+              inline: true
+            },
+            {
+              name: '🧠 Memory',
+              value: '**2h active**',
+              inline: true
+            }
+          ],
+          footer: {
+            text: 'Mention me with a question to start chatting'
+          },
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+  }
+
   // =========================
   // IMAGE GENERATION
   // =========================
   if (isImageCommand) {
-    const promptText = message.content.slice(7).trim();
-
-    if (!promptText) {
-      return message.reply('Please provide a prompt.');
-    }
-
-    const lower = promptText.toLowerCase();
-
     if (blockedWords.some(w => lower.includes(w))) {
-      return message.reply(
-        '❌ NSFW or inappropriate image prompts are not allowed.'
-      );
+      return message.reply('❌ NSFW or inappropriate image prompts are not allowed.');
     }
 
-    const prompt = encodeURIComponent(promptText);
+    const prompt = encodeURIComponent(question);
 
     const imageUrl =
       `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&nologo=true&model=flux`;
+
+    imagesGenerated++;
 
     return message.reply({
       embeds: [
         {
           title: '🎨 AI Generated Image',
-          description: promptText,
+          description: question,
           image: { url: imageUrl },
           color: 0x00FFFF
         }
@@ -220,18 +342,8 @@ client.on('messageCreate', async (message) => {
   }
 
   // =========================
-  // TEXT AI
+  // BLOCK NSFW TEXT
   // =========================
-  const question = message.content
-    .replace(/<@!?\\\\d+>/, '')
-    .trim();
-
-  if (!question) {
-    return message.reply('Ask me something!');
-  }
-
-  const lower = question.toLowerCase();
-
   if (blockedWords.some(w => lower.includes(w))) {
     return message.reply('❌ NSFW or inappropriate questions are not allowed.');
   }
@@ -248,9 +360,7 @@ client.on('messageCreate', async (message) => {
   try {
     await message.channel.sendTyping();
 
-    // =========================
     // MEMORY
-    // =========================
     let history = userMemory.get(message.author.id);
 
     if (!history || (Date.now() - history.lastUsed) > MEMORY_TIME) {
@@ -265,7 +375,6 @@ client.on('messageCreate', async (message) => {
       content: question
     });
 
-    // Keep last 10 messages
     history.messages = history.messages.slice(-10);
 
     const chatMessages = [
@@ -284,7 +393,6 @@ client.on('messageCreate', async (message) => {
 
     const answer = response.choices[0].message.content;
 
-    // Save assistant reply
     history.messages.push({
       role: 'assistant',
       content: answer
@@ -293,7 +401,11 @@ client.on('messageCreate', async (message) => {
     history.lastUsed = Date.now();
     userMemory.set(message.author.id, history);
 
-    await message.reply(answer);
+    messagesAnswered++;
+
+    await message.reply({
+      content: answer
+    });
 
   } catch (error) {
     console.error(error);
