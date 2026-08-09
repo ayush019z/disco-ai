@@ -335,42 +335,42 @@ client.on('messageCreate', async (message) => {
 
   // Ping when only mentioned
   if (!question) {
-    const ping = client.ws.ping;
+  const ping = client.ws.ping;
 
-    let status = '🟢 Excellent';
-    if (ping > 80) status = '🟡 Good';
-    if (ping > 150) status = '🔴 Slow';
+  let status = '🟢 Excellent';
+  if (ping > 80) status = '🟡 Good';
+  if (ping > 150) status = '🔴 Slow';
 
-    return message.reply({
-      embeds: [{
-        title: '🤖 AI Bot Status',
-        color: ping > 150 ? 0xFF0000 : ping > 80 ? 0xFFFF00 : 0x00FFAA,
-        thumbnail: {
-          url: client.user.displayAvatarURL()
+  return message.reply({
+    embeds: [{
+      title: '🤖 AI Bot Status',
+      color: ping > 150 ? 0xFF0000 : ping > 80 ? 0xFFFF00 : 0x00FFAA,
+      thumbnail: {
+        url: client.user.displayAvatarURL()
+      },
+      fields: [
+        {
+          name: '📶 Ping',
+          value: `**${ping} ms**`,
+          inline: true
         },
-        fields: [
-          {
-            name: '📶 Ping',
-            value: `**${ping} ms**`,
-            inline: true
-          },
-          {
-            name: '⚡ Status',
-            value: `**${status}**`,
-            inline: true
-          },
-          {
-            name: '🧠 Memory',
-            value: '**2h active**',
-            inline: true
-          }
-        ],
-        footer: {
-          text: 'Mention me with a question to start chatting'
+        {
+          name: '⚡ Status',
+          value: `**${status}**`,
+          inline: true
+        },
+        {
+          name: '🧠 Memory',
+          value: '**2h active**',
+          inline: true
         }
-      }]
-    });
-  }
+      ],
+      footer: {
+        text: 'Mention me with a question to start chatting'
+      }
+    }]
+  });
+}
 
   // Image generation
   if (isImageCommand) {
