@@ -59,7 +59,7 @@ const startTime = Date.now();
 // READY
 // =========================
 client.once(Events.ClientReady, () => {
-console.log(Logged in as ${client.user.tag});
+console.log(`Logged in as ${client.user.tag}`);
 });
 const commands = [
 new SlashCommandBuilder()
