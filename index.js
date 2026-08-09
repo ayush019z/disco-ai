@@ -139,11 +139,12 @@ embeds: [{
 title: '📊 Bot Stats',
 color: 0x00FFFF,
 fields: [
-{ name: '💬 Messages', value: String(messagesAnswered), inline: true },
-{ name: '🖼️ Images', value: String(imagesGenerated), inline: true },
-{ name: '👥 Users', value: String(uniqueUsers.size), inline: true },
-{ name: '📶 Ping', value: ${ping} ms, inline: true }, { name: '⏱️ Uptime', value: ``${hours}h ${minutes}m, inline: true }
- ]
+  { name: '💬 Messages', value: String(messagesAnswered), inline: true },
+  { name: '🖼️ Images', value: String(imagesGenerated), inline: true },
+  { name: '👥 Users', value: String(uniqueUsers.size), inline: true },
+  { name: '📶 Ping', value: `${ping} ms`, inline: true },
+  { name: '⏱️ Uptime', value: `${hours}h ${minutes}m`, inline: true }
+]
 }]
 });
 }
