@@ -98,6 +98,13 @@ client.on('messageCreate', async (message) => {
     return message.reply('❌ NSFW or inappropriate questions are not allowed.');
   }
 
+  // Detect if the user wants a detailed answer
+  const wantsDetailed = /(detailed|detail|explain fully|full explanation|long answer|elaborate|in depth)/i.test(question);
+
+  const systemPrompt = wantsDetailed
+    ? 'You are a helpful, family-friendly Discord assistant. Give a clear and detailed explanation with examples when useful.'
+    : 'You are a helpful, family-friendly Discord assistant. Keep answers short and useful (2-4 lines unless the user asks for detail).';
+
   try {
     await message.channel.sendTyping();
 
@@ -106,15 +113,14 @@ client.on('messageCreate', async (message) => {
       messages: [
         {
           role: 'system',
-          content:
-            'You are a helpful, family-friendly Discord assistant. Refuse sexual, violent, or illegal content.'
+          content: systemPrompt
         },
         {
           role: 'user',
           content: question
         }
       ],
-      max_tokens: 300
+      max_tokens: wantsDetailed ? 500 : 120
     });
 
     const answer = response.choices[0].message.content;
