@@ -32,8 +32,15 @@ client.once('clientReady', () => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
+  // Check if this message is actually for the bot
+  const isImageCommand = message.content.startsWith('!image ');
+  const isMention = message.mentions.has(client.user);
+
+  // Ignore all other messages
+  if (!isImageCommand && !isMention) return;
+
   // =========================
-  // COOLDOWN
+  // COOLDOWN (only for bot usage)
   // =========================
   const now = Date.now();
   const last = cooldowns.get(message.author.id) || 0;
@@ -47,7 +54,7 @@ client.on('messageCreate', async (message) => {
   // =========================
   // IMAGE GENERATION
   // =========================
-  if (message.content.startsWith('!image ')) {
+  if (isImageCommand) {
     const promptText = message.content.slice(7).trim();
 
     if (!promptText) {
@@ -81,8 +88,6 @@ client.on('messageCreate', async (message) => {
   // =========================
   // TEXT AI
   // =========================
-  if (!message.mentions.has(client.user)) return;
-
   const question = message.content
     .replace(/<@!?\\\\d+>/, '')
     .trim();
