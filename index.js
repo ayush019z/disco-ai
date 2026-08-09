@@ -55,7 +55,7 @@ client.on(Events.InteractionCreate, async interaction => {
           fields: [
             {
               name: '👤 Creator',
-              value: '**@ayush.rajj**',
+              value: '<@773574818121383958>',
               inline: true
             },
             {
