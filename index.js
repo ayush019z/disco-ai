@@ -1,4 +1,8 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const {
+  Client,
+  GatewayIntentBits,
+  Events
+} = require('discord.js');
 const OpenAI = require('openai');
 
 const client = new Client({
@@ -15,33 +19,61 @@ const ai = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
-// Block inappropriate text and image prompts
 const blockedWords = [
   'porn', 'nude', 'sex', 'hentai', 'onlyfans', 'rape',
   'boobs', 'breasts', 'sexy', 'underwear', 'lingerie',
   'bikini', 'topless', 'naked', 'nsfw', 'fetish'
 ];
 
-// Simple cooldown (5 seconds)
 const cooldowns = new Map();
 
-client.once('clientReady', () => {
+// 2-hour memory
+const userMemory = new Map();
+const MEMORY_TIME = 2 * 60 * 60 * 1000;
+
+client.once(Events.ClientReady, () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
+// =========================
+// SLASH COMMANDS
+// =========================
+client.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'info') {
+    return interaction.reply({
+      embeds: [
+        {
+          title: '🤖 AI Bot Info',
+          fields: [
+            { name: 'Creator', value: '@ayush.rajj', inline: true },
+            { name: 'Memory', value: '2 hours per user', inline: true },
+            { name: 'AI Chat', value: 'Groq Llama 3.3 70B', inline: true },
+            { name: 'Image Generation', value: 'Enabled', inline: true }
+          ],
+          color: 0x00FFFF,
+          footer: {
+            text: 'Made with Discord.js + Groq'
+          }
+        }
+      ]
+    });
+  }
+});
+
+// =========================
+// MESSAGE COMMANDS
+// =========================
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // Check if this message is actually for the bot
   const isImageCommand = message.content.startsWith('!image ');
   const isMention = message.mentions.has(client.user);
 
-  // Ignore all other messages
   if (!isImageCommand && !isMention) return;
 
-  // =========================
-  // COOLDOWN (only for bot usage)
-  // =========================
+  // Cooldown
   const now = Date.now();
   const last = cooldowns.get(message.author.id) || 0;
 
@@ -52,7 +84,7 @@ client.on('messageCreate', async (message) => {
   cooldowns.set(message.author.id, now);
 
   // =========================
-  // IMAGE GENERATION
+  // IMAGE
   // =========================
   if (isImageCommand) {
     const promptText = message.content.slice(7).trim();
@@ -63,7 +95,6 @@ client.on('messageCreate', async (message) => {
 
     const lower = promptText.toLowerCase();
 
-    // Block NSFW prompts
     if (blockedWords.some(w => lower.includes(w))) {
       return message.reply('❌ NSFW or inappropriate image prompts are not allowed.');
     }
@@ -98,12 +129,10 @@ client.on('messageCreate', async (message) => {
 
   const lower = question.toLowerCase();
 
-  // Block NSFW text
   if (blockedWords.some(w => lower.includes(w))) {
     return message.reply('❌ NSFW or inappropriate questions are not allowed.');
   }
 
-  // Detect if the user wants a detailed answer
   const wantsDetailed = /(detailed|detail|explain fully|full explanation|long answer|elaborate|in depth)/i.test(question);
 
   const systemPrompt = wantsDetailed
@@ -113,22 +142,42 @@ client.on('messageCreate', async (message) => {
   try {
     await message.channel.sendTyping();
 
+    let history = userMemory.get(message.author.id);
+
+    if (!history || (Date.now() - history.lastUsed) > MEMORY_TIME) {
+      history = {
+        messages: [],
+        lastUsed: Date.now()
+      };
+    }
+
+    history.messages.push({
+      role: 'user',
+      content: question
+    });
+
+    history.messages = history.messages.slice(-10);
+
+    const chatMessages = [
+      { role: 'system', content: systemPrompt },
+      ...history.messages
+    ];
+
     const response = await ai.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt
-        },
-        {
-          role: 'user',
-          content: question
-        }
-      ],
+      messages: chatMessages,
       max_tokens: wantsDetailed ? 500 : 120
     });
 
     const answer = response.choices[0].message.content;
+
+    history.messages.push({
+      role: 'assistant',
+      content: answer
+    });
+
+    history.lastUsed = Date.now();
+    userMemory.set(message.author.id, history);
 
     await message.reply(answer);
 
