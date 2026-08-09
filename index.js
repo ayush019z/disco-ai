@@ -205,6 +205,56 @@ client.on(Events.InteractionCreate, async interaction => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
+  // =========================
+// SUMMARIZE (must be first)
+// Reply to a message with @Ai-bot summarize
+// =========================
+if (
+  message.reference?.messageId &&
+  message.mentions.has(client.user)
+) {
+  const textWithoutMention = message.content
+    .replace(/<@!?\\d+>/g, '')
+    .trim()
+    .toLowerCase();
+
+  if (textWithoutMention === 'summarize' || textWithoutMention === 'summarise') {
+    try {
+      const repliedMessage = await message.channel.messages.fetch(
+        message.reference.messageId
+      );
+
+      if (!repliedMessage?.content) {
+        return message.reply('⚠️ That message has no text to summarize.');
+      }
+
+      await message.channel.sendTyping();
+
+      const response = await ai.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Summarize the following text in 3-5 concise bullet points.'
+          },
+          {
+            role: 'user',
+            content: repliedMessage.content
+          }
+        ],
+        max_tokens: 150
+      });
+
+      return message.reply(response.choices[0].message.content);
+
+    } catch (error) {
+      console.error(error);
+      return message.reply('⚠️ Could not summarize that message.');
+    }
+  }
+}
+
   const isImageCommand = message.content.startsWith('!image ');
   const isMention = message.mentions.has(client.user);
 
@@ -232,47 +282,7 @@ const question = message.content
 
 const lower = question.toLowerCase();
 
-// =========================
-// SUMMARIZE REPLIED MESSAGE
-// =========================
-if (
-  message.reference?.messageId &&
-  (lower === 'summarize' || lower === 'summarise')
-) {
-  try {
-    const repliedMessage = await message.channel.messages.fetch(
-      message.reference.messageId
-    );
 
-    if (!repliedMessage.content) {
-      return message.reply('⚠️ That message has no text to summarize.');
-    }
-
-    await message.channel.sendTyping();
-
-    const response = await ai.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'Summarize the following message in 3-5 concise bullet points.'
-        },
-        {
-          role: 'user',
-          content: repliedMessage.content
-        }
-      ],
-      max_tokens: 120
-    });
-
-    return message.reply(response.choices[0].message.content);
-
-  } catch (error) {
-    console.error(error);
-    return message.reply('⚠️ Could not summarize that message.');
-  }
-}
 
 // =========================
 // FORGET MEMORY
