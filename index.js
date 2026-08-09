@@ -51,7 +51,6 @@ const startTime = Date.now();
 // =========================
 // MEMORY (2 HOURS)
 // =========================
-const userMemory = new Map();
 const MEMORY_TIME = 2 * 60 * 60 * 1000;
 
 // =========================
