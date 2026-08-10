@@ -265,58 +265,100 @@ if (
   }
 
   // =========================
-  // SUPER OVER GAME
-  // =========================
-  if (message.content.toLowerCase() === '!superover') {
-    const outcomes = [0, 1, 2, 3, 4, 6];
-    let score = 0;
-    let wickets = 0;
-    const balls = [];
+// CHAT-BASED SUPER OVER
+// =========================
+const activeSuperOvers = new Map();
 
-    for (let i = 0; i < 6; i++) {
-      const outChance = Math.random();
+if (message.content.toLowerCase() === '!superover') {
+  const outcomes = [0, 1, 2, 3, 4, 6];
+  let score = 0;
+  let wickets = 0;
+  const balls = [];
 
-      if (outChance < 0.12) {
-        wickets++;
-        balls.push('W');
-        if (wickets === 2) break;
-      } else {
-        const run = outcomes[Math.floor(Math.random() * outcomes.length)];
-        score += run;
-        balls.push(run);
-      }
+  // First 5 balls simulated
+  for (let i = 0; i < 5; i++) {
+    const outChance = Math.random();
+
+    if (outChance < 0.12) {
+      wickets++;
+      balls.push('W');
+      if (wickets === 2) break;
+    } else {
+      const run = outcomes[Math.floor(Math.random() * outcomes.length)];
+      score += run;
+      balls.push(run);
     }
-
-    let result = '😬 Tough outing.';
-    if (score >= 15) result = '🔥 Your team wins the Super Over!';
-    else if (score >= 10) result = '⚡ Competitive Super Over!';
-
-    return message.reply({
-      embeds: [{
-        title: '🏏 Super Over',
-        description: '**Target:** 15 runs',
-        color: 0x00FFFF,
-        fields: [
-          {
-            name: 'Balls',
-            value: balls.join(' • ')
-          },
-          {
-            name: 'Score',
-            value: `**${score}/${wickets}**`,
-            inline: true
-          },
-          {
-            name: 'Result',
-            value: result
-          }
-        ],
-        footer: {
-          text: 'Type !superover to play again'
-        }
-      }]
-    });
   }
+
+  // Last ball should always require at least 1 run
+  const target = Math.max(score + 1, 15);
+  const needed = target - score;
+
+  activeSuperOvers.set(message.author.id, {
+    score,
+    wickets,
+    balls,
+    target
+  });
+
+  return message.reply(
+    `🏏 **Super Over**\\n\\n` +
+    `**Target:** ${target}\\n` +
+    `**After 5 balls:** ${score}/${wickets}\\n` +
+    `**Need ${needed} from 1 ball**\\n\\n` +
+    `Type one shot: **loft, drive, pull, scoop**`
+  );
+}
+
+// Handle final-ball shot
+const shot = message.content.toLowerCase();
+
+if (activeSuperOvers.has(message.author.id) &&
+    ['loft', 'drive', 'pull', 'scoop'].includes(shot)) {
+
+  const game = activeSuperOvers.get(message.author.id);
+
+  let resultRun = 0;
+  let shotText = '';
+
+  switch (shot) {
+    case 'loft':
+      shotText = '🚀 You went for a lofted shot!';
+      resultRun = [0, 2, 4, 6][Math.floor(Math.random() * 4)];
+      break;
+
+    case 'drive':
+      shotText = '🏏 Elegant cover drive!';
+      resultRun = [1, 2, 4, 0][Math.floor(Math.random() * 4)];
+      break;
+
+    case 'pull':
+      shotText = '💥 Powerful pull shot!';
+      resultRun = [0, 2, 4, 6][Math.floor(Math.random() * 4)];
+      break;
+
+    case 'scoop':
+      shotText = '🎯 Smart scoop shot!';
+      resultRun = [1, 2, 4, 6][Math.floor(Math.random() * 4)];
+      break;
+  }
+
+  game.score += resultRun;
+  game.balls.push(resultRun === 0 ? '0' : String(resultRun));
+
+  const won = game.score >= game.target;
+
+  activeSuperOvers.delete(message.author.id);
+
+  return message.reply(
+    `${shotText}\\n\\n` +
+    `🎯 **Final ball:** ${resultRun} run${resultRun !== 1 ? 's' : ''}\\n` +
+    `📊 **Final score:** ${game.score}/${game.wickets}\\n` +
+    `🏁 **Target:** ${game.target}\\n\\n` +
+    `**Balls:** ${game.balls.join(' • ')}\\n\\n` +
+    (won ? '🏆 **You chased it!**' : '💔 **You fell short!**')
+  );
+}
     const isImageCommand = message.content.startsWith('!image ');
   const isMention = message.mentions.has(client.user);
 
