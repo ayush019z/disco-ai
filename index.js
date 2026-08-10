@@ -140,25 +140,7 @@ fields: [
 });
 }
 });
-client.on('messageCreate', async (message) => {
-if (message.author.bot) return;
-
-// Greeting
-if (
-(message.mentions.has(client.user) || message.content.startsWith('!image ')) &&
-!greetedUsers.has(message.author.id)
-) {
-greetedUsers.add(message.author.id);
-
-await message.reply(
-'👋 Hi! I’m AI Bot.\n\n' +
-'💬 Mention me to ask anything\n' +
-'🖼️ Use !image prompt\n' +
-'📄 Reply with !sum\n' +
-'🏏 Play !superover or !batbattle\n' +
-'ℹ️ Use /help for all features'
-);
-}
+client.on('interactionCreate', async interaction => { if (!interaction.isChatInputCommand()) return; if (interaction.commandName === 'help') { const embed = { title: '🤖 AI Bot Help', description: '💬 **AI Chat** Mention the bot with a question ' + '🖼️ **Image** `!image prompt` ' + '📄 **Summarize** Reply with `!sum` ' + '🏏 **Super Over** `!superover` ' + '⚔️ **Bat Battle** `!batbattle` ' + '🧠 **Forget memory** `@Ai-bot forget everything I said`', color: 0x00FFFF }; return interaction.reply({ embeds: [embed] }); } if (interaction.commandName === 'stats') { const embed = { title: '📊 Bot Stats', fields: [ { name: '💬 Messages answered', value: String(messagesAnswered), inline: true }, { name: '🖼️ Images generated', value: String(imagesGenerated), inline: true }, { name: '🧠 Users with memory', value: String(userMemory.size), inline: true } ], color: 0x00FFFF }; return interaction.reply({ embeds: [embed] }); } });
 
 // =========================
 // SUMMARY
