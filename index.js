@@ -301,7 +301,13 @@ if (message.content.toLowerCase() === '!superover') {
     target
   });
 
-  return message.reply({
+  // Last ball interactive
+const needed = target - score;
+
+// make sure at least 1 run is needed
+if (needed <= 0) score = target - 1;
+
+const reply = await message.reply({
   embeds: [{
     color: 0x00ffff,
     title: '🏏 Super Over',
@@ -310,60 +316,58 @@ if (message.content.toLowerCase() === '!superover') {
       `**After 5 balls**\n` +
       `${balls.join(' • ')}\n\n` +
       `**Score:** ${score}/${wickets}\n\n` +
-      `🔥 **Need ${needed} from 1 ball**\n\n` +
+      `🔥 **Need ${target - score} from 1 ball**\n\n` +
       `Type your shot: \`loft\` \`drive\` \`pull\` \`scoop\``
   }]
 });
-}
 
-// Handle final-ball shot
-const shot = message.content.toLowerCase();
+// wait for the user's shot
+const filter = m =>
+  m.author.id === message.author.id &&
+  ['loft', 'drive', 'pull', 'scoop'].includes(m.content.toLowerCase());
 
-if (activeSuperOvers.has(message.author.id) &&
-    ['loft', 'drive', 'pull', 'scoop'].includes(shot)) {
+try {
+  const collected = await message.channel.awaitMessages({
+    filter,
+    max: 1,
+    time: 15000,
+    errors: ['time']
+  });
 
-  const game = activeSuperOvers.get(message.author.id);
+  const shot = collected.first().content.toLowerCase();
 
-  let resultRun = 0;
-  let shotText = '';
+  const outcomes = {
+    loft: [0, 1, 2, 4, 6, 'W'],
+    drive: [1, 1, 2, 3, 4, 'W'],
+    pull: [0, 1, 2, 4, 6, 'W'],
+    scoop: [0, 1, 4, 6, 'W']
+  };
 
-  switch (shot) {
-    case 'loft':
-      shotText = '🚀 You went for a lofted shot!';
-      resultRun = [0, 2, 4, 6][Math.floor(Math.random() * 4)];
-      break;
+  const result = outcomes[shot][Math.floor(Math.random() * outcomes[shot].length)];
 
-    case 'drive':
-      shotText = '🏏 Elegant cover drive!';
-      resultRun = [1, 2, 4, 0][Math.floor(Math.random() * 4)];
-      break;
-
-    case 'pull':
-      shotText = '💥 Powerful pull shot!';
-      resultRun = [0, 2, 4, 6][Math.floor(Math.random() * 4)];
-      break;
-
-    case 'scoop':
-      shotText = '🎯 Smart scoop shot!';
-      resultRun = [1, 2, 4, 6][Math.floor(Math.random() * 4)];
-      break;
+  if (result === 'W') {
+    wickets++;
+    balls.push('W');
+  } else {
+    score += result;
+    balls.push(result.toString());
   }
 
-  game.score += resultRun;
-  game.balls.push(resultRun === 0 ? '0' : String(resultRun));
+  const won = score >= target;
 
-  const won = game.score >= game.target;
+  await message.reply({
+    embeds: [{
+      color: won ? 0x00ff88 : 0xff4444,
+      title: won ? '🏆 You won!' : '❌ You lost!',
+      description:
+        `**Final ball:** ${shot.toUpperCase()} → ${result}\n\n` +
+        `**Final score:** ${score}/${wickets}\n` +
+        `**Target:** ${target}`
+    }]
+  });
 
-  activeSuperOvers.delete(message.author.id);
-
-  return message.reply(
-    `${shotText}\\n\\n` +
-    `🎯 **Final ball:** ${resultRun} run${resultRun !== 1 ? 's' : ''}\\n` +
-    `📊 **Final score:** ${game.score}/${game.wickets}\\n` +
-    `🏁 **Target:** ${game.target}\\n\\n` +
-    `**Balls:** ${game.balls.join(' • ')}\\n\\n` +
-    (won ? '🏆 **You chased it!**' : '💔 **You fell short!**')
-  );
+} catch {
+  await message.reply('⏰ Time up! You did not play the last ball.');
 }
     const isImageCommand = message.content.startsWith('!image ');
   const isMention = message.mentions.has(client.user);
