@@ -321,10 +321,7 @@ client.on('messageCreate', async (message) => {
   uniqueUsers.add(message.author.id);
 
   // Remove mention
-  const question = message.content
-    .replace(/<@!?\\d+>/g, '')
-    .trim();
-
+  const question = isImageCommand ? message.content.slice(7).trim() : message.content.replace(/<@!?\d+>/g, '').trim();
   const lower = question.toLowerCase();
 
   // Forget memory
