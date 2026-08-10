@@ -105,7 +105,7 @@ fields: [
 { name: '👤 Creator', value: '<@773574818121383958>', inline: true },
 { name: '🧠 Memory', value: '2 hours', inline: true },
 { name: '🖼️ Images', value: 'Enabled', inline: true },
-{ name: '🏏 Games', value: '!so, !batbattle', inline: true }
+{ name: '🏏 Games', value: '!superover, !batbattle', inline: true }
  ],
 footer: { text: 'Made by Ayush' }
 }]
@@ -121,7 +121,7 @@ description:
 'AI Chat\nMention the bot with a question\n\n' +
 'Image\n!image prompt\n\n' +
 'Summarize\nReply with !sum\n\n' +
-'Super Over\n!so\n\n' +
+'Super Over\n!superover\n\n' +
 'Bat Battle\n!batbattle\n\n' +
 'Forget memory\n@Ai-bot forget everything I said'
 }]
@@ -164,7 +164,7 @@ await message.reply(
 '💬 Mention me to ask anything\n' +
 '🖼️ Use !image prompt\n' +
 '📄 Reply with !sum\n' +
-'🏏 Play !so or !batbattle\n' +
+'🏏 Play !superover or !batbattle\n' +
 'ℹ️ Use /help for all features'
 );
 }
