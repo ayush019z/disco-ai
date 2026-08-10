@@ -536,14 +536,34 @@ if (message.content.toLowerCase() === '!batbattle') {
     m.react('🏏').catch(() => {});
   });
 
-  collector.on('end', () => {
+    collector.on('end', () => {
     activeBatBattles.delete(message.channelId);
 
+    // If no human played, cancel the game
     if (players.size === 0) {
       return message.channel.send('Game over! Nobody stepped up to the crease. 🏏💨');
     }
 
-    // Sort players by highest runs (Treat 'W' as -1 for sorting so they go to the bottom)
+    // =========================
+    // 🤖 THE BOT TAKES ITS TURN
+    // =========================
+    const botShots = ['defensive', 'drive', 'loft', 'scoop'];
+    const botChoice = botShots[Math.floor(Math.random() * botShots.length)];
+    
+    let botOutcome;
+    if (botChoice === 'defensive') botOutcome = [0, 1, 1, 2, 2, 'W'][Math.floor(Math.random() * 6)];
+    else if (botChoice === 'drive') botOutcome = [0, 1, 2, 3, 4, 'W'][Math.floor(Math.random() * 6)];
+    else if (botChoice === 'loft') botOutcome = [0, 0, 2, 4, 6, 'W'][Math.floor(Math.random() * 6)];
+    else botOutcome = [0, 0, 4, 6, 6, 'W'][Math.floor(Math.random() * 6)];
+
+    // Add the bot to the players list
+    players.set(client.user.id, { 
+      user: client.user, 
+      shot: botChoice, 
+      outcome: botOutcome 
+    });
+
+    // Sort all players (including the bot) by highest runs
     const sortedPlayers = Array.from(players.values()).sort((a, b) => {
       const scoreA = a.outcome === 'W' ? -1 : a.outcome;
       const scoreB = b.outcome === 'W' ? -1 : b.outcome;
@@ -555,14 +575,24 @@ if (message.content.toLowerCase() === '!batbattle') {
     sortedPlayers.forEach((p, index) => {
       const rankIcon = index === 0 ? '🏆' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : '🏅'));
       const resultText = p.outcome === 'W' ? '💥 **WICKET**' : `**${p.outcome}** runs`;
-      leaderboardText += `${rankIcon} **${p.user.username}** — *${p.shot}* ➔ ${resultText}\n`;
+      
+      // Add a robot emoji next to the bot's name so it stands out
+      const nameDisplay = p.user.id === client.user.id ? `🤖 ${p.user.username}` : p.user.username;
+      
+      leaderboardText += `${rankIcon} **${nameDisplay}** — *${p.shot}* ➔ ${resultText}\n`;
     });
 
     // Determine winner text
     const topPlayer = sortedPlayers[0];
-    const winnerText = topPlayer.outcome === 'W' 
-      ? 'Everyone got out! No winner this round.' 
-      : `👑 **${topPlayer.user.username}** takes the crown!`;
+    let winnerText;
+    
+    if (topPlayer.outcome === 'W') {
+      winnerText = 'Everyone got out! No winner this round.';
+    } else if (topPlayer.user.id === client.user.id) {
+      winnerText = '🤖 I take the crown! Better luck next time.';
+    } else {
+      winnerText = `👑 **${topPlayer.user.username}** takes the crown!`;
+    }
 
     message.channel.send({
       embeds: [{
@@ -575,7 +605,7 @@ if (message.content.toLowerCase() === '!batbattle') {
       }]
     });
   });
-  
+
   return;
 }
   
