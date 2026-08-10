@@ -374,8 +374,8 @@ const winnerText =
 highest === -1
 ? '😬 Everyone got out!'
 : winners.length === 1
-? 🏆 **Winner: ${winners[0].name} (${highest})**
-: 🤝 **Tie: ${winners.map(w => w.name).join(', ')} (${highest})**;
+? `🏆 **Winner: ${winners[0].name} (${highest})**`
+: `🤝 **Tie: ${winners.map(w => w.name).join(', ')} (${highest})**`;
 
 await message.channel.send({
 embeds: [{
@@ -426,7 +426,7 @@ return message.reply('🧠 Memory cleared.');
 }
 
 if (!question) {
-return message.reply(🤖 Pong! **${client.ws.ping}ms**`);
+return message.reply(`🤖 Pong! **${client.ws.ping}ms**`);
 }
 
 if (blockedWords.some(w => lower.includes(w))) {
