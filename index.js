@@ -361,8 +361,7 @@ if (r !== 'W' && r > highest) highest = r;
 results.push(p);
 }
 
-const lines = results.map(p => **${p.name}** → ${p.result === 'W' ? '💥 W' : p.result + '️⃣'});
-
+const lines = results.map(p => `**${p.name}** → ${p.result === 'W' ? '💥 W' : p.result + '️⃣'}`);
 const winners = results.filter(p => p.result === highest);
 
 const commentary = highest === 6
