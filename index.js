@@ -446,9 +446,7 @@ cooldowns.set(message.author.id, now);
 
 const wait = await message.reply('🎨 Generating image...');
 
-const url =
-https://image.pollinations.ai/prompt/${encodeURIComponent(question)}?width=1024&height=1024&nologo=true&model=flux`;
-
+const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(question)}?width=1024&height=1024&nologo=true&model=flux`; const embed = { title: 'AI Image', description: question, image: { url: imageUrl }, color: 0x00FFFF };
 imagesGenerated++;
 
 return wait.edit({
