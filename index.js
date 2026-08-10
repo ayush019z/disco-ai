@@ -292,8 +292,6 @@ if (message.content.toLowerCase() === '!superover') {
 
   // Last ball should always require at least 1 run
   const target = Math.max(score + 1, 15);
-  const needed = target - score;
-
   activeSuperOvers.set(message.author.id, {
     score,
     wickets,
