@@ -278,39 +278,155 @@ if (game && Date.now() <= game.expires) {
 activeSuperOvers.delete(message.author.id);
 
 const shot = message.content.toLowerCase();
+// =========================
+// SUPER OVER GAME (Replace your old one with this)
+// =========================
+const activeSuperOvers = new Map();
 
-let result;
+// Start game
+if (message.content.toLowerCase() === '!superover') {
+  const outcomes = [0, 1, 2, 3, 4, 6];
+  let score = 0;
+  let wickets = 0;
+  const balls = [];
 
-if (shot === 'defensive') {
-result = [0,1,1,2,2,'W'][Math.floor(Math.random()*6)];
-} else if (shot === 'drive') {
-result = [0,1,2,3,4,'W'][Math.floor(Math.random()*6)];
-} else if (shot === 'loft') {
-result = [0,0,2,4,6,'W'][Math.floor(Math.random()*6)];
-} else {
-result = [0,0,4,6,6,'W'][Math.floor(Math.random()*6)];
+  // First 5 balls
+  for (let i = 0; i < 5; i++) {
+    const outChance = Math.random();
+
+    if (outChance < 0.12) {
+      wickets++;
+      balls.push('W');
+      if (wickets === 2) break;
+    } else {
+      const run = outcomes[Math.floor(Math.random() * outcomes.length)];
+      score += run;
+      balls.push(run);
+    }
+  }
+
+  // Always need at least 1 run on last ball
+  const target = score + Math.floor(Math.random() * 6) + 1;
+  const needed = target - score;
+
+  // Save game for this user
+  activeSuperOvers.set(message.author.id, {
+    target,
+    score,
+    wickets,
+    balls,
+    expires: Date.now() + 15000 // 15 sec
+  });
+
+  return message.reply({
+    embeds: [{
+      title: '🏏 Super Over',
+      description: `**Target:** ${target}`,
+      color: 0x00FFFF,
+      fields: [
+        {
+          name: 'First 5 Balls',
+          value: balls.join(' • '),
+          inline: false
+        },
+        {
+          name: 'Score',
+          value: `**${score}/${wickets}**`,
+          inline: true
+        },
+        {
+          name: 'Need',
+          value: `**${needed} off 1 ball**`,
+          inline: true
+        },
+        {
+          name: 'Type your shot',
+          value:
+            '`defensive` 🛡️\n' +
+            '`drive` 🏏\n' +
+            '`loft` 🚀\n' +
+            '`scoop` 🪄',
+          inline: false
+        }
+      ],
+      footer: {
+        text: 'Reply with defensive, drive, loft, or scoop within 15 seconds'
+      }
+    }]
+  });
 }
 
-let finalScore = game.score;
-let finalWickets = game.wickets;
+// Handle final shot
+if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase())) {
+  const game = activeSuperOvers.get(message.author.id);
 
-if (result === 'W') finalWickets++;
-else finalScore += result;
+  if (!game || Date.now() > game.expires) {
+    return;
+  }
 
-const won = finalScore >= game.target;
+  activeSuperOvers.delete(message.author.id);
 
-return message.reply({
-embeds: [{
-title: '🏏 Final Ball',
-color: won ? 0x00FF88 : 0xFF4444,
-fields: [
-{ name: 'Shot', value: shot, inline: true },
-{ name: 'Ball 6', value: result === 'W' ? '💥 WICKET' : `${result}️⃣`, inline: true }, { name: 'Final', value: `**${finalScore}/${finalWickets}**`, inline: true },
-{ name: 'Result', value: won ? '🔥 YOU WIN!' : '😬 YOU LOSE!' }
- ]
-}]
-});
-}
+  const shot = message.content.toLowerCase();
+
+  let finalBall;
+
+  // Risk / reward
+  if (shot === 'defensive') {
+    finalBall = [0, 1, 1, 2, 2, 'W'][Math.floor(Math.random() * 6)];
+  } else if (shot === 'drive') {
+    finalBall = [0, 1, 2, 3, 4, 'W'][Math.floor(Math.random() * 6)];
+  } else if (shot === 'loft') {
+    finalBall = [0, 0, 2, 4, 6, 'W'][Math.floor(Math.random() * 6)];
+  } else {
+    // scoop
+    finalBall = [0, 0, 4, 6, 6, 'W'][Math.floor(Math.random() * 6)];
+  }
+
+  let finalScore = game.score;
+  let finalWickets = game.wickets;
+
+  if (finalBall === 'W') {
+    finalWickets++;
+  } else {
+    finalScore += finalBall;
+  }
+
+  const won = finalScore >= game.target;
+
+  return message.reply({
+    embeds: [{
+      title: '🏏 Final Ball',
+      color: won ? 0x00FF88 : 0xFF4444,
+      fields: [
+        {
+          name: 'Shot',
+          value:
+            shot === 'defensive' ? '🛡️ Defensive' :
+            shot === 'drive' ? '🏏 Straight Drive' :
+            shot === 'loft' ? '🚀 Lofted Shot' :
+            '🪄 Scoop',
+          inline: true
+        },
+        {
+          name: 'Ball 6',
+          value: finalBall === 'W' ? '💥 WICKET' : `**${finalBall}**`,
+          inline: true
+        },
+        {
+          name: 'Final Score',
+          value: `**${finalScore}/${finalWickets}**`,
+          inline: true
+        },
+        {
+          name: 'Result',
+          value: won
+            ? '🔥 **YOU WIN THE SUPER OVER!**'
+            : '😬 **YOU LOSE THE SUPER OVER!**',
+          inline: false
+        }
+      ]
+    }]
+  });
 }
 // =========================
 // BAT BATTLE
