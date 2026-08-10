@@ -42,7 +42,9 @@ const startTime = Date.now();
 const cooldowns = new Map();
 const userMemory = new Map();
 const activeSuperOvers = new Map(); // ADD THIS HERE
-const activeBatBattles = new Set(); // Tracks channels with an active battle
+const activeBatBattles = new Set(); // Tracks channels with an active batt
+const activeScrambles = new Set();
+
 
 
 // =========================
@@ -425,8 +427,69 @@ if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase
   if (
   !isImageCommand &&
   !isMention &&
-  !['defensive', 'drive', 'loft', 'scoop', '!batbattle'].includes(message.content.toLowerCase())
+  !['defensive', 'drive', 'loft', 'scoop', '!batbattle', '!scramble'].includes(message.content.toLowerCase())
 ) return;
+  // =========================
+// WORD SCRAMBLE GAME
+// =========================
+if (message.content.toLowerCase() === '!scramble') {
+  if (activeScrambles.has(message.channelId)) {
+    return message.reply('⚠️ A Scramble game is already running here!');
+  }
+
+  activeScrambles.add(message.channelId);
+
+  let chosenWord;
+
+  // 1. Fetch a random word from the API
+  try {
+    // We send a typing indicator so users know the bot is thinking while fetching
+    await message.channel.sendTyping();
+    
+    const response = await fetch('https://random-word-api.herokuapp.com/word');
+    const data = await response.json();
+    chosenWord = data[0]; // The API returns an array like ["apple"]
+  } catch (error) {
+    console.error('Failed to fetch word:', error);
+    // Fallback word bank just in case the API goes down
+    const fallbackBank = ['developer', 'discord', 'network', 'javascript'];
+    chosenWord = fallbackBank[Math.floor(Math.random() * fallbackBank.length)];
+  }
+  
+  // 2. Scramble the characters
+  let scrambled = chosenWord.split('').sort(() => 0.5 - Math.random()).join('');
+  
+  while (scrambled === chosenWord) {
+    scrambled = chosenWord.split('').sort(() => 0.5 - Math.random()).join('');
+  }
+
+  // 3. Send the challenge
+  await message.channel.send({
+    embeds: [{
+      title: '🔠 Word Scramble!',
+      description: `Unscramble this word: **\`${scrambled.toUpperCase()}\`**\n\nYou have **20 seconds**. The first person to type the correct word wins!`,
+      color: 0x9933FF
+    }]
+  });
+
+  const filter = m => m.content.toLowerCase() === chosenWord && !m.author.bot;
+  
+  const collector = message.channel.createMessageCollector({ filter, time: 20000, max: 1 });
+
+  collector.on('collect', (m) => {
+    m.reply(`🎉 **${m.author.username}** got it! The word was **${chosenWord}**.`);
+  });
+
+  collector.on('end', (collected) => {
+    activeScrambles.delete(message.channelId);
+
+    if (collected.size === 0) {
+      message.channel.send(`⏰ Time's up! Nobody guessed it. The word was **${chosenWord}**.`);
+    }
+  });
+
+  return;
+}
 // =========================
 // BAT BATTLE MULTIPLAYER
 // =========================
