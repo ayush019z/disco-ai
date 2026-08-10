@@ -529,7 +529,11 @@ return;
 const isImageCommand = message.content.startsWith('!image ');
 const isMention = message.mentions.has(client.user);
 
-if (!isImageCommand && !isMention) return;
+if (
+  !isImageCommand &&
+  !isMention &&
+  !['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase())
+) return;
 
 uniqueUsers.add(message.author.id);
 
