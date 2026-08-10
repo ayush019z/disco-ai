@@ -94,7 +94,7 @@ client.on(Events.InteractionCreate, async interaction => {
           },
           {
             name: '🏏 Mini Games',
-            value: '`!superover`',
+            value: '`!superover`\n`!batbattle`',
             inline: true
           }
         ],
@@ -129,8 +129,8 @@ client.on(Events.InteractionCreate, async interaction => {
             value: '`@Ai-bot forget everything I said`'
           },
           {
-            name: '🏏 Game',
-            value: '`!superover`'
+            name: '🏏 Games',
+            value: '`!superover` (Solo)\n`!batbattle` (Multiplayer)'
           },
           {
             name: '📊 Stats',
@@ -218,6 +218,7 @@ if (
 🖼️ \`!image prompt\` — Generate an image
 📄 Reply with \`!sum\` — Summarize a message
 🏏 \`!superover\` — Play Super Over
+⚔️ \`!batbattle\` — 15s Multiplayer Bat Battle
 ❓ \`/help\` — View all commands
 ℹ️ \`/info\` — Bot information
 📊 \`/stats\` — Bot statistics
