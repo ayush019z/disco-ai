@@ -302,9 +302,6 @@ if (message.content.toLowerCase() === '!superover') {
   // Last ball interactive
 const needed = target - score;
 
-// make sure at least 1 run is needed
-if (needed <= 0) score = target - 1;
-
 const reply = await message.reply({
   embeds: [{
     color: 0x00ffff,
