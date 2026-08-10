@@ -305,7 +305,7 @@ title: '🏏 Final Ball',
 color: won ? 0x00FF88 : 0xFF4444,
 fields: [
 { name: 'Shot', value: shot, inline: true },
-{ name: 'Ball 6', value: result === 'W' ? '💥 WICKET' : ${result}️⃣, inline: true }, { name: 'Final', value:**${finalScore}/${finalWickets}**, inline: true },
+{ name: 'Ball 6', value: result === 'W' ? '💥 WICKET' : `${result}️⃣`, inline: true }, { name: 'Final', value: `**${finalScore}/${finalWickets}**`, inline: true },
 { name: 'Result', value: won ? '🔥 YOU WIN!' : '😬 YOU LOSE!' }
  ]
 }]
