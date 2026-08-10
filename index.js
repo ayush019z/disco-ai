@@ -19,10 +19,8 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
+const Groq = require('groq-sdk');
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const userMemory = new Map();
 const cooldowns = new Map();
 
@@ -208,42 +206,6 @@ client.on('messageCreate', async message => {
       lastUsed: Date.now()
     };
 
-    history.messages.push({
-      role: 'user',
-      content: cleanQuestion
-    });
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are a helpful, concise Discord AI assistant. Keep replies short unless asked for detail.'
-        },
-        ...history.messages.slice(-10)
-      ]
-    });
-
-    const answer = completion.choices[0].message.content;
-
-    history.messages.push({
-      role: 'assistant',
-      content: answer
-    });
-
-    history.lastUsed = Date.now();
-
-    userMemory.set(message.author.id, history);
-
-    messagesAnswered++;
-
-    await message.reply(answer);
-
-  } catch (err) {
-    console.error(err);
-    await message.reply('⚠️ Something went wrong.');
-  }
-});
+    / ===== AI (Groq) ===== const { Groq } = require('groq-sdk'); const groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); async function askAI(prompt, userId) { try { const completion = await groq.chat.completions.create({ model: 'llama-3.1-8b-instant', messages: [ { role: 'system', content: 'You are Crix AI, a helpful cricket assistant for Discord.' }, { role: 'user', content: prompt } ], temperature: 0.7, max_tokens: 400 }); return completion.choices[0]?.message?.content || 'No response.'; } catch (err) { console.error('Groq AI Error:', err); return '⚠️ AI is temporarily unavailable.'; } }
 
 client.login(process.env.DISCORD_TOKEN);
