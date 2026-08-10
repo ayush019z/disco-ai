@@ -42,6 +42,8 @@ const startTime = Date.now();
 const cooldowns = new Map();
 const userMemory = new Map();
 const activeSuperOvers = new Map(); // ADD THIS HERE
+const activeBatBattles = new Set(); // Tracks channels with an active battle
+
 
 // =========================
 // IMAGE COOLDOWN
@@ -424,7 +426,95 @@ if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase
   !isMention &&
   !['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase())
 ) return;
+// =========================
+// BAT BATTLE MULTIPLAYER
+// =========================
+if (message.content.toLowerCase() === '!batbattle') {
+  // Prevent multiple games in the same channel
+  if (activeBatBattles.has(message.channelId)) {
+    return message.reply('⚠️ A Bat Battle is already happening in this channel!');
+  }
+  
+  activeBatBattles.add(message.channelId);
 
+  await message.channel.send({
+    embeds: [{
+      title: '🏏 BAT BATTLE STARTING!',
+      description: 'You have **15 seconds**! Type one of the following to hit your shot:\n\n`defensive` 🛡️\n`drive` 🏏\n`loft` 🚀\n`scoop` 🪄\n\nHighest score wins!',
+      color: 0xFF9900
+    }]
+  });
+
+  // Filter allows only valid shots and ignores bots
+  const validShots = ['defensive', 'drive', 'loft', 'scoop'];
+  const filter = (m) => validShots.includes(m.content.toLowerCase()) && !m.author.bot;
+  
+  // Create a collector that runs for 15,000 ms (15 seconds)
+  const collector = message.channel.createMessageCollector({ filter, time: 15000 });
+  const players = new Map(); // Store user ID -> their result
+
+  collector.on('collect', (m) => {
+    // Only accept the user's first shot
+    if (players.has(m.author.id)) return;
+
+    const shot = m.content.toLowerCase();
+    let outcome;
+
+    // Calculate run/wicket based on shot risk
+    if (shot === 'defensive') outcome = [0, 1, 1, 2, 2, 'W'][Math.floor(Math.random() * 6)];
+    else if (shot === 'drive') outcome = [0, 1, 2, 3, 4, 'W'][Math.floor(Math.random() * 6)];
+    else if (shot === 'loft') outcome = [0, 0, 2, 4, 6, 'W'][Math.floor(Math.random() * 6)];
+    else outcome = [0, 0, 4, 6, 6, 'W'][Math.floor(Math.random() * 6)];
+
+    players.set(m.author.id, { user: m.author, shot, outcome });
+    
+    // React to let them know their shot is locked in
+    m.react('🏏').catch(() => {});
+  });
+
+  collector.on('end', () => {
+    activeBatBattles.delete(message.channelId);
+
+    if (players.size === 0) {
+      return message.channel.send('Game over! Nobody stepped up to the crease. 🏏💨');
+    }
+
+    // Sort players by highest runs (Treat 'W' as -1 for sorting so they go to the bottom)
+    const sortedPlayers = Array.from(players.values()).sort((a, b) => {
+      const scoreA = a.outcome === 'W' ? -1 : a.outcome;
+      const scoreB = b.outcome === 'W' ? -1 : b.outcome;
+      return scoreB - scoreA; // Descending order
+    });
+
+    // Build the leaderboard string
+    let leaderboardText = '';
+    sortedPlayers.forEach((p, index) => {
+      const rankIcon = index === 0 ? '🏆' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : '🏅'));
+      const resultText = p.outcome === 'W' ? '💥 **WICKET**' : `**${p.outcome}** runs`;
+      leaderboardText += `${rankIcon} **${p.user.username}** — *${p.shot}* ➔ ${resultText}\n`;
+    });
+
+    // Determine winner text
+    const topPlayer = sortedPlayers[0];
+    const winnerText = topPlayer.outcome === 'W' 
+      ? 'Everyone got out! No winner this round.' 
+      : `👑 **${topPlayer.user.username}** takes the crown!`;
+
+    message.channel.send({
+      embeds: [{
+        title: '📊 Bat Battle Results!',
+        description: leaderboardText,
+        color: 0x00FF88,
+        footer: {
+          text: winnerText
+        }
+      }]
+    });
+  });
+  
+  return;
+}
+  
   uniqueUsers.add(message.author.id);
 
   // Remove mention
