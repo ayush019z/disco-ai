@@ -39,16 +39,17 @@ let imagesGenerated = 0;
 const uniqueUsers = new Set();
 const greetedUsers = new Set();
 const startTime = Date.now();
+const cooldowns = new Map();
+const userMemory = new Map();
+const activeSuperOvers = new Map(); // ADD THIS HERE
 
 // =========================
 // IMAGE COOLDOWN
 // =========================
-const cooldowns = new Map();
 
 // =========================
 // MEMORY (2 HOURS)
 // =========================
-const userMemory = new Map();
 const MEMORY_TIME = 2 * 60 * 60 * 1000;
 
 // =========================
@@ -264,18 +265,18 @@ if (
     }
   }
 
-  // =========================
-// CHAT-BASED SUPER OVER
 // =========================
-const activeSuperOvers = new Map();
+// SUPER OVER GAME (Replace your old one with this)
+// =========================
 
+// Start game
 if (message.content.toLowerCase() === '!superover') {
   const outcomes = [0, 1, 2, 3, 4, 6];
   let score = 0;
   let wickets = 0;
   const balls = [];
 
-  // First 5 balls simulated
+  // First 5 balls
   for (let i = 0; i < 5; i++) {
     const outChance = Math.random();
 
@@ -290,84 +291,139 @@ if (message.content.toLowerCase() === '!superover') {
     }
   }
 
-  // Last ball should always require at least 1 run
-  const target = Math.max(score + 1, 15);
+  // Always need at least 1 run on last ball
+  const target = score + Math.floor(Math.random() * 6) + 1;
+  const needed = target - score;
+
+  // Save game for this user
   activeSuperOvers.set(message.author.id, {
+    target,
     score,
     wickets,
     balls,
-    target
+    expires: Date.now() + 15000 // 15 sec
   });
 
-  // Last ball interactive
-const needed = target - score;
-
-const reply = await message.reply({
-  embeds: [{
-    color: 0x00ffff,
-    title: '🏏 Super Over',
-    description:
-      `**Target:** ${target} runs\n\n` +
-      `**After 5 balls**\n` +
-      `${balls.join(' • ')}\n\n` +
-      `**Score:** ${score}/${wickets}\n\n` +
-      `🔥 **Need ${target - score} from 1 ball**\n\n` +
-      `Type your shot: \`loft\` \`drive\` \`pull\` \`scoop\``
-  }]
-});
-
-// wait for the user's shot
-const filter = m =>
-  m.author.id === message.author.id &&
-  ['loft', 'drive', 'pull', 'scoop'].includes(m.content.toLowerCase());
-
-try {
-  const collected = await message.channel.awaitMessages({
-    filter,
-    max: 1,
-    time: 15000,
-    errors: ['time']
-  });
-
-  const shot = collected.first().content.toLowerCase();
-
-  const outcomes = {
-    loft: [0, 1, 2, 4, 6, 'W'],
-    drive: [1, 1, 2, 3, 4, 'W'],
-    pull: [0, 1, 2, 4, 6, 'W'],
-    scoop: [0, 1, 4, 6, 'W']
-  };
-
-  const result = outcomes[shot][Math.floor(Math.random() * outcomes[shot].length)];
-
-  if (result === 'W') {
-    wickets++;
-    balls.push('W');
-  } else {
-    score += result;
-    balls.push(result.toString());
-  }
-
-  const won = score >= target;
-
-  await message.reply({
+  return message.reply({
     embeds: [{
-      color: won ? 0x00ff88 : 0xff4444,
-      title: won ? '🏆 You won!' : '❌ You lost!',
-      description:
-        `**Final ball:** ${shot.toUpperCase()} → ${result}\n\n` +
-        `**Final score:** ${score}/${wickets}\n` +
-        `**Target:** ${target}`
+      title: '🏏 Super Over',
+      description: `**Target:** ${target}`,
+      color: 0x00FFFF,
+      fields: [
+        {
+          name: 'First 5 Balls',
+          value: balls.join(' • '),
+          inline: false
+        },
+        {
+          name: 'Score',
+          value: `**${score}/${wickets}**`,
+          inline: true
+        },
+        {
+          name: 'Need',
+          value: `**${needed} off 1 ball**`,
+          inline: true
+        },
+        {
+          name: 'Type your shot',
+          value:
+            '`defensive` 🛡️\n' +
+            '`drive` 🏏\n' +
+            '`loft` 🚀\n' +
+            '`scoop` 🪄',
+          inline: false
+        }
+      ],
+      footer: {
+        text: 'Reply with defensive, drive, loft, or scoop within 15 seconds'
+      }
     }]
   });
-
-} catch {
-  await message.reply('⏰ Time up! You did not play the last ball.');
 }
+
+// Handle final shot
+if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase())) {
+  const game = activeSuperOvers.get(message.author.id);
+
+  if (!game || Date.now() > game.expires) {
+    return;
+  }
+
+  activeSuperOvers.delete(message.author.id);
+
+  const shot = message.content.toLowerCase();
+
+  let finalBall;
+
+  // Risk / reward
+  if (shot === 'defensive') {
+    finalBall = [0, 1, 1, 2, 2, 'W'][Math.floor(Math.random() * 6)];
+  } else if (shot === 'drive') {
+    finalBall = [0, 1, 2, 3, 4, 'W'][Math.floor(Math.random() * 6)];
+  } else if (shot === 'loft') {
+    finalBall = [0, 0, 2, 4, 6, 'W'][Math.floor(Math.random() * 6)];
+  } else {
+    // scoop
+    finalBall = [0, 0, 4, 6, 6, 'W'][Math.floor(Math.random() * 6)];
+  }
+
+  let finalScore = game.score;
+  let finalWickets = game.wickets;
+
+  if (finalBall === 'W') {
+    finalWickets++;
+  } else {
+    finalScore += finalBall;
+  }
+
+  const won = finalScore >= game.target;
+
+  return message.reply({
+    embeds: [{
+      title: '🏏 Final Ball',
+      color: won ? 0x00FF88 : 0xFF4444,
+      fields: [
+        {
+          name: 'Shot',
+          value:
+            shot === 'defensive' ? '🛡️ Defensive' :
+            shot === 'drive' ? '🏏 Straight Drive' :
+            shot === 'loft' ? '🚀 Lofted Shot' :
+            '🪄 Scoop',
+          inline: true
+        },
+        {
+          name: 'Ball 6',
+          value: finalBall === 'W' ? '💥 WICKET' : `**${finalBall}**`,
+          inline: true
+        },
+        {
+          name: 'Final Score',
+          value: `**${finalScore}/${finalWickets}**`,
+          inline: true
+        },
+        {
+          name: 'Result',
+          value: won
+            ? '🔥 **YOU WIN THE SUPER OVER!**'
+            : '😬 **YOU LOSE THE SUPER OVER!**',
+          inline: false
+        }
+      ]
+    }]
+  });
+}
+
+
     const isImageCommand = message.content.startsWith('!image ');
   const isMention = message.mentions.has(client.user);
 
-  if (!isImageCommand && !isMention) return;
+  if (
+  !isImageCommand &&
+  !isMention &&
+  !['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase())
+) return;
 
   uniqueUsers.add(message.author.id);
 
@@ -383,41 +439,41 @@ try {
 
   // Ping when only mentioned
   if (!question) {
-    const ping = client.ws.ping;
+  const ping = client.ws.ping;
 
-    let status = '🟢 Excellent';
-    if (ping > 80) status = '🟡 Good';
-    if (ping > 150) status = '🔴 Slow';
+  let status = '🟢 Excellent';
+  if (ping > 80) status = '🟡 Good';
+  if (ping > 150) status = '🔴 Slow';
 
-    return message.reply({
-      embeds: [{
-        title: '🤖 AI Bot Status',
-        color: ping > 150 ? 0xFF0000 : ping > 80 ? 0xFFFF00 : 0x00FFAA,
-        thumbnail: {
-          url: client.user.displayAvatarURL()
+  return message.reply({
+    embeds: [{
+      title: '🤖 AI Bot Status',
+      color: ping > 150 ? 0xFF0000 : ping > 80 ? 0xFFFF00 : 0x00FFAA,
+      thumbnail: {
+        url: client.user.displayAvatarURL()
+      },
+      fields: [
+        {
+          name: '📶 Ping',
+          value: `**${ping} ms**`,
+          inline: true
         },
-        fields: [
-          {
-            name: '📶 Ping',
-            value: `**${ping} ms**`,
-            inline: true
-          },
-          {
-            name: '⚡ Status',
-            value: `**${status}**`,
-            inline: true
-          },
-          {
-            name: '🧠 Memory',
-            value: '**2h active**',
-            inline: true
-          }
-        ],
-        footer: {
-          text: 'Mention me with a question to start chatting'
+        {
+          name: '⚡ Status',
+          value: `**${status}**`,
+          inline: true
+        },
+        {
+          name: '🧠 Memory',
+          value: '**2h active**',
+          inline: true
         }
-      }]
-    });
+      ],
+      footer: {
+        text: 'Mention me with a question to start chatting'
+      }
+    }]
+  });
   }
 
   // Image generation
