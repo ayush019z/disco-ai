@@ -424,7 +424,7 @@ if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase
   if (
   !isImageCommand &&
   !isMention &&
-  !['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase())
+  !['defensive', 'drive', 'loft', 'scoop', '!batbattle'].includes(message.content.toLowerCase())
 ) return;
 // =========================
 // BAT BATTLE MULTIPLAYER
