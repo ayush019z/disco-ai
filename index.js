@@ -117,16 +117,7 @@ return interaction.reply({
 embeds: [{
 title: '📚 AI Bot Help',
 color: 0x00FFFF,
-description:
-'AI Chat\nMention the bot with a question\n\n' +
-'Image\n!image prompt\n\n' +
-'Summarize\nReply with !sum\n\n' +
-'Super Over\n!superover\n\n' +
-'Bat Battle\n!batbattle\n\n' +
-'Forget memory\n@Ai-bot forget everything I said'
-}]
-});
-}
+description: '💬 **AI Chat** Mention the bot with a question ' + '🖼️ **Image** `!image prompt` ' + '📄 **Summarize** Reply with `!sum` ' + '🏏 **Super Over** `!superover` ' + '⚔️ **Bat Battle** `!batbattle` ' + '🧠 **Forget memory** `@Ai-bot forget everything I said`'
 
 if (interaction.commandName === 'stats') {
 const ping = client.ws.ping;
@@ -553,32 +544,7 @@ if (blockedWords.some(w => lower.includes(w))) {
 return message.reply('❌ NSFW content is not allowed.');
 }
 
-// Image generation
-if (isImageCommand) {
-const now = Date.now();
-const last = cooldowns.get(message.author.id) || 0;
-
-if (now - last < 5000) {
-return message.reply('🖼️ Wait 5 seconds before another image.');
-}
-
-cooldowns.set(message.author.id, now);
-
-const wait = await message.reply('🎨 Generating image...');
-
-const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(question)}?width=1024&height=1024&nologo=true&model=flux`; const embed = { title: 'AI Image', description: question, image: { url: imageUrl }, color: 0x00FFFF };
-imagesGenerated++;
-
-return wait.edit({
-content: null,
-embeds: [{
-title: '🎨 AI Image',
-description: question,
-image: { url },
-color: 0x00FFFF
-}]
-});
-}
+/ Image generation if (isImageCommand) { const now = Date.now(); const last = cooldowns.get(message.author.id) || 0; if (now - last < 5000) { return message.reply('🖼️ Wait 5 seconds before another image.'); } cooldowns.set(message.author.id, now); const wait = await message.reply('🎨 Generating image...'); const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(question)}?width=1024&height=1024&nologo=true&model=flux`; imagesGenerated++; return wait.edit({ content: null, embeds: [{ title: '🎨 AI Image', description: question, image: { url: imageUrl }, color: 0x00FFFF }] }); }
 
 // AI chat
 try {
