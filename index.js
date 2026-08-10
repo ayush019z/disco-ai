@@ -240,16 +240,34 @@ expires: Date.now() + 15000
 });
 
 return message.reply({
-embeds: [{
-title: '🏏 Super Over',
-description: **Target:** ${target}, color: 0x00FFFF, fields: [ { name: 'First 5 Balls', value: balls.join(' • ') }, { name: 'Score', value:${score}/${wickets}, inline: true }, { name: 'Need', value:**${needed} off 1**, inline: true },
-{
-name: 'Type your shot',
-value: 'defensive\ndrive\nloft\nscoop'
-}
- ],
-footer: { text: 'Reply within 15 seconds' }
-}]
+  embeds: [{
+    title: '🏏 Super Over',
+    description: `**Target:** ${target}`,
+    color: 0x00FFFF,
+    fields: [
+      {
+        name: 'First 5 Balls',
+        value: balls.join(' • ')
+      },
+      {
+        name: 'Score',
+        value: `**${score}/${wickets}**`,
+        inline: true
+      },
+      {
+        name: 'Need',
+        value: `**${needed} off 1**`,
+        inline: true
+      },
+      {
+        name: 'Type your shot',
+        value: '`defensive`\\n`drive`\\n`loft`\\n`scoop`'
+      }
+    ],
+    footer: {
+      text: 'Reply within 15 seconds'
+    }
+  }]
 });
 }
 
