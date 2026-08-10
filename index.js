@@ -301,13 +301,19 @@ if (message.content.toLowerCase() === '!superover') {
     target
   });
 
-  return message.reply(
-    `🏏 **Super Over**\\n\\n` +
-    `**Target:** ${target}\\n` +
-    `**After 5 balls:** ${score}/${wickets}\\n` +
-    `**Need ${needed} from 1 ball**\\n\\n` +
-    `Type one shot: **loft, drive, pull, scoop**`
-  );
+  return message.reply({
+  embeds: [{
+    color: 0x00ffff,
+    title: '🏏 Super Over',
+    description:
+      `**Target:** ${target} runs\n\n` +
+      `**After 5 balls**\n` +
+      `${balls.join(' • ')}\n\n` +
+      `**Score:** ${score}/${wickets}\n\n` +
+      `🔥 **Need ${needed} from 1 ball**\n\n` +
+      `Type your shot: \`loft\` \`drive\` \`pull\` \`scoop\``
+  }]
+});
 }
 
 // Handle final-ball shot
