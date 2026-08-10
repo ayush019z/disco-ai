@@ -201,23 +201,27 @@ client.on(Events.InteractionCreate, async interaction => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // First-time greeting
-  if (
-    (message.mentions.has(client.user) || message.content.startsWith('!image ')) &&
-    !greetedUsers.has(message.author.id)
-  ) {
-    greetedUsers.add(message.author.id);
+  /// First-time greeting
+if (
+  (message.mentions.has(client.user) || message.content.startsWith('!image ')) &&
+  !greetedUsers.has(message.author.id)
+) {
+  greetedUsers.add(message.author.id);
 
-    await message.reply(
-      '👋 Hi! I’m **AI Bot**.\\n\\n' +
-      '💬 Mention me to ask anything\\n' +
-      '🖼️ Use `!image prompt` for images\\n' +
-      '📄 Reply with `!sum` to summarize\\n' +
-      '🏏 Play `!superover`\\n' +
-      'ℹ️ Use `/help` for all features\\n\\n' +
-      'I remember our conversation for **2 hours**.'
-    );
-  }
+  await message.reply(
+    `👋 Hi! I’m **AI Bot**
+
+💬 Mention me to ask anything
+🖼️ \`!image prompt\` — Generate an image
+📄 Reply with \`!sum\` — Summarize a message
+🏏 \`!superover\` — Play Super Over
+❓ \`/help\` — View all commands
+ℹ️ \`/info\` — Bot information
+📊 \`/stats\` — Bot statistics
+
+🧠 I remember our conversation for **2 hours**.`
+  );
+}
 
   // =========================
   // SUMMARY
