@@ -549,7 +549,7 @@ if (message.content.toLowerCase() === '!scramble') {
     scrambled = chosenWord.split('').sort(() => 0.5 - Math.random()).join('');
   }
 
-  // 3. Send the challenge
+    // 3. Send the challenge
   await message.channel.send({
     embeds: [{
       title: '🔠 Word Scramble!',
@@ -558,16 +558,29 @@ if (message.content.toLowerCase() === '!scramble') {
     }]
   });
 
+  // --- 💡 THE HINT TIMER ---
+  // Wait 10 seconds (10000 ms), then drop a hint if the game is still running!
+  const hintTimer = setTimeout(() => {
+    if (activeScrambles.has(message.channelId)) {
+      message.channel.send(`💡 **Hint:** The word starts with **${chosenWord.charAt(0).toUpperCase()}** and ends with **${chosenWord.charAt(chosenWord.length - 1).toUpperCase()}**`);
+    }
+  }, 10000); 
+
   const filter = m => m.content.toLowerCase() === chosenWord && !m.author.bot;
   
   const collector = message.channel.createMessageCollector({ filter, time: 20000, max: 1 });
 
   collector.on('collect', (m) => {
+    // Stop the hint from sending if someone guessed it before 10 seconds!
+    clearTimeout(hintTimer); 
     m.reply(`🎉 **${m.author.username}** got it! The word was **${chosenWord}**.`);
   });
 
   collector.on('end', (collected) => {
     activeScrambles.delete(message.channelId);
+    
+    // Safety clear just in case the timer is still ticking when the game ends
+    clearTimeout(hintTimer); 
 
     if (collected.size === 0) {
       message.channel.send(`⏰ Time's up! Nobody guessed it. The word was **${chosenWord}**.`);
