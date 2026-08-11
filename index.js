@@ -206,6 +206,70 @@ client.on(Events.InteractionCreate, async interaction => {
       }]
     });
   }
+  // =========================
+  // /WANTED (SLASH COMMAND)
+  // =========================
+  if (interaction.commandName === 'wanted') {
+    // 1. Defer the reply to give the bot time to draw the image!
+    await interaction.deferReply();
+
+    // 2. Grab the options the user clicked on, or default to themselves / false
+    const target = interaction.options.getUser('target') || interaction.user;
+    const wantsGrayscale = interaction.options.getBoolean('grayscale') || false;
+
+    try {
+      // 3. Set up the exact 1254x1254 Canvas
+      const canvas = createCanvas(1254, 1254);
+      const ctx = canvas.getContext('2d');
+
+      // 4. Load the 'Rye' font
+      if (!global.bountyFontLoaded) {
+        try {
+          const fontRes = await fetch('https://raw.githubusercontent.com/google/fonts/main/ofl/rye/Rye-Regular.ttf');
+          const fontBuf = await fontRes.arrayBuffer();
+          
+          GlobalFonts.register(Buffer.from(fontBuf), 'RyeFont');
+          global.bountyFontLoaded = true;
+        } catch (fontErr) {
+          console.error('Font load failed:', fontErr);
+        }
+      }
+
+      // 5. Load Your New Custom Template 
+      const template = await loadImage('https://i.ibb.co/C3PqrMwK/file-00000000db2882088038edff95f39572.png'); 
+      
+      // 6. Draw the Template FIRST
+      ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
+
+      // 7. Fetch and Draw the User's Avatar SECOND
+      const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 1024 });
+      const avatar = await loadImage(avatarUrl);
+      
+      // --- THE GRAYSCALE UPGRADE ---
+      if (wantsGrayscale) {
+        ctx.filter = 'grayscale(100%)';
+      }
+      
+      ctx.drawImage(avatar, 362, 305, 530, 530);
+      ctx.filter = 'none';
+
+      // 8. Draw Username
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#3a2b20'; 
+      ctx.font = '70px "RyeFont"';
+      
+      const name = (target.globalName || target.username).toUpperCase();
+      ctx.fillText(name, 627, 1110); 
+
+      // 9. Send Attachment using editReply (since we deferred earlier)
+      const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'wanted.png' });
+      return interaction.editReply({ files: [attachment] });
+
+    } catch (error) {
+      console.error('Canvas Error:', error);
+      return interaction.editReply('⚠️ Could not generate the poster.');
+    }
+  }
 });
 
 // =========================
