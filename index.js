@@ -275,8 +275,8 @@ if (
   }
 
   
-        // =========================
-  // ONE PIECE BOUNTY POSTER (300x424)
+          // =========================
+  // ONE PIECE BOUNTY POSTER
   // =========================
   if (message.content.toLowerCase().startsWith('!wanted')) {
     const target = message.mentions.users.first() || message.author;
@@ -284,51 +284,56 @@ if (
     try {
       await message.channel.sendTyping();
       
-      // 1. Set up the Canvas exactly to the new template size
+      // 1. Set up the Canvas (300x424)
       const canvas = createCanvas(300, 424);
       const ctx = canvas.getContext('2d');
 
-      // 1.5 Load a standard heavy Serif font for the One Piece text
-      if (!GlobalFonts.has('BountyFont')) {
-        const fontRes = await fetch('https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PTSans-Bold.ttf');
-        const fontBuf = await fontRes.arrayBuffer();
-        GlobalFonts.register(Buffer.from(fontBuf), 'BountyFont');
+      // 1.5 Load custom font with fallback
+      try {
+        if (!GlobalFonts.has('BountyFont')) {
+          const fontRes = await fetch('https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PTSans-Bold.ttf');
+          if (fontRes.ok) {
+            const fontBuf = await fontRes.arrayBuffer();
+            GlobalFonts.register(Buffer.from(fontBuf), 'BountyFont');
+          }
+        }
+      } catch (fontErr) {
+        console.log('Font load failed, using fallback serif font.');
       }
 
-      // 2. Load Your Blank Template (Using your specific direct link!)
+      // 2. Load the Blank Template
       const template = await loadImage('https://i.ibb.co/rGykysVk/one-piece-wanted-poster-template-thumb.png'); 
       
-      // 3. Fetch and draw the user's avatar FIRST so the template borders cover the edges
+      // 3. Draw the User's Avatar First
       const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 256 });
       const avatar = await loadImage(avatarUrl);
-      
-      // Adjusted coordinates to fit the 300x424 template picture box
       ctx.drawImage(avatar, 30, 95, 240, 180);
 
-      // 4. Draw the template OVER the avatar
+      // 4. Overlay the Template
       ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
 
-      // 5. Add the Custom Text
+      // 5. Draw Username & Bounty Money
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#4a3b32'; // Dark brown ink color
-      
-      // Draw the Username
-      ctx.font = '30px BountyFont'; 
+      ctx.fillStyle = '#3f2e21'; // Classic dark brown One Piece ink color
+
+      // --- DISCORD USERNAME ---
+      ctx.font = 'bold 26px BountyFont, "Times New Roman", serif';
       const name = target.username.toUpperCase();
-      ctx.fillText(name, 150, 335); 
+      ctx.fillText(name, 150, 332); 
 
-      // Draw the Bounty Amount
-      ctx.font = '25px BountyFont';
-      // Generate a massive random bounty!
-      const randomBounty = Math.floor(Math.random() * 2900000000) + 100000000;
-      const formattedBounty = randomBounty.toLocaleString(); 
-      
-      // Shifted slightly right to make room for the printed Belli symbol on the template
-      ctx.fillText(formattedBounty + '-', 165, 380); 
+      // --- MONEY / BOUNTY AMOUNT ---
+      // Option A: Fixed $10,000
+      // const money = '$10,000-';
 
-      // 6. Convert to attachment and send using the modernized @napi-rs/canvas encoder
+      // Option B: Random Money (e.g., between $10,000 and $1,000,000)
+      const randomAmount = Math.floor(Math.random() * 990000) + 10000;
+      const money = `$${randomAmount.toLocaleString()}-`;
+
+      ctx.font = 'bold 22px BountyFont, "Times New Roman", serif';
+      ctx.fillText(money, 150, 372); 
+
+      // 6. Send Attachment
       const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'bounty.png' });
-      
       return message.reply({ files: [attachment] });
 
     } catch (error) {
@@ -336,6 +341,7 @@ if (
       return message.reply('⚠️ Could not generate the bounty poster.');
     }
   }
+
 
 
 
