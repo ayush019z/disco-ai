@@ -5,8 +5,7 @@ const {
   AttachmentBuilder // <-- ADD THIS
 } = require('discord.js');
 
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
-
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 
 
 const OpenAI = require('openai');
@@ -275,70 +274,69 @@ if (
     }
   }
 
-  // =========================
-  // WANTED POSTER GENERATOR
+  
+        // =========================
+  // ONE PIECE BOUNTY POSTER (300x424)
   // =========================
   if (message.content.toLowerCase().startsWith('!wanted')) {
-    // Target the mentioned user, or the person who sent the message if nobody is mentioned
     const target = message.mentions.users.first() || message.author;
 
     try {
       await message.channel.sendTyping();
       
-      // 1. Set up the Canvas (700x900 is a good poster ratio)
-      const canvas = createCanvas(700, 900);
+      // 1. Set up the Canvas exactly to the new template size
+      const canvas = createCanvas(300, 424);
       const ctx = canvas.getContext('2d');
 
-      // 2. Draw the vintage paper background
-      ctx.fillStyle = '#f4d7b2'; // Classic parchment color
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // 1.5 Load a standard heavy Serif font for the One Piece text
+      if (!GlobalFonts.has('BountyFont')) {
+        const fontRes = await fetch('https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PTSans-Bold.ttf');
+        const fontBuf = await fontRes.arrayBuffer();
+        GlobalFonts.register(Buffer.from(fontBuf), 'BountyFont');
+      }
 
-      // Draw a dark brown inner border
-      ctx.strokeStyle = '#5c3a21';
-      ctx.lineWidth = 15;
-      ctx.strokeRect(20, 20, 660, 860);
-
-      // 3. Add the header text
-      ctx.fillStyle = '#3e2723';
-      ctx.textAlign = 'center';
+      // 2. Load Your Blank Template (Using your specific direct link!)
+      const template = await loadImage('https://i.ibb.co/rGykysVk/one-piece-wanted-poster-template-thumb.png'); 
       
-      ctx.font = 'bold 120px serif';
-      ctx.fillText('WANTED', 350, 150);
-      
-      ctx.font = 'bold 40px serif';
-      ctx.fillText('DEAD OR ALIVE', 350, 210);
-
-      // 4. Fetch and draw the user's avatar
-      const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 512 });
+      // 3. Fetch and draw the user's avatar FIRST so the template borders cover the edges
+      const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 256 });
       const avatar = await loadImage(avatarUrl);
       
-      // Draw a black border behind the avatar
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(140, 240, 420, 420);
+      // Adjusted coordinates to fit the 300x424 template picture box
+      ctx.drawImage(avatar, 30, 95, 240, 180);
+
+      // 4. Draw the template OVER the avatar
+      ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
+
+      // 5. Add the Custom Text
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#4a3b32'; // Dark brown ink color
       
-      // Draw the avatar inside the box
-      ctx.drawImage(avatar, 150, 250, 400, 400);
+      // Draw the Username
+      ctx.font = '30px BountyFont'; 
+      const name = target.username.toUpperCase();
+      ctx.fillText(name, 150, 335); 
 
-      // 5. Add the Username and Bounty at the bottom
-      ctx.font = 'bold 50px serif';
-      ctx.fillStyle = '#3e2723';
-      ctx.fillText(target.username.toUpperCase(), 350, 740);
+      // Draw the Bounty Amount
+      ctx.font = '25px BountyFont';
+      // Generate a massive random bounty!
+      const randomBounty = Math.floor(Math.random() * 2900000000) + 100000000;
+      const formattedBounty = randomBounty.toLocaleString(); 
       
-      ctx.fillStyle = '#8b0000'; // Dark red for the money
-      ctx.font = 'bold 70px serif';
-      ctx.fillText('$1,000,000', 350, 830);
+      // Shifted slightly right to make room for the printed Belli symbol on the template
+      ctx.fillText(formattedBounty + '-', 165, 380); 
 
-      // 6. Convert to attachment and send
-      const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'wanted.png' });
-
+      // 6. Convert to attachment and send using the modernized @napi-rs/canvas encoder
+      const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'bounty.png' });
       
       return message.reply({ files: [attachment] });
 
     } catch (error) {
-      console.error(error);
-      return message.reply('⚠️ Could not generate the wanted poster.');
+      console.error('Canvas Error:', error);
+      return message.reply('⚠️ Could not generate the bounty poster.');
     }
   }
+
 
 
 // =========================
