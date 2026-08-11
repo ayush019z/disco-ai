@@ -10,6 +10,6 @@
     "discord.js": "^14.21.0",
     "dotenv": "^16.6.1",
     "openai": "^5.12.2",
-"canvas": "^2.11.2"
+"@napi-rs/canvas": "^0.1.53"
   }
 }
