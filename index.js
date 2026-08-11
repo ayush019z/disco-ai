@@ -5,7 +5,8 @@ const {
   AttachmentBuilder // <-- ADD THIS
 } = require('discord.js');
 
-const { createCanvas, loadImage } = require('canvas'); // <-- ADD THIS
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
+
 
 
 const OpenAI = require('openai');
