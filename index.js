@@ -275,8 +275,8 @@ if (
   }
 
   
-          // =========================
-  // ONE PIECE BOUNTY POSTER
+            // =========================
+  // SQUARE VINTAGE WANTED POSTER (1254x1254)
   // =========================
   if (message.content.toLowerCase().startsWith('!wanted')) {
     const target = message.mentions.users.first() || message.author;
@@ -284,63 +284,58 @@ if (
     try {
       await message.channel.sendTyping();
       
-      // 1. Set up the Canvas (300x424)
-      const canvas = createCanvas(300, 424);
+      // 1. Set up the exact 1254x1254 Canvas
+      const canvas = createCanvas(1254, 1254);
       const ctx = canvas.getContext('2d');
 
-      // 1.5 Load custom font with fallback
-      try {
-        if (!GlobalFonts.has('BountyFont')) {
-          const fontRes = await fetch('https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PTSans-Bold.ttf');
-          if (fontRes.ok) {
-            const fontBuf = await fontRes.arrayBuffer();
-            GlobalFonts.register(Buffer.from(fontBuf), 'BountyFont');
-          }
+      // 1.5 Load the 'Rye' font
+      if (!global.bountyFontLoaded) {
+        try {
+          const fontRes = await fetch('https://raw.githubusercontent.com/google/fonts/main/ofl/rye/Rye-Regular.ttf');
+          const fontBuf = await fontRes.arrayBuffer();
+          
+          GlobalFonts.register(Buffer.from(fontBuf), 'RyeFont');
+          global.bountyFontLoaded = true;
+        } catch (fontErr) {
+          console.error('Font load failed:', fontErr);
         }
-      } catch (fontErr) {
-        console.log('Font load failed, using fallback serif font.');
       }
 
-      // 2. Load the Blank Template
-      const template = await loadImage('https://i.ibb.co/rGykysVk/one-piece-wanted-poster-template-thumb.png'); 
+      // 2. Load Your New Custom Template 
+      const template = await loadImage('https://i.ibb.co/C3PqrMwK/file-00000000db2882088038edff95f39572.png'); 
       
       // 3. Draw the User's Avatar First
-      const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 256 });
+      // Requesting the highest standard resolution avatar from Discord
+      const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 1024 });
       const avatar = await loadImage(avatarUrl);
-      ctx.drawImage(avatar, 30, 95, 240, 180);
+      
+      // Scaled coordinates to perfectly fit the black box on 1254x1254
+      ctx.drawImage(avatar, 313, 295, 627, 602);
 
       // 4. Overlay the Template
       ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
 
-      // 5. Draw Username & Bounty Money
+      // 5. Draw Username ONLY
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#3f2e21'; // Classic dark brown One Piece ink color
-
-      // --- DISCORD USERNAME ---
-      ctx.font = 'bold 26px BountyFont, "Times New Roman", serif';
+      ctx.fillStyle = '#3a2b20'; 
+      
+      // Scaled font size up to 70px
+      ctx.font = '70px "RyeFont"';
       const name = target.username.toUpperCase();
-      ctx.fillText(name, 150, 332); 
-
-      // --- MONEY / BOUNTY AMOUNT ---
-      // Option A: Fixed $10,000
-      // const money = '$10,000-';
-
-      // Option B: Random Money (e.g., between $10,000 and $1,000,000)
-      const randomAmount = Math.floor(Math.random() * 990000) + 10000;
-      const money = `$${randomAmount.toLocaleString()}-`;
-
-      ctx.font = 'bold 22px BountyFont, "Times New Roman", serif';
-      ctx.fillText(money, 150, 372); 
+      
+      // Centered at exactly half of 1254 (627) and moved down to line up with N A M E
+      ctx.fillText(name, 627, 1110); 
 
       // 6. Send Attachment
-      const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'bounty.png' });
+      const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'wanted.png' });
       return message.reply({ files: [attachment] });
 
     } catch (error) {
       console.error('Canvas Error:', error);
-      return message.reply('⚠️ Could not generate the bounty poster.');
+      return message.reply('⚠️ Could not generate the poster.');
     }
   }
+  
 
 
 
