@@ -301,19 +301,17 @@ if (
         }
       }
 
-      // 2. Load Your New Custom Template 
+            // 2. Load Your New Custom Template 
       const template = await loadImage('https://i.ibb.co/C3PqrMwK/file-00000000db2882088038edff95f39572.png'); 
       
-      // 3. Draw the User's Avatar First
-      // Requesting the highest standard resolution avatar from Discord
+      // 3. Draw the Template FIRST
+      ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
+
+      // 4. Fetch and Draw the User's Avatar SECOND (so it sits on top of the black box)
       const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 1024 });
       const avatar = await loadImage(avatarUrl);
-      
-      // Scaled coordinates to perfectly fit the black box on 1254x1254
       ctx.drawImage(avatar, 313, 295, 627, 602);
 
-      // 4. Overlay the Template
-      ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
 
       // 5. Draw Username ONLY
       ctx.textAlign = 'center';
