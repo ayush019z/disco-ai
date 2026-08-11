@@ -274,11 +274,14 @@ if (
     }
   }
 
-  
-            // =========================
+    // =========================
   // SQUARE VINTAGE WANTED POSTER (1254x1254)
   // =========================
   if (message.content.toLowerCase().startsWith('!wanted')) {
+    // Split the message into parts to check for "gs"
+    const args = message.content.toLowerCase().split(' ');
+    const wantsGrayscale = args.includes('gs');
+    
     const target = message.mentions.users.first() || message.author;
 
     try {
@@ -301,32 +304,37 @@ if (
         }
       }
 
-            // 2. Load Your New Custom Template 
+      // 2. Load Your New Custom Template 
       const template = await loadImage('https://i.ibb.co/C3PqrMwK/file-00000000db2882088038edff95f39572.png'); 
       
       // 3. Draw the Template FIRST
       ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
 
-            // 4. Fetch and Draw the User's Avatar SECOND 
+      // 4. Fetch and Draw the User's Avatar SECOND
       const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 1024 });
       const avatar = await loadImage(avatarUrl);
       
-      // Scaled down to 530x530 to fit inside the inner borders and uncover the text!
+      // --- THE GRAYSCALE UPGRADE ---
+      // If the user typed 'gs', turn on the grayscale filter!
+      if (wantsGrayscale) {
+        ctx.filter = 'grayscale(100%)';
+      }
+      
+      // Draw the avatar inside the frame (Perfect square: 530x530)
       ctx.drawImage(avatar, 362, 305, 530, 530);
       
+      // Reset the filter immediately so the text doesn't get messed up!
+      ctx.filter = 'none';
 
-
-      // 5. Draw Username ONLY
+      // 5. Draw Username
       ctx.textAlign = 'center';
       ctx.fillStyle = '#3a2b20'; 
       
-      // Scaled font size up to 70px
       ctx.font = '70px "RyeFont"';
-      // This grabs their global display name, but falls back to their username if they don't have one set!
-const name = (target.globalName || target.username).toUpperCase();
-
       
-      // Centered at exactly half of 1254 (627) and moved down to line up with N A M E
+      // Grabs their global display name (e.g., "ayushh")
+      const name = (target.globalName || target.username).toUpperCase();
+      
       ctx.fillText(name, 627, 1110); 
 
       // 6. Send Attachment
@@ -339,7 +347,6 @@ const name = (target.globalName || target.username).toUpperCase();
     }
   }
   
-
 
 
 
