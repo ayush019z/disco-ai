@@ -593,18 +593,21 @@ if (message.content.toLowerCase() === '!scramble') {
 
   // 1. Fetch a random word from the API
   try {
-    // We send a typing indicator so users know the bot is thinking while fetching
     await message.channel.sendTyping();
     
-    const response = await fetch('https://random-word-api.herokuapp.com/word?diff=1');
+    // Pick a random length between 4 and 8 to keep the game dynamic!
+    const wordLength = Math.floor(Math.random() * 5) + 4; 
+    
+    // Use the random length in the API URL
+    const response = await fetch(`https://random-word-api.herokuapp.com/word?diff=1&length=${wordLength}`);
     const data = await response.json();
-    chosenWord = data[0]; // The API returns an array like ["apple"]
+    chosenWord = data[0]; 
   } catch (error) {
     console.error('Failed to fetch word:', error);
-    // Fallback word bank just in case the API goes down
     const fallbackBank = ['developer', 'discord', 'network', 'javascript'];
     chosenWord = fallbackBank[Math.floor(Math.random() * fallbackBank.length)];
   }
+
   
   // 2. Scramble the characters
   let scrambled = chosenWord.split('').sort(() => 0.5 - Math.random()).join('');
