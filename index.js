@@ -307,10 +307,13 @@ if (
       // 3. Draw the Template FIRST
       ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
 
-      // 4. Fetch and Draw the User's Avatar SECOND (so it sits on top of the black box)
+            // 4. Fetch and Draw the User's Avatar SECOND 
       const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 1024 });
       const avatar = await loadImage(avatarUrl);
-      ctx.drawImage(avatar, 313, 295, 627, 602);
+      
+      // Scaled down to 530x530 to fit inside the inner borders and uncover the text!
+      ctx.drawImage(avatar, 362, 305, 530, 530);
+      
 
 
       // 5. Draw Username ONLY
@@ -319,7 +322,9 @@ if (
       
       // Scaled font size up to 70px
       ctx.font = '70px "RyeFont"';
-      const name = target.username.toUpperCase();
+      // This grabs their global display name, but falls back to their username if they don't have one set!
+const name = (target.globalName || target.username).toUpperCase();
+
       
       // Centered at exactly half of 1254 (627) and moved down to line up with N A M E
       ctx.fillText(name, 627, 1110); 
