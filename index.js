@@ -596,7 +596,7 @@ if (message.content.toLowerCase() === '!scramble') {
     // We send a typing indicator so users know the bot is thinking while fetching
     await message.channel.sendTyping();
     
-    const response = await fetch('https://random-word-api.herokuapp.com/word');
+    const response = await fetch('https://random-word-api.herokuapp.com/word?diff=2');
     const data = await response.json();
     chosenWord = data[0]; // The API returns an array like ["apple"]
   } catch (error) {
