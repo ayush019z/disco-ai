@@ -329,7 +329,8 @@ if (
       ctx.fillText('$1,000,000', 350, 830);
 
       // 6. Convert to attachment and send
-      const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'wanted.png' });
+      const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'wanted.png' });
+
       
       return message.reply({ files: [attachment] });
 
