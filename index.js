@@ -1,8 +1,12 @@
 const {
   Client,
   GatewayIntentBits,
-  Events
+  Events,
+  AttachmentBuilder // <-- ADD THIS
 } = require('discord.js');
+
+const { createCanvas, loadImage } = require('canvas'); // <-- ADD THIS
+
 
 const OpenAI = require('openai');
 
@@ -270,6 +274,71 @@ if (
     }
   }
 
+  // =========================
+  // WANTED POSTER GENERATOR
+  // =========================
+  if (message.content.toLowerCase().startsWith('!wanted')) {
+    // Target the mentioned user, or the person who sent the message if nobody is mentioned
+    const target = message.mentions.users.first() || message.author;
+
+    try {
+      await message.channel.sendTyping();
+      
+      // 1. Set up the Canvas (700x900 is a good poster ratio)
+      const canvas = createCanvas(700, 900);
+      const ctx = canvas.getContext('2d');
+
+      // 2. Draw the vintage paper background
+      ctx.fillStyle = '#f4d7b2'; // Classic parchment color
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw a dark brown inner border
+      ctx.strokeStyle = '#5c3a21';
+      ctx.lineWidth = 15;
+      ctx.strokeRect(20, 20, 660, 860);
+
+      // 3. Add the header text
+      ctx.fillStyle = '#3e2723';
+      ctx.textAlign = 'center';
+      
+      ctx.font = 'bold 120px serif';
+      ctx.fillText('WANTED', 350, 150);
+      
+      ctx.font = 'bold 40px serif';
+      ctx.fillText('DEAD OR ALIVE', 350, 210);
+
+      // 4. Fetch and draw the user's avatar
+      const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 512 });
+      const avatar = await loadImage(avatarUrl);
+      
+      // Draw a black border behind the avatar
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(140, 240, 420, 420);
+      
+      // Draw the avatar inside the box
+      ctx.drawImage(avatar, 150, 250, 400, 400);
+
+      // 5. Add the Username and Bounty at the bottom
+      ctx.font = 'bold 50px serif';
+      ctx.fillStyle = '#3e2723';
+      ctx.fillText(target.username.toUpperCase(), 350, 740);
+      
+      ctx.fillStyle = '#8b0000'; // Dark red for the money
+      ctx.font = 'bold 70px serif';
+      ctx.fillText('$1,000,000', 350, 830);
+
+      // 6. Convert to attachment and send
+      const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'wanted.png' });
+      
+      return message.reply({ files: [attachment] });
+
+    } catch (error) {
+      console.error(error);
+      return message.reply('⚠️ Could not generate the wanted poster.');
+    }
+  }
+
+
 // =========================
 // SUPER OVER GAME (Replace your old one with this)
 // =========================
@@ -424,11 +493,13 @@ if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase
     const isImageCommand = message.content.startsWith('!image ');
   const isMention = message.mentions.has(client.user);
 
-  if (
+    if (
   !isImageCommand &&
   !isMention &&
-  !['defensive', 'drive', 'loft', 'scoop', '!batbattle', '!scramble'].includes(message.content.toLowerCase())
+  !['defensive', 'drive', 'loft', 'scoop', '!batbattle', '!scramble'].includes(message.content.toLowerCase()) &&
+  !message.content.toLowerCase().startsWith('!wanted') // <--- ADD THIS LINE
 ) return;
+
   // =========================
 // WORD SCRAMBLE GAME
 // =========================
