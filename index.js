@@ -136,7 +136,11 @@ client.on(Events.InteractionCreate, async interaction => {
           },
           {
             name: '🏏 Games',
-            value: '`!superover` (Solo)\n`!batbattle` (Multiplayer)'
+            value: '`!superover` (Solo)\n`!batbattle` (Multiplayer)\n`!scramble` (Word Race)'
+          },
+          {
+            name: '📜 Wanted Poster',
+            value: '`!wanted` or `!wanted @user`\nAdd `gs` for grayscale (e.g., `!wanted @user gs`)'
           },
           {
             name: '📊 Stats',
