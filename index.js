@@ -157,6 +157,10 @@ client.on(Events.InteractionCreate, async interaction => {
             value: '`!wanted` or `!wanted @user`\nAdd `gs` for grayscale (e.g., `!wanted @user gs`) or `/wanted`'
           },
           {
+            name: '🌌 RPG Adventure', 
+            value: '`/adventure` - Play a dynamic AI text adventure'
+          },
+          {
             name: 'Quiz 📚',
             value: '`/quiz`'
           },
