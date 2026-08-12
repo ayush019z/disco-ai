@@ -42,7 +42,7 @@ const commands = [
     )
     .addBooleanOption(option =>
       option
-        .setName('greyscale')
+        .setName('grayscale')
         .setDescription('Apply a greyscale filter to the poster')
         .setRequired(false)
     ),
