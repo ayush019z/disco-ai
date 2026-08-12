@@ -370,28 +370,26 @@ Return ONLY a raw JSON object with no markdown formatting. Structure: {"question
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  /// First-time greeting
-if (
-  (message.mentions.has(client.user) || message.content.startsWith('!image ')) &&
-  !greetedUsers.has(message.author.id)
-) {
-  greetedUsers.add(message.author.id);
+    // =========================
+  // FIRST-TIME GREETING (SELF-DESTRUCTING)
+  // =========================
+  if (
+    (message.mentions.has(client.user) || message.content.startsWith('!image ')) &&
+    !greetedUsers.has(message.author.id)
+  ) {
+    greetedUsers.add(message.author.id);
 
-  await message.reply(
-    `👋 Hi! I’m **AI Bot**
+    // Save the sent message to the 'greeting' variable
+    const greeting = await message.reply(
+      `👋 Hi! I’m **AI Bot**\n\n💬 Mention me to ask anything\n🖼️ \`!image prompt\` — Generate an image\n📄 Reply with \`!sum\` — Summarize a message\n🏏 \`!superover\` — Play Super Over\n⚔️ \`!batbattle\` — 15s Multiplayer Bat Battle\n❓ \`/help\` — View all commands\nℹ️ \`/info\` — Bot information\n📊 \`/stats\` — Bot statistics\n\n🧠 I remember our conversation for **2 hours**.`
+    );
 
-💬 Mention me to ask anything
-🖼️ \`!image prompt\` — Generate an image
-📄 Reply with \`!sum\` — Summarize a message
-🏏 \`!superover\` — Play Super Over
-⚔️ \`!batbattle\` — 15s Multiplayer Bat Battle
-❓ \`/help\` — View all commands
-ℹ️ \`/info\` — Bot information
-📊 \`/stats\` — Bot statistics
+    // Tell the bot to delete the greeting after 15 seconds (15000 ms)
+    setTimeout(() => {
+      greeting.delete().catch(() => {}); // The catch prevents a crash if a server admin manually deleted it first!
+    }, 8000);
+  }
 
-🧠 I remember our conversation for **2 hours**.`
-  );
-}
 
   // =========================
   // SUMMARY
