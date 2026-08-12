@@ -14,7 +14,7 @@ const commands = [
     .setDescription('Show bot statistics and ping'),
 
   // =========================
-  // NEW WANTED COMMAND
+  // WANTED COMMAND
   // =========================
   new SlashCommandBuilder()
     .setName('wanted')
@@ -30,8 +30,32 @@ const commands = [
         .setName('grayscale')
         .setDescription('Apply a vintage grayscale filter to the avatar')
         .setRequired(false)
+    ), // <--- NOTICE THIS COMMA!
+
+  // =========================
+  // QUIZ COMMAND (WITH LEVELS)
+  // =========================
+  new SlashCommandBuilder()
+    .setName('quiz')
+    .setDescription('Generate an AI trivia question')
+    .addStringOption(option => 
+      option
+        .setName('topic')
+        .setDescription('What should the quiz be about?')
+        .setRequired(false)
     )
-].map(command => command.toJSON());
+    .addStringOption(option => 
+      option
+        .setName('difficulty')
+        .setDescription('Select question difficulty')
+        .setRequired(false)
+        .addChoices(
+          { name: '🟢 Easy', value: 'easy' },
+          { name: '🟡 Medium', value: 'medium' },
+          { name: '🔴 Hard', value: 'hard' }
+        )
+    )
+].map(command => command.toJSON()); // <--- The array closes down here now!
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
