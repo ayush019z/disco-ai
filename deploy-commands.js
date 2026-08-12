@@ -32,6 +32,23 @@ const commands = [
     .setDescription('Start an interactive AI text RPG adventure'),
 
   new SlashCommandBuilder()
+    .setName('wanted')
+    .setDescription('Create a wanted poster for a user')
+    .addUserOption(option => 
+      option
+        .setName('target')
+        .setDescription('The user to put on the wanted poster')
+        .setRequired(false)
+    )
+    .addBooleanOption(option =>
+      option
+        .setName('greyscale')
+        .setDescription('Apply a greyscale filter to the poster')
+        .setRequired(false)
+    ),
+
+
+  new SlashCommandBuilder()
     .setName('info')
     .setDescription('View bot information'),
 
