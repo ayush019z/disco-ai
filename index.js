@@ -176,6 +176,11 @@ client.on(Events.InteractionCreate, async interaction => {
         color: 0x00FFFF,
         fields: [
           {
+              name: '🌍 Servers',
+              value: String(client.guilds.cache.size),
+              inline: true
+            },
+          {
             name: '💬 Messages',
             value: String(messagesAnswered),
             inline: true
