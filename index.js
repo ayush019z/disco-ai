@@ -364,26 +364,39 @@ client.on(Events.InteractionCreate, async interaction => {
       
       // Map to store who played and what they guessed
       const players = new Map(); 
-
       collector.on('collect', async (i) => {
-        // Prevent users from guessing multiple times
+        const guess = parseInt(i.customId.split('_')[1]);
+
+        // Check if the user has already made a guess
         if (players.has(i.user.id)) {
-          return i.reply({ 
-            content: '⚠️ You already locked in your answer!', 
-            flags: MessageFlags.Ephemeral 
-          });
+          const previousGuess = players.get(i.user.id).guess;
+          
+          // If they clicked the exact same button again
+          if (previousGuess === guess) {
+            return i.reply({ 
+              content: `⚠️ You already locked in **Option ${guess}**!`, 
+              flags: MessageFlags.Ephemeral 
+            });
+          } else {
+            // Update their guess in the Map
+            players.set(i.user.id, { user: i.user, guess: guess });
+            return i.reply({ 
+              content: `🔄 You changed your guess to **Option ${guess}**!`, 
+              flags: MessageFlags.Ephemeral 
+            });
+          }
         }
 
-        // Grab their guess and save it to the map
-        const guess = parseInt(i.customId.split('_')[1]);
+        // If this is their first time guessing
         players.set(i.user.id, { user: i.user, guess: guess });
         
-        // Secretly confirm their choice
         await i.reply({ 
-          content: `✅ Your guess (**Option ${guess}**) is locked in! Wait for the timer to end...`, 
+          content: `✅ Your guess (**Option ${guess}**) is locked in! You can click another button to change it before time is up.`, 
           flags: MessageFlags.Ephemeral 
         });
       });
+
+     
 
       collector.on('end', async collected => {
         // Disable the buttons when time is up
