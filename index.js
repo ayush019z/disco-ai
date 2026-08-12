@@ -291,7 +291,7 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.commandName === 'quiz') {
     await interaction.deferReply();
     
-    const topic = interaction.options.getString('topic') || 'thermodynamics, quantum theory, or coordinate geometry';
+    const topic = interaction.options.getString('topic') || 'random trivia';
     const difficulty = interaction.options.getString('difficulty') || 'medium';
 
     // Difficulty color coding for the embed
