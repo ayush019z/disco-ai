@@ -292,21 +292,25 @@ client.on(Events.InteractionCreate, async interaction => {
     };
 
     try {
-            // 1. Ask Groq AI to generate a JSON quiz with a unique timestamp seed
+            // 1. Ask Groq AI to generate a JSON quiz with an aggressive uniqueness prompt
+      const randomSeed = Math.floor(Math.random() * 1000000);
+      
       const response = await ai.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
-            content: `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the specified topic. Ensure the question is unique and dynamic. Return ONLY a raw JSON object with no markdown formatting, no code blocks, and no extra text. Structure: {"question": "...", "options": ["A", "B", "C", "D"], "answer": "Exact matching string from options"}`
+            content: `You are a trivia master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the given topic. 
+CRITICAL RULE: Do NOT ask the most obvious, common, or standard questions. Pick a highly obscure, niche, or specific sub-topic to ensure maximum variety. 
+Return ONLY a raw JSON object with no markdown formatting. Structure: {"question": "...", "options": ["A", "B", "C", "D"], "answer": "Exact matching string from options"}`
           },
           {
             role: 'user',
-            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}\nUnique Request ID: ${Date.now()}`
+            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}\nRandomization Seed: ${randomSeed}`
           }
         ],
-        temperature: 0.9,
-        presence_penalty: 0.6
+        temperature: 0.95, // Bumped even higher for maximum randomness
+        presence_penalty: 0.8
       });
 
 
