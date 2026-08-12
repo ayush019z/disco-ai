@@ -309,11 +309,14 @@ client.on(Events.InteractionCreate, async interaction => {
       const response = await ai.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         messages: [
-          {
+        {
             role: 'system',
             content: `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the specified topic. 
-            CRITICAL: To ensure variety, you MUST mentally pick a completely random, specific sub-category, era, or player within the topic before writing the question. Never repeat common questions.
-            Return ONLY a raw JSON object with no markdown formatting. Structure: {"question": "...", "options": ["A", "B", "C", "D"], "answer": "Exact matching string from options"}`
+            CRITICAL RULES:
+            1. You MUST include the correct answer as one of the 4 items in the "options" array.
+            2. The "answer" field MUST be the exact matching string from the "options" array. Do not provide an answer that is missing from the options.
+            3. To ensure variety, pick a completely random sub-category, era, or player within the topic.
+            Return ONLY a raw JSON object with no markdown formatting. Structure: {"question": "...", "options": ["Option1", "Option2", "Option3", "Option4"], "answer": "Exact matching string from options"}`
           },
           {
             role: 'user',
