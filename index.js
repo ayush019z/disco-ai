@@ -41,6 +41,11 @@ const blockedWords = [
 ];
 
 // =========================
+// RPG ADVENTURE SESSIONS
+// =========================
+const activeAdventures = new Map();
+
+// =========================
 // STATS
 // =========================
 let messagesAnswered = 0;
@@ -289,6 +294,162 @@ client.on(Events.InteractionCreate, async interaction => {
       return interaction.editReply('⚠️ Could not generate the poster.');
     }
   }
+
+
+// Adventure mode //
+
+
+
+  if (interaction.commandName === 'adventure') {
+    // 1. Tell Discord we are thinking
+    await interaction.deferReply(); 
+
+    // 2. The Core Setup (Using the physics/quantum theme!)
+    const systemPrompt = `You are an AI Dungeon Master running a text-based adventure. 
+    The setting is a futuristic world where ancient relics of quantum theory and advanced fluid dynamics dictate the laws of reality. 
+    Generate a short, highly engaging opening scenario (max 3 sentences) and exactly 3 distinct choices for the player.
+    CRITICAL RULES:
+    1. The choices MUST be short actions (under 50 characters) so they fit on Discord buttons.
+    2. Return ONLY a raw JSON object with no markdown formatting. 
+    Structure: {"story": "...", "choices": ["Choice A", "Choice B", "Choice C"]}`;
+
+    try {
+      // 3. Fetch the starting story
+      const response = await ai.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'system', content: systemPrompt }],
+        temperature: 0.85
+      });
+
+      // 4. Parse JSON safely
+      let jsonString = response.choices[0].message.content.trim();
+      if (jsonString.startsWith('```json')) jsonString = jsonString.replace(/```json\n?/, '').replace(/```/, '');
+      let gameData = JSON.parse(jsonString);
+
+      // 5. Save initial memory and set Turn to 1
+      activeAdventures.set(interaction.user.id, {
+        history: [
+          { role: 'system', content: systemPrompt },
+          { role: 'assistant', content: response.choices[0].message.content }
+        ],
+        turn: 1
+      });
+
+      // 6. Build the initial 3 buttons
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('adv_0').setLabel(gameData.choices[0]).setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('adv_1').setLabel(gameData.choices[1]).setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('adv_2').setLabel(gameData.choices[2]).setStyle(ButtonStyle.Success)
+      );
+
+      // 7. Send the game embed
+      const gameMessage = await interaction.editReply({
+        embeds: [{
+          title: '🌌 The Quantum Relic: An AI Adventure',
+          description: gameData.story,
+          color: 0x9B59B6,
+          footer: { text: 'Turn 1/5 | Choose your next action below...' }
+        }],
+        components: [row]
+      });
+
+      // 8. Start listening for button clicks (5-minute timeout)
+      const collector = gameMessage.createMessageComponentCollector({ time: 300000 });
+
+      collector.on('collect', async (i) => {
+        // Prevent others from hijacking
+        if (i.user.id !== interaction.user.id) {
+          return i.reply({ content: "⚠️ This is not your adventure! Use `/adventure` to start your own.", flags: MessageFlags.Ephemeral });
+        }
+        
+        await i.deferUpdate(); // Instantly acknowledge click
+        
+        // Find out what they chose
+        const choiceIndex = parseInt(i.customId.split('_')[1]);
+        const userChoice = gameData.choices[choiceIndex];
+
+        // Retrieve memory and increment turn
+        const session = activeAdventures.get(i.user.id);
+        session.turn++;
+
+        // Check if it's the final turn
+        let userPrompt = `I choose to: ${userChoice}. What happens next? Return the next story beat and 3 new choices in the exact same JSON format.`;
+        
+        if (session.turn >= 5) {
+          userPrompt = `I choose to: ${userChoice}. CRITICAL: This is the final action. Conclude the adventure in an epic or tragic way based on my choice. Do NOT generate new choices. Return this exact JSON format: {"story": "Your epic ending here...", "choices": []}`;
+        }
+
+        // Add their choice to memory
+        session.history.push({ role: 'user', content: userPrompt });
+
+        // Generate the next part of the story
+        const nextResponse = await ai.chat.completions.create({
+          model: 'llama-3.3-70b-versatile',
+          messages: session.history,
+          temperature: 0.85
+        });
+
+        // Parse new JSON
+        let nextJson = nextResponse.choices[0].message.content.trim();
+        if (nextJson.startsWith('```json')) nextJson = nextJson.replace(/```json\n?/, '').replace(/```/, '');
+        gameData = JSON.parse(nextJson); 
+        
+        // Save the AI's response to memory
+        session.history.push({ role: 'assistant', content: nextResponse.choices[0].message.content });
+        activeAdventures.set(i.user.id, session);
+
+        // 9. CHECK FOR FINALE
+        if (session.turn >= 5 || !gameData.choices || gameData.choices.length === 0) {
+           await i.editReply({
+            embeds: [{
+              title: '🌌 The Quantum Relic: Adventure Complete',
+              description: gameData.story,
+              color: 0xE74C3C, // Turns Red for the ending
+              footer: { text: `Final action: ${userChoice}` }
+            }],
+            components: [] // Destroys buttons
+          });
+          
+          activeAdventures.delete(i.user.id); // Clear RAM
+          return collector.stop(); // End the listener
+        }
+
+        // 10. IF NOT FINISHED, BUILD NEXT TURN
+        const newRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('adv_0').setLabel(gameData.choices[0]).setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId('adv_1').setLabel(gameData.choices[1]).setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId('adv_2').setLabel(gameData.choices[2]).setStyle(ButtonStyle.Success)
+        );
+
+        await i.editReply({
+          embeds: [{
+            title: '🌌 The Quantum Relic: An AI Adventure',
+            description: gameData.story,
+            color: 0x9B59B6,
+            footer: { text: `Turn ${session.turn}/5 | Last action: ${userChoice}` }
+          }],
+          components: [newRow]
+        });
+      });
+
+      collector.on('end', () => {
+        // If the game timed out (user walked away), disable it safely
+        if (activeAdventures.has(interaction.user.id)) {
+            const disabledRow = new ActionRowBuilder().addComponents(
+              row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
+            );
+            interaction.editReply({ components: [disabledRow] }).catch(() => {});
+            activeAdventures.delete(interaction.user.id);
+        }
+      });
+
+    } catch (error) {
+      console.error('Adventure Error:', error);
+      return interaction.editReply({ content: '⚠️ The simulation collapsed! The AI failed to format the story correctly.' });
+    }
+  }
+
+
 // =========================
   // /QUIZ (SLASH COMMAND WITH LEVELS)
   // =========================
