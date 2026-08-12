@@ -55,6 +55,10 @@ const activeBatBattles = new Set(); // Tracks channels with an active batt
 const activeScrambles = new Set();
 
 
+// =========================
+// TRIVIA MEMORY
+// =========================
+const askedQuestions = [];
 
 // =========================
 // IMAGE COOLDOWN
@@ -302,33 +306,36 @@ client.on(Events.InteractionCreate, async interaction => {
     };
 
     try {
-                  // 1. Ask Groq AI to generate a JSON quiz with maximum randomness
-      // Generate a wild random number to pair with the timestamp
+                  
+      // 1. Ask Groq AI to generate a JSON quiz
       const wildSeed = Math.floor(Math.random() * 9999999);
+      
+      // Build the memory string to ban old questions
+      const historyText = askedQuestions.length > 0 
+        ? `\n\nCRITICAL: DO NOT REPEAT OR REPHRASE ANY OF THESE PREVIOUS QUESTIONS:\n- ${askedQuestions.join('\n- ')}` 
+        : '';
 
       const response = await ai.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         messages: [
-        {
+          {
             role: 'system',
             content: `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the specified topic. 
             CRITICAL RULES:
             1. You MUST include the correct answer as one of the 4 items in the "options" array.
-            2. The "answer" field MUST be the exact matching string from the "options" array. Do not provide an answer that is missing from the options.
-            3. To ensure variety, pick a completely random sub-category, era, or player within the topic.
-            Return ONLY a raw JSON object with no markdown formatting. Structure: {"question": "...", "options": ["Option1", "Option2", "Option3", "Option4"], "answer": "Exact matching string from options"}`
+            2. The "answer" field MUST be the exact matching string from the "options" array.
+            3. Pick a completely random, obscure, and unique sub-category or fact within the topic.
+            Return ONLY a raw JSON object with no markdown formatting. Structure: {"question": "...", "options": ["Option1", "Option2", "Option3", "Option4"], "answer": "Exact matching string"}`
           },
           {
             role: 'user',
-            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}\nRandom Seed: ${Date.now()}-${wildSeed}`
+            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}\nRandom Seed: ${Date.now()}-${wildSeed}${historyText}`
           }
         ],
-        temperature: 0.95,         // Pushed even higher for maximum creativity
-        presence_penalty: 0.8,     // Forces it to talk about new concepts
-        frequency_penalty: 0.8     // Actively punishes it for repeating the same words (like "curling")
+        temperature: 0.95,
+        presence_penalty: 0.8,
+        frequency_penalty: 0.8
       });
-
-
 
       // 2. Parse the AI's JSON response
       let jsonString = response.choices[0].message.content.trim();
@@ -338,6 +345,15 @@ client.on(Events.InteractionCreate, async interaction => {
       }
       
       const quizData = JSON.parse(jsonString);
+
+      // --- SAVE TO MEMORY ---
+      // Add the brand new question to the memory array
+      askedQuestions.push(quizData.question);
+      
+      // Keep the memory from getting too big (forgets the oldest question after 20 rounds)
+      if (askedQuestions.length > 20) {
+        askedQuestions.shift(); 
+      }
 
       // 3. Build options list
       const optionsText = quizData.options.map((opt, i) => `**${i + 1}.** ${opt}`).join('\n\n');
