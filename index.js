@@ -291,21 +291,23 @@ client.on(Events.InteractionCreate, async interaction => {
     };
 
     try {
-      // 1. Ask Groq AI to generate a JSON quiz with difficulty
+            // 1. Ask Groq AI to generate a JSON quiz with a unique timestamp seed
       const response = await ai.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
-            content: `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the given topic. Return ONLY a raw JSON object with no markdown formatting, no code blocks, and no extra text. Structure: {"question": "...", "options": ["A", "B", "C", "D"], "answer": "Exact matching string from options"}`
+            content: `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the specified topic. Ensure the question is unique and dynamic. Return ONLY a raw JSON object with no markdown formatting, no code blocks, and no extra text. Structure: {"question": "...", "options": ["A", "B", "C", "D"], "answer": "Exact matching string from options"}`
           },
           {
             role: 'user',
-            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}`
+            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}\nUnique Request ID: ${Date.now()}`
           }
         ],
-        temperature: 0.7
+        temperature: 0.9,
+        presence_penalty: 0.6
       });
+
 
       // 2. Parse the AI's JSON response
       let jsonString = response.choices[0].message.content.trim();
