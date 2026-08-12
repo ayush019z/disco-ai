@@ -169,8 +169,9 @@ client.on(Events.InteractionCreate, async interaction => {
     if (ping > 150) status = '🔴 Slow';
 
     await interaction.reply({
+      ephemeral: true, // <--- ADD THIS ONE LINE RIGHT HERE
       embeds: [{
-        title: '📊 AI Bot Stats',
+        title: '📊 DoraBot Stats',
         color: 0x00FFFF,
         fields: [
           {
