@@ -270,6 +270,86 @@ client.on(Events.InteractionCreate, async interaction => {
       return interaction.editReply('⚠️ Could not generate the poster.');
     }
   }
+// =========================
+  // /QUIZ (SLASH COMMAND WITH LEVELS)
+  // =========================
+  if (interaction.commandName === 'quiz') {
+    await interaction.deferReply();
+    
+    const topic = interaction.options.getString('topic') || 'thermodynamics, quantum theory, or coordinate geometry';
+    const difficulty = interaction.options.getString('difficulty') || 'medium';
+
+    // Difficulty color coding for the embed
+    const difficultyColors = {
+      easy: 0x00FF88,   // Green
+      medium: 0xFFCC00, // Yellow
+      hard: 0xFF3344    // Red
+    };
+
+    try {
+      // 1. Ask Groq AI to generate a JSON quiz with difficulty
+      const response = await ai.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the given topic. Return ONLY a raw JSON object with no markdown formatting, no code blocks, and no extra text. Structure: {"question": "...", "options": ["A", "B", "C", "D"], "answer": "Exact matching string from options"}`
+          },
+          {
+            role: 'user',
+            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}`
+          }
+        ],
+        temperature: 0.7
+      });
+
+      // 2. Parse the AI's JSON response
+      let jsonString = response.choices[0].message.content.trim();
+      
+      if (jsonString.startsWith('```json')) {
+        jsonString = jsonString.replace(/```json\n?/, '').replace(/```/, '');
+      }
+      
+      const quizData = JSON.parse(jsonString);
+
+      // 3. Build options list
+      const optionsText = quizData.options.map((opt, i) => `**${i + 1}.** ${opt}`).join('\n\n');
+      const correctIndex = quizData.options.indexOf(quizData.answer) + 1;
+
+      // 4. Send the question embed
+      await interaction.editReply({
+        embeds: [{
+          title: `🧠 AI Quiz Time (${difficulty.toUpperCase()})`,
+          description: `**${quizData.question}**\n\n${optionsText}\n\n*Type **1**, **2**, **3**, or **4** in the chat within 20 seconds!*`,
+          color: difficultyColors[difficulty] || 0x00FFAA,
+          footer: { text: `Topic: ${topic.toUpperCase()} • Level: ${difficulty.toUpperCase()}` }
+        }]
+      });
+
+      // 5. Create a chat collector looking for answers 1 through 4
+      const filter = m => ['1', '2', '3', '4'].includes(m.content.trim()) && !m.author.bot;
+      const collector = interaction.channel.createMessageCollector({ filter, time: 20000, max: 1 });
+
+      collector.on('collect', m => {
+        const guess = parseInt(m.content.trim());
+        if (guess === correctIndex) {
+          m.reply(`🎉 **CORRECT!** <@${m.author.id}> nailed it! The answer was **${quizData.answer}**.`);
+        } else {
+          m.reply(`❌ **Wrong!** <@${m.author.id}> guessed ${guess}, but the correct answer was **${correctIndex}** (${quizData.answer}).`);
+        }
+      });
+
+      collector.on('end', collected => {
+        if (collected.size === 0) {
+          interaction.followUp(`⏰ Time's up! Nobody guessed it. The answer was **${quizData.answer}**.`);
+        }
+      });
+
+    } catch (error) {
+      console.error('Quiz Error:', error);
+      return interaction.editReply('⚠️ Could not generate the quiz. The AI might have been confused!');
+    }
+  }
 });
 
 // =========================
