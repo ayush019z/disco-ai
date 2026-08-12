@@ -346,16 +346,17 @@ client.on(Events.InteractionCreate, async interaction => {
         new ButtonBuilder().setCustomId('adv_2').setLabel(gameData.choices[2]).setStyle(ButtonStyle.Success)
       );
 
-      // 7. Send the game embed
+            // 7. Send the game embed
       const gameMessage = await interaction.editReply({
         embeds: [{
-          title: '🌌 The Quantum Relic: An AI Adventure',
+          title: '🐉 An Epic AI Adventure', // <--- CHANGED TITLE
           description: gameData.story,
           color: 0x9B59B6,
           footer: { text: 'Turn 1/5 | Choose your next action below...' }
         }],
         components: [row]
       });
+
 
       // 8. Start listening for button clicks (5-minute timeout)
       const collector = gameMessage.createMessageComponentCollector({ time: 300000 });
@@ -402,17 +403,18 @@ client.on(Events.InteractionCreate, async interaction => {
         session.history.push({ role: 'assistant', content: nextResponse.choices[0].message.content });
         activeAdventures.set(i.user.id, session);
 
-        // 9. CHECK FOR FINALE
+                // 9. CHECK FOR FINALE
         if (session.turn >= 5 || !gameData.choices || gameData.choices.length === 0) {
            await i.editReply({
             embeds: [{
-              title: '🌌 The Quantum Relic: Adventure Complete',
+              title: '📜 Adventure Complete', // <--- CHANGED TITLE
               description: gameData.story,
-              color: 0xE74C3C, // Turns Red for the ending
+              color: 0xE74C3C, 
               footer: { text: `Final action: ${userChoice}` }
             }],
-            components: [] // Destroys buttons
+            components: [] 
           });
+
           
           activeAdventures.delete(i.user.id); // Clear RAM
           return collector.stop(); // End the listener
@@ -427,7 +429,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
         await i.editReply({
           embeds: [{
-            title: '🌌 The Quantum Relic: An AI Adventure',
+            title: '🐉 An Epic AI Adventure', // <--- CHANGED TITLE
             description: gameData.story,
             color: 0x9B59B6,
             footer: { text: `Turn ${session.turn}/5 | Last action: ${userChoice}` }
