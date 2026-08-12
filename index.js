@@ -359,31 +359,71 @@ client.on(Events.InteractionCreate, async interaction => {
         components: [row] // <--- Attaches the buttons!
       });
 
-      // 6. Create a Button Collector instead of a Message Collector
-      const collector = quizMessage.createMessageComponentCollector({ time: 20000, max: 1 });
+            // 6. Create a Button Collector (Removed max: 1 so it runs for the full 20s)
+      const collector = quizMessage.createMessageComponentCollector({ time: 20000 });
+      
+      // Map to store who played and what they guessed
+      const players = new Map(); 
 
       collector.on('collect', async (i) => {
-        // i.customId will be 'ans_1', 'ans_2', etc. We just grab the number part.
-        const guess = parseInt(i.customId.split('_')[1]);
-        
-        if (guess === correctIndex) {
-          await i.reply(`🎉 **CORRECT!** <@${i.user.id}> nailed it! The answer was **${quizData.answer}**.`);
-        } else {
-          await i.reply(`❌ **Wrong!** <@${i.user.id}> guessed ${guess}, but the correct answer was **${correctIndex}** (${quizData.answer}).`);
+        // Prevent users from guessing multiple times
+        if (players.has(i.user.id)) {
+          return i.reply({ 
+            content: '⚠️ You already locked in your answer!', 
+            flags: MessageFlags.Ephemeral 
+          });
         }
+
+        // Grab their guess and save it to the map
+        const guess = parseInt(i.customId.split('_')[1]);
+        players.set(i.user.id, { user: i.user, guess: guess });
+        
+        // Secretly confirm their choice
+        await i.reply({ 
+          content: `✅ Your guess (**Option ${guess}**) is locked in! Wait for the timer to end...`, 
+          flags: MessageFlags.Ephemeral 
+        });
       });
 
-      collector.on('end', collected => {
-        // Disable the buttons when time is up so people can't keep clicking them
+      collector.on('end', async collected => {
+        // Disable the buttons when time is up
         const disabledRow = new ActionRowBuilder().addComponents(
           row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
         );
         
         interaction.editReply({ components: [disabledRow] }).catch(() => {});
 
-        if (collected.size === 0) {
-          interaction.followUp(`⏰ Time's up! Nobody clicked an answer. The answer was **${quizData.answer}**.`);
+        // If literally nobody clicked a button
+        if (players.size === 0) {
+          return interaction.followUp(`⏰ Time's up! Nobody clicked an answer. The answer was **${quizData.answer}**.`);
         }
+
+        // Build the winner and loser lists
+        const winners = [];
+        const losers = [];
+
+        players.forEach((data, userId) => {
+          if (data.guess === correctIndex) {
+            winners.push(`<@${userId}>`);
+          } else {
+            losers.push(`<@${userId}> (Guessed ${data.guess})`);
+          }
+        });
+
+        // Format the final announcement
+        let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}** (${quizData.answer}).\n\n`;
+        
+        if (winners.length > 0) {
+          resultText += `🎉 **Correct:** ${winners.join(', ')}\n`;
+        } else {
+          resultText += `❌ **Correct:** Nobody got it right!\n`;
+        }
+
+        if (losers.length > 0) {
+          resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
+        }
+
+        interaction.followUp(resultText);
       });
 
     } catch (error) {
@@ -391,7 +431,8 @@ client.on(Events.InteractionCreate, async interaction => {
       return interaction.editReply('⚠️ Could not generate the quiz. The AI might have been confused!');
     }
   }
-});
+}); // <--- THIS BRACKET ENDS THE INTERACTION CREATE EVENT
+
 
 // =========================
 // MESSAGE COMMANDS
