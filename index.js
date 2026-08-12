@@ -115,7 +115,7 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.commandName === 'help') {
     await interaction.reply({
       embeds: [{
-        title: '📚 AI Bot Help',
+        title: '📚 Dora Bot Help',
         color: 0x00FFFF,
         fields: [
           {
@@ -140,7 +140,11 @@ client.on(Events.InteractionCreate, async interaction => {
           },
           {
             name: '📜 Wanted Poster',
-            value: '`!wanted` or `!wanted @user`\nAdd `gs` for grayscale (e.g., `!wanted @user gs`)'
+            value: '`!wanted` or `!wanted @user`\nAdd `gs` for grayscale (e.g., `!wanted @user gs`) or `/wanted`'
+          },
+          {
+            name: 'Quiz 📚',
+            value: '`/quiz`'
           },
           {
             name: '📊 Stats',
