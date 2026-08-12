@@ -1,75 +1,61 @@
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 
+// Define all your slash commands here
 const commands = [
   new SlashCommandBuilder()
+    .setName('stats')
+    .setDescription('View bot statistics'),
+
+  new SlashCommandBuilder()
+    .setName('quiz')
+    .setDescription('Start an interactive trivia game')
+    .addStringOption(option =>
+      option
+        .setName('topic')
+        .setDescription('The topic for the quiz')
+        .setRequired(false)
+    )
+    .addStringOption(option =>
+      option
+        .setName('difficulty')
+        .setDescription('Difficulty level')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Easy', value: 'easy' },
+          { name: 'Medium', value: 'medium' },
+          { name: 'Hard', value: 'hard' }
+        )
+    ),
+
+  new SlashCommandBuilder()
+    .setName('adventure')
+    .setDescription('Start an interactive AI text RPG adventure'),
+
+  new SlashCommandBuilder()
     .setName('info')
-    .setDescription('Show information about the bot'),
+    .setDescription('View bot information'),
 
   new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Show all bot commands and how to use them'),
+    .setDescription('View all available commands')
+].map(command => command.toJSON());
 
-  new SlashCommandBuilder()
-    .setName('stats')
-    .setDescription('Show bot statistics and ping'),
-
-  // =========================
-  // WANTED COMMAND
-  // =========================
-  new SlashCommandBuilder()
-    .setName('wanted')
-    .setDescription('Generate a vintage wanted poster')
-    .addUserOption(option => 
-      option
-        .setName('target')
-        .setDescription('The user to put on the poster')
-        .setRequired(false)
-    )
-    .addBooleanOption(option => 
-      option
-        .setName('grayscale')
-        .setDescription('Apply a vintage grayscale filter to the avatar')
-        .setRequired(false)
-    ), // <--- NOTICE THIS COMMA!
-
-  // =========================
-  // QUIZ COMMAND (WITH LEVELS)
-  // =========================
-  new SlashCommandBuilder()
-    .setName('quiz')
-    .setDescription('Generate an AI trivia question')
-    .addStringOption(option => 
-      option
-        .setName('topic')
-        .setDescription('What should the quiz be about?')
-        .setRequired(false)
-    )
-    .addStringOption(option => 
-      option
-        .setName('difficulty')
-        .setDescription('Select question difficulty')
-        .setRequired(false)
-        .addChoices(
-          { name: '🟢 Easy', value: 'easy' },
-          { name: '🟡 Medium', value: 'medium' },
-          { name: '🔴 Hard', value: 'hard' }
-        )
-    )
-].map(command => command.toJSON()); // <--- The array closes down here now!
-
+// Prepare the REST module
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
+// Register the commands with Discord
 (async () => {
   try {
-    console.log('Registering slash commands...');
+    console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
+    // Global registration (Registers commands across all servers where the bot is present)
     await rest.put(
       Routes.applicationCommands(process.env.CLIENT_ID),
       { body: commands }
     );
 
-    console.log('Slash commands registered successfully.');
+    console.log('Successfully reloaded application (/) commands!');
   } catch (error) {
-    console.error(error);
+    console.error('Error deploying commands:', error);
   }
 })();
