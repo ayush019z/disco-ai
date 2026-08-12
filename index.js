@@ -2,9 +2,13 @@ const {
   Client,
   GatewayIntentBits,
   Events,
-  AttachmentBuilder, // <-- ADD THIS
-  MessageFlags //
+  AttachmentBuilder,
+  MessageFlags,
+  ActionRowBuilder, // <--- ADD THIS
+  ButtonBuilder,    // <--- ADD THIS
+  ButtonStyle       // <--- ADD THIS
 } = require('discord.js');
+
 
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 
@@ -333,32 +337,49 @@ Return ONLY a raw JSON object with no markdown formatting. Structure: {"question
       const optionsText = quizData.options.map((opt, i) => `**${i + 1}.** ${opt}`).join('\n\n');
       const correctIndex = quizData.options.indexOf(quizData.answer) + 1;
 
-      // 4. Send the question embed
-      await interaction.editReply({
+            // 4. Build the Interactive Buttons
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('ans_1').setLabel('1').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('ans_2').setLabel('2').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('ans_3').setLabel('3').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('ans_4').setLabel('4').setStyle(ButtonStyle.Primary)
+      );
+
+      // 5. Send the embed AND the buttons, saving it to a variable
+      const quizMessage = await interaction.editReply({
         embeds: [{
           title: `🧠 AI Quiz Time (${difficulty.toUpperCase()})`,
-          description: `**${quizData.question}**\n\n${optionsText}\n\n*Type **1**, **2**, **3**, or **4** in the chat within 20 seconds!*`,
+          description: `**${quizData.question}**\n\n${optionsText}\n\n*Click a button below within 20 seconds!*`,
           color: difficultyColors[difficulty] || 0x00FFAA,
           footer: { text: `Topic: ${topic.toUpperCase()} • Level: ${difficulty.toUpperCase()}` }
-        }]
+        }],
+        components: [row] // <--- Attaches the buttons!
       });
 
-      // 5. Create a chat collector looking for answers 1 through 4
-      const filter = m => ['1', '2', '3', '4'].includes(m.content.trim()) && !m.author.bot;
-      const collector = interaction.channel.createMessageCollector({ filter, time: 20000, max: 1 });
+      // 6. Create a Button Collector instead of a Message Collector
+      const collector = quizMessage.createMessageComponentCollector({ time: 20000, max: 1 });
 
-      collector.on('collect', m => {
-        const guess = parseInt(m.content.trim());
+      collector.on('collect', async (i) => {
+        // i.customId will be 'ans_1', 'ans_2', etc. We just grab the number part.
+        const guess = parseInt(i.customId.split('_')[1]);
+        
         if (guess === correctIndex) {
-          m.reply(`🎉 **CORRECT!** <@${m.author.id}> nailed it! The answer was **${quizData.answer}**.`);
+          await i.reply(`🎉 **CORRECT!** <@${i.user.id}> nailed it! The answer was **${quizData.answer}**.`);
         } else {
-          m.reply(`❌ **Wrong!** <@${m.author.id}> guessed ${guess}, but the correct answer was **${correctIndex}** (${quizData.answer}).`);
+          await i.reply(`❌ **Wrong!** <@${i.user.id}> guessed ${guess}, but the correct answer was **${correctIndex}** (${quizData.answer}).`);
         }
       });
 
       collector.on('end', collected => {
+        // Disable the buttons when time is up so people can't keep clicking them
+        const disabledRow = new ActionRowBuilder().addComponents(
+          row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
+        );
+        
+        interaction.editReply({ components: [disabledRow] }).catch(() => {});
+
         if (collected.size === 0) {
-          interaction.followUp(`⏰ Time's up! Nobody guessed it. The answer was **${quizData.answer}**.`);
+          interaction.followUp(`⏰ Time's up! Nobody clicked an answer. The answer was **${quizData.answer}**.`);
         }
       });
 
