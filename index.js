@@ -81,7 +81,7 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.commandName === 'info') {
     await interaction.reply({
       embeds: [{
-        title: '🤖 AI Bot',
+        title: '🤖 Dora Bot 🩵',
         description: 'A smart Discord assistant with memory, AI chat, images, summaries, and games.',
         color: 0x00FFFF,
         thumbnail: {
@@ -120,7 +120,7 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.commandName === 'help') {
     await interaction.reply({
       embeds: [{
-        title: '📚 Dora Bot Help',
+        title: '📚 Dora Bot 🩵 Help',
         color: 0x00FFFF,
         fields: [
           {
@@ -176,7 +176,7 @@ client.on(Events.InteractionCreate, async interaction => {
     await interaction.reply({
       flags: MessageFlags.Ephemeral, //
       embeds: [{
-        title: '📊 DoraBot Stats',
+        title: '📊 DoraBot 🩵 Stats',
         color: 0x00FFFF,
         fields: [
           {
@@ -302,26 +302,29 @@ client.on(Events.InteractionCreate, async interaction => {
     };
 
     try {
-            // 1. Ask Groq AI to generate a JSON quiz with an aggressive uniqueness prompt
-      const randomSeed = Math.floor(Math.random() * 1000000);
-      
+                  // 1. Ask Groq AI to generate a JSON quiz with maximum randomness
+      // Generate a wild random number to pair with the timestamp
+      const wildSeed = Math.floor(Math.random() * 9999999);
+
       const response = await ai.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
-            content: `You are a trivia master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the given topic. 
-CRITICAL RULE: Do NOT ask the most obvious, common, or standard questions. Pick a highly obscure, niche, or specific sub-topic to ensure maximum variety. 
-Return ONLY a raw JSON object with no markdown formatting. Structure: {"question": "...", "options": ["A", "B", "C", "D"], "answer": "Exact matching string from options"}`
+            content: `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the specified topic. 
+            CRITICAL: To ensure variety, you MUST mentally pick a completely random, specific sub-category, era, or player within the topic before writing the question. Never repeat common questions.
+            Return ONLY a raw JSON object with no markdown formatting. Structure: {"question": "...", "options": ["A", "B", "C", "D"], "answer": "Exact matching string from options"}`
           },
           {
             role: 'user',
-            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}\nRandomization Seed: ${randomSeed}`
+            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}\nRandom Seed: ${Date.now()}-${wildSeed}`
           }
         ],
-        temperature: 0.95, // Bumped even higher for maximum randomness
-        presence_penalty: 0.8
+        temperature: 0.95,         // Pushed even higher for maximum creativity
+        presence_penalty: 0.8,     // Forces it to talk about new concepts
+        frequency_penalty: 0.8     // Actively punishes it for repeating the same words (like "curling")
       });
+
 
 
       // 2. Parse the AI's JSON response
