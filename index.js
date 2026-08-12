@@ -308,10 +308,10 @@ client.on(Events.InteractionCreate, async interaction => {
     // 1. Tell Discord we are thinking
     await interaction.deferReply(); 
 
-    // 2. The Core Setup (Using the physics/quantum theme!)
-    const systemPrompt = `You are an AI Dungeon Master running a text-based adventure. 
-    The setting is a futuristic world where ancient relics of quantum theory and advanced fluid dynamics dictate the laws of reality. 
-    Generate a short, highly engaging opening scenario (max 3 sentences) and exactly 3 distinct choices for the player.
+        // 2. The Core Setup (Classic Fantasy Story)
+    const systemPrompt = `You are an AI Dungeon Master running a casual, fun text-based adventure. 
+    The setting is a classic fantasy world filled with ancient magic, hidden ruins, quirky townsfolk, and mythical creatures. 
+    Generate a short, highly engaging, and easy-to-read opening scenario (max 3 sentences) and exactly 3 distinct choices for the player.
     CRITICAL RULES:
     1. The choices MUST be short actions (under 50 characters) so they fit on Discord buttons.
     2. Return ONLY a raw JSON object with no markdown formatting. 
