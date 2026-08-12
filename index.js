@@ -2,7 +2,8 @@ const {
   Client,
   GatewayIntentBits,
   Events,
-  AttachmentBuilder // <-- ADD THIS
+  AttachmentBuilder, // <-- ADD THIS
+  MessageFlags //
 } = require('discord.js');
 
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
@@ -169,7 +170,7 @@ client.on(Events.InteractionCreate, async interaction => {
     if (ping > 150) status = '🔴 Slow';
 
     await interaction.reply({
-      ephemeral: true, // <--- ADD THIS ONE LINE RIGHT HERE
+      flags: MessageFlags.Ephemeral, //
       embeds: [{
         title: '📊 DoraBot Stats',
         color: 0x00FFFF,
