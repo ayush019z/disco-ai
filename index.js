@@ -274,8 +274,8 @@ client.on(Events.InteractionCreate, async interaction => {
     await interaction.deferReply();
 
     try {
-                              // Using FLUX.1-schnell (Officially supported on the free tier)
-      const modelUrl = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
+                                    // Using the working Router domain + the supported Schnell model
+      const modelUrl = 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell';
 
 
 
