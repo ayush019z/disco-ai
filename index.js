@@ -83,6 +83,7 @@ const askedQuestions = [];
 // MEMORY (2 HOURS)
 // =========================
 const MEMORY_TIME = 2 * 60 * 60 * 1000;
+const askHistory = new Map();
 
 // =========================
 // READY
@@ -384,6 +385,61 @@ if (interaction.commandName === 'admin') {
   }
 }
 
+// --- /ASK ---
+if (interaction.commandName === 'ask') {
+  const question = interaction.options.getString('question');
+  const userId = interaction.user.id;
+
+  await interaction.deferReply();
+
+  try {
+    // Get previous history
+    let history = askHistory.get(userId) || [];
+
+    // Add current question
+    history.push({
+      role: 'user',
+      content: question
+    });
+
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally and remember previous messages from this user.'
+        },
+        ...history
+      ],
+      temperature: 0.7,
+      max_tokens: 1200
+    });
+
+    const answer =
+      response.choices?.[0]?.message?.content ||
+      '⚠️ I could not generate a response.';
+
+    // Save assistant reply
+    history.push({
+      role: 'assistant',
+      content: answer
+    });
+
+    // Keep only last 20 messages
+    if (history.length > 20) {
+      history = history.slice(-20);
+    }
+
+    askHistory.set(userId, history);
+
+    await interaction.editReply(answer.slice(0, 2000));
+
+  } catch (err) {
+    console.error(err);
+    await interaction.editReply('⚠️ Failed to contact the AI service.');
+  }
+}
 
 
 
