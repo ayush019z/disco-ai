@@ -316,7 +316,7 @@ client.on(Events.InteractionCreate, async interaction => {
       dailyImageLimits.set(userId, userLimit);
       return interaction.editReply('⚠️ Sorry, the image generation failed. Your daily use was refunded!');
     }
-
+}
 
 
   // =========================
