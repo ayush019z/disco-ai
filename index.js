@@ -137,55 +137,91 @@ client.on(Events.InteractionCreate, async interaction => {
     });
   }
 
-  if (interaction.commandName === 'help') {
-    await interaction.reply({
-      embeds: [{
-        title: '📚 Dora Bot 🩵 Help',
-        color: 0x00FFFF,
+  
+     if (interaction.commandName === 'help') {
+  await interaction.reply({
+    embeds: [
+      {
+        title: '🤖 DoraBot Help Center',
+        description:
+          'Welcome to **DoraBot** 🩵\nYour Doraemon-inspired AI companion for chatting, images, quizzes, games, and magical adventures.',
+
+        color: 0x00BFFF,
+
+        thumbnail: {
+          url: client.user.displayAvatarURL()
+        },
+
         fields: [
           {
-            name: '💬 Chat',
-            value: '`@Ai-bot explain gravity`'
+            name: '🧠 AI & Memory',
+            value:
+              '`/ask chat question:<text>` — Chat with DoraBot\n' +
+              '`@DoraBot <message>` — Quick AI reply\n' +
+              '`@DoraBot forget everything i said` — Clear memory',
+
+            inline: false
           },
+
           {
-            name: '📄 Summarize',
-            value: 'Reply with `!sum`'
+            name: '🎨 Image Generation',
+            value:
+              '`/image prompt:<text>` — Generate an AI image\n' +
+              '`!image <text>` — Quick image command',
+
+            inline: false
           },
+
           {
-            name: '🖼️ Image',
-            value: '`!image cyberpunk city`'
+            name: '📄 Utilities',
+            value:
+              '`!sum` — Summarize a replied message\n' +
+              '`/stats` — Bot statistics\n' +
+              '`/info` — Bot information',
+
+            inline: false
           },
+
           {
-            name: '🧠 Forget',
-            value: '`@Ai-bot forget everything I said`'
+            name: '🎮 Games',
+            value:
+              '`!superover` — Solo cricket challenge\n' +
+              '`!batbattle` — Multiplayer batting battle\n' +
+              '`!scramble` — Word scramble race' +
+              '`/quiz` - Interactive Quiz with Topic',
+
+            inline: false
           },
+
           {
-            name: '🏏 Games',
-            value: '`!superover` (Solo)\n`!batbattle` (Multiplayer)\n`!scramble` (Word Race)'
+            name: '🚪 Doraemon Adventures',
+            value:
+              '`/adventure` — Play a Doraemon-style interactive adventure\n' +
+              'Use gadgets, travel through time, and explore magical stories with Doraemon!',
+
+            inline: false
           },
+
           {
-            name: '📜 Wanted Poster',
-            value: '`!wanted` or `!wanted @user`\nAdd `gs` for grayscale (e.g., `!wanted @user gs`) or `/wanted`'
-          },
-          {
-            name: '🌌 RPG Adventure', 
-            value: '`/adventure` - Play a dynamic AI text adventure'
-          },
-          {
-            name: 'Quiz 📚',
-            value: '`/quiz`'
-          },
-          {
-            name: '📊 Stats',
-            value: '`/stats`'
+            name: '😂 Fun & Pranks',
+            value:
+              '`/wanted` — Create a funny wanted poster',
+
+            inline: false
           }
         ],
+
         footer: {
-          text: 'Created by @ayush.rajj'
-        }
-      }]
-    });
-  }
+          text: 'Made with 🩵 by Ayush • DoraBot'
+        },
+
+        timestamp: new Date().toISOString()
+      }
+    ]
+  });
+}
+
+
 
 
   if (interaction.commandName === 'stats') {
@@ -513,158 +549,228 @@ if (interaction.commandName === 'ask') {
 
 // Adventure mode //
 
+if (interaction.commandName === 'adventure') {
+  // 1. Tell Discord we are thinking
+  await interaction.deferReply();
 
+  // 2. The Core Setup (Doraemon Adventure)
+  const systemPrompt = `You are an AI Dungeon Master running a Doraemon-style interactive adventure.
 
-  if (interaction.commandName === 'adventure') {
-    // 1. Tell Discord we are thinking
-    await interaction.deferReply(); 
+The player is the hero of the story.
+Doraemon is always present as a helpful companion.
+The world includes futuristic gadgets, time travel, secret locations, magical mishaps, and funny surprises.
+You may include Nobita, Shizuka, Gian, and Suneo when useful.
 
-        // 2. The Core Setup (Classic Fantasy Story)
-    const systemPrompt = `You are an AI Dungeon Master running a casual, fun text-based adventure. 
-    The setting is a classic fantasy world filled with ancient magic, hidden ruins, quirky townsfolk, and mythical creatures. 
-    Generate a short, highly engaging, and easy-to-read opening scenario (max 3 sentences) and exactly 3 distinct choices for the player.
-    CRITICAL RULES:
-    1. The choices MUST be short actions (under 50 characters) so they fit on Discord buttons.
-    2. Return ONLY a raw JSON object with no markdown formatting. 
-    Structure: {"story": "...", "choices": ["Choice A", "Choice B", "Choice C"]}`;
+Generate a short, highly engaging, and easy-to-read story segment (max 3 sentences) and exactly 3 distinct choices for the player.
 
-    try {
-      // 3. Fetch the starting story
-      const response = await ai.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'system', content: systemPrompt }],
-        temperature: 0.85
-      });
+CRITICAL RULES:
+1. The choices MUST be short actions (under 50 characters) so they fit on Discord buttons.
+2. Keep the tone fun, adventurous, and family-friendly.
+3. Include Doraemon gadgets such as Anywhere Door, Bamboo Copter, Time Machine, Small Light, Translation Jelly, etc.
+4. Return ONLY a raw JSON object with no markdown formatting.
 
-      // 4. Parse JSON safely
-      let jsonString = response.choices[0].message.content.trim();
-      if (jsonString.startsWith('```json')) jsonString = jsonString.replace(/```json\n?/, '').replace(/```/, '');
-      let gameData = JSON.parse(jsonString);
+Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 
-      // 5. Save initial memory and set Turn to 1
-      activeAdventures.set(interaction.user.id, {
-        history: [
-          { role: 'system', content: systemPrompt },
-          { role: 'assistant', content: response.choices[0].message.content }
-        ],
-        turn: 1
-      });
+  try {
+    // 3. Fetch the starting story
+    const response = await ai.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'system', content: systemPrompt }],
+      temperature: 0.9
+    });
 
-      // 6. Build the initial 3 buttons
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('adv_0').setLabel(gameData.choices[0]).setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('adv_1').setLabel(gameData.choices[1]).setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('adv_2').setLabel(gameData.choices[2]).setStyle(ButtonStyle.Success)
-      );
+    // 4. Parse JSON safely
+    let jsonString = response.choices[0].message.content.trim();
 
-            // 7. Send the game embed
-      const gameMessage = await interaction.editReply({
-        embeds: [{
-          title: '🐉 An Epic AI Adventure', // <--- CHANGED TITLE
-          description: gameData.story,
-          color: 0x9B59B6,
-          footer: { text: 'Turn 1/5 | Choose your next action below...' }
-        }],
-        components: [row]
-      });
+    if (jsonString.startsWith('```json')) {
+      jsonString = jsonString
+        .replace(/```json\\n?/, '')
+        .replace(/```/, '');
+    }
 
+    let gameData = JSON.parse(jsonString);
 
-      // 8. Start listening for button clicks (5-minute timeout)
-      const collector = gameMessage.createMessageComponentCollector({ time: 300000 });
+    // 5. Save memory and set Turn 1
+    activeAdventures.set(interaction.user.id, {
+      history: [
+        { role: 'system', content: systemPrompt },
+        { role: 'assistant', content: response.choices[0].message.content }
+      ],
+      turn: 1
+    });
 
-      collector.on('collect', async (i) => {
-        // Prevent others from hijacking
-        if (i.user.id !== interaction.user.id) {
-          return i.reply({ content: "⚠️ This is not your adventure! Use `/adventure` to start your own.", flags: MessageFlags.Ephemeral });
-        }
-        
-        await i.deferUpdate(); // Instantly acknowledge click
-        
-        // Find out what they chose
-        const choiceIndex = parseInt(i.customId.split('_')[1]);
-        const userChoice = gameData.choices[choiceIndex];
+    // 6. Build buttons
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('adv_0')
+        .setLabel(gameData.choices[0])
+        .setStyle(ButtonStyle.Primary),
 
-        // Retrieve memory and increment turn
-        const session = activeAdventures.get(i.user.id);
-        session.turn++;
+      new ButtonBuilder()
+        .setCustomId('adv_1')
+        .setLabel(gameData.choices[1])
+        .setStyle(ButtonStyle.Primary),
 
-        // Check if it's the final turn
-        let userPrompt = `I choose to: ${userChoice}. What happens next? Return the next story beat and 3 new choices in the exact same JSON format.`;
-        
-        if (session.turn >= 5) {
-          userPrompt = `I choose to: ${userChoice}. CRITICAL: This is the final action. Conclude the adventure in an epic or tragic way based on my choice. Do NOT generate new choices. Return this exact JSON format: {"story": "Your epic ending here...", "choices": []}`;
-        }
+      new ButtonBuilder()
+        .setCustomId('adv_2')
+        .setLabel(gameData.choices[2])
+        .setStyle(ButtonStyle.Primary)
+    );
 
-        // Add their choice to memory
-        session.history.push({ role: 'user', content: userPrompt });
+    // 7. Send the game embed
+    const gameMessage = await interaction.editReply({
+      embeds: [{
+        title: '🚪 Doraemon Time Adventure',
+        description: gameData.story,
+        color: 0x00BFFF,
+        footer: { text: 'Turn 1/5 • Choose your next action below' }
+      }],
+      components: [row]
+    });
 
-        // Generate the next part of the story
-        const nextResponse = await ai.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
-          messages: session.history,
-          temperature: 0.85
+    // 8. Listen for button clicks
+    const collector = gameMessage.createMessageComponentCollector({
+      time: 300000
+    });
+
+    collector.on('collect', async (i) => {
+      // Prevent others from using the buttons
+      if (i.user.id !== interaction.user.id) {
+        return i.reply({
+          content: '⚠️ This is not your adventure! Use `/adventure` to start your own.',
+          flags: MessageFlags.Ephemeral
         });
+      }
 
-        // Parse new JSON
-        let nextJson = nextResponse.choices[0].message.content.trim();
-        if (nextJson.startsWith('```json')) nextJson = nextJson.replace(/```json\n?/, '').replace(/```/, '');
-        gameData = JSON.parse(nextJson); 
-        
-        // Save the AI's response to memory
-        session.history.push({ role: 'assistant', content: nextResponse.choices[0].message.content });
-        activeAdventures.set(i.user.id, session);
+      await i.deferUpdate();
 
-                // 9. CHECK FOR FINALE
-        if (session.turn >= 5 || !gameData.choices || gameData.choices.length === 0) {
-           await i.editReply({
-            embeds: [{
-              title: '📜 Adventure Complete', // <--- CHANGED TITLE
-              description: gameData.story,
-              color: 0xE74C3C, 
-              footer: { text: `Final action: ${userChoice}` }
-            }],
-            components: [] 
-          });
+      // Which choice was selected?
+      const choiceIndex = parseInt(i.customId.split('_')[1]);
+      const userChoice = gameData.choices[choiceIndex];
 
-          
-          activeAdventures.delete(i.user.id); // Clear RAM
-          return collector.stop(); // End the listener
-        }
+      // Load session
+      const session = activeAdventures.get(i.user.id);
+      session.turn++;
 
-        // 10. IF NOT FINISHED, BUILD NEXT TURN
-        const newRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('adv_0').setLabel(gameData.choices[0]).setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('adv_1').setLabel(gameData.choices[1]).setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('adv_2').setLabel(gameData.choices[2]).setStyle(ButtonStyle.Success)
-        );
+      // Build next prompt
+      let userPrompt =
+        `I choose: ${userChoice}. Continue the Doraemon adventure and return the next story beat with 3 new choices in the same JSON format.`;
 
+      // Final turn
+      if (session.turn >= 5) {
+        userPrompt =
+          `I choose: ${userChoice}. This is the final action. End the Doraemon adventure with a fun, emotional, or surprising ending. Do NOT generate new choices. Return this exact JSON format: {"story":"Your ending here...","choices":[]}`;
+      }
+
+      session.history.push({
+        role: 'user',
+        content: userPrompt
+      });
+
+      // Generate next part
+      const nextResponse = await ai.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: session.history,
+        temperature: 0.9
+      });
+
+      // Parse JSON
+      let nextJson = nextResponse.choices[0].message.content.trim();
+
+      if (nextJson.startsWith('```json')) {
+        nextJson = nextJson
+          .replace(/```json\\n?/, '')
+          .replace(/```/, '');
+      }
+
+      gameData = JSON.parse(nextJson);
+
+      // Save response
+      session.history.push({
+        role: 'assistant',
+        content: nextResponse.choices[0].message.content
+      });
+
+      activeAdventures.set(i.user.id, session);
+
+      // 9. Finale
+      if (
+        session.turn >= 5 ||
+        !gameData.choices ||
+        gameData.choices.length === 0
+      ) {
         await i.editReply({
           embeds: [{
-            title: '🐉 An Epic AI Adventure', // <--- CHANGED TITLE
+            title: '🏁 Doraemon Adventure Complete',
             description: gameData.story,
-            color: 0x9B59B6,
-            footer: { text: `Turn ${session.turn}/5 | Last action: ${userChoice}` }
+            color: 0xFF6B6B,
+            footer: { text: `Final action: ${userChoice}` }
           }],
-          components: [newRow]
+          components: []
         });
-      });
 
-      collector.on('end', () => {
-        // If the game timed out (user walked away), disable it safely
-        if (activeAdventures.has(interaction.user.id)) {
-            const disabledRow = new ActionRowBuilder().addComponents(
-              row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
-            );
-            interaction.editReply({ components: [disabledRow] }).catch(() => {});
-            activeAdventures.delete(interaction.user.id);
-        }
-      });
+        activeAdventures.delete(i.user.id);
+        return collector.stop();
+      }
 
-    } catch (error) {
-      console.error('Adventure Error:', error);
-      return interaction.editReply({ content: '⚠️ The simulation collapsed! The AI failed to format the story correctly.' });
-    }
+      // 10. Next turn buttons
+      const newRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('adv_0')
+          .setLabel(gameData.choices[0])
+          .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+          .setCustomId('adv_1')
+          .setLabel(gameData.choices[1])
+          .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+          .setCustomId('adv_2')
+          .setLabel(gameData.choices[2])
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      await i.editReply({
+        embeds: [{
+          title: '🚪 Doraemon Time Adventure',
+          description: gameData.story,
+          color: 0x00BFFF,
+          footer: {
+            text: `Turn ${session.turn}/5 • Last action: ${userChoice}`
+          }
+        }],
+        components: [newRow]
+      });
+    });
+
+    collector.on('end', () => {
+      // Disable buttons if timed out
+      if (activeAdventures.has(interaction.user.id)) {
+        const disabledRow = new ActionRowBuilder().addComponents(
+          row.components.map(btn =>
+            ButtonBuilder.from(btn).setDisabled(true)
+          )
+        );
+
+        interaction.editReply({
+          components: [disabledRow]
+        }).catch(() => {});
+
+        activeAdventures.delete(interaction.user.id);
+      }
+    });
+
+  } catch (error) {
+    console.error('Adventure Error:', error);
+
+    return interaction.editReply({
+      content: '⚠️ Doraemon dropped the gadget and the adventure failed to start.'
+    });
   }
+}
+
+
 
 
 // =========================
