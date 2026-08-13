@@ -60,6 +60,38 @@ const commands = [
     ),
 
 
+//// ADMIN////
+
+
+new SlashCommandBuilder()
+  .setName('admin')
+  .setDescription('Owner admin commands')
+
+  .addSubcommand(sub =>
+    sub.setName('give')
+      .setDescription('Give extra image generations')
+      .addUserOption(o =>
+        o.setName('user').setDescription('User').setRequired(true))
+      .addIntegerOption(o =>
+        o.setName('amount').setDescription('Amount').setRequired(true))
+  )
+
+  .addSubcommand(sub =>
+    sub.setName('reset')
+      .setDescription('Reset a user’s image limits')
+      .addUserOption(o =>
+        o.setName('user').setDescription('User').setRequired(true))
+  )
+
+  .addSubcommand(sub =>
+    sub.setName('stats')
+      .setDescription('Check a user’s image usage')
+      .addUserOption(o =>
+        o.setName('user').setDescription('User').setRequired(true))
+  ),
+
+//// /////
+
   new SlashCommandBuilder()
     .setName('info')
     .setDescription('View bot information'),
