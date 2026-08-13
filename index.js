@@ -274,7 +274,9 @@ client.on(Events.InteractionCreate, async interaction => {
     await interaction.deferReply();
 
     try {
-      const modelUrl = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev';
+            // Using the updated HF Router endpoint
+      const modelUrl = 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-dev';
+
 
       const response = await fetch(modelUrl, {
         method: 'POST',
