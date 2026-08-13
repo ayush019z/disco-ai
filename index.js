@@ -6,7 +6,8 @@ const {
   MessageFlags,
   ActionRowBuilder, // <--- ADD THIS
   ButtonBuilder,    // <--- ADD THIS
-  ButtonStyle       // <--- ADD THIS
+  ButtonStyle,       // <--- ADD THIS
+EmbedBuilder
 } = require('discord.js');
 
 
@@ -254,10 +255,11 @@ if (interaction.commandName === 'image') {
       `https://black-forest-labs-flux-1-schnell.hf.space/?prompt=${encodeURIComponent(prompt)}`;
 
     const embed = new EmbedBuilder()
-      .setColor('#00BFFF')
-      .setTitle('🎨 DoraBot Image')
-      .setDescription(`**Prompt:** ${prompt}`)
-      .setImage(imageUrl);
+  .setColor('#00BFFF')
+  .setTitle('🎨 DoraBot Image')
+  .setDescription(`**Prompt:** ${prompt}`)
+  .setImage(imageUrl);
+
 
     await interaction.editReply({ embeds: [embed] });
 
