@@ -92,6 +92,17 @@ new SlashCommandBuilder()
 
 //// /////
 
+new SlashCommandBuilder()
+  .setName('ask')
+  .setDescription('Ask DoraBot anything')
+  .addStringOption(option =>
+    option
+      .setName('question')
+      .setDescription('What do you want to ask❓')
+      .setRequired(true)
+  ),
+
+
   new SlashCommandBuilder()
     .setName('info')
     .setDescription('View bot information'),
