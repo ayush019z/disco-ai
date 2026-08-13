@@ -242,86 +242,81 @@ client.on(Events.InteractionCreate, async interaction => {
     });
   }
 
-  // --- /IMAGE ---
-  if (interaction.commandName === 'image') {
-    const prompt = interaction.options.getString('prompt');
-    const userId = interaction.user.id;
-    const today = new Date().toDateString();
+// --- /IMAGE ---
+if (interaction.commandName === 'image') {
+  const prompt = interaction.options.getString('prompt');
+  const userId = interaction.user.id;
+  const today = new Date().toDateString();
 
-    // 1. Check the daily limit
-    let userLimit = dailyImageLimits.get(userId) || { date: today, count: 0 };
-    if (userLimit.date !== today) {
-      userLimit = { date: today, count: 0 };
-    }
+  // Daily limit
+  let userLimit = dailyImageLimits.get(userId) || { date: today, count: 0 };
 
-    if (userLimit.count >= 5) {
-      return interaction.reply({ 
-        content: '🚫 You have reached your daily limit of 5 premium images. Please try again tomorrow!', 
-        flags: MessageFlags.Ephemeral 
-      });
-    }
+  if (userLimit.date !== today) {
+    userLimit = { date: today, count: 0 };
+  }
 
-    userLimit.count += 1;
-    dailyImageLimits.set(userId, userLimit);
+  if (userLimit.count >= 5) {
+    return interaction.reply({
+      content: '🚫 You have reached your daily limit of 5 images. Try again tomorrow!',
+      flags: MessageFlags.Ephemeral
+    });
+  }
 
-    await interaction.deferReply();
+  userLimit.count += 1;
+  dailyImageLimits.set(userId, userLimit);
 
-    try {
-      // 1. Define the Cloudflare REST API endpoint using your Account ID
-      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-      const modelUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
+  await interaction.deferReply();
 
-      // 2. Send the request to Cloudflare
-      const response = await fetch(modelUrl, {
+  try {
+    const response = await fetch(
+      'https://api.siliconflow.cn/v1/images/generations',
+      {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.CLOUDFLARE_TOKEN}`,
+          'Authorization': `Bearer ${process.env.SILICONFLOW_API_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          prompt: `${prompt}, anime style, 2D illustration, masterpiece, high quality, trending on pixiv, detailed anime character design`
+          model: 'black-forest-labs/FLUX.1-schnell',
+          prompt: prompt,
+          image_size: '1024x1024'
         })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Cloudflare Error:', errorText);
-        // Refund their daily use if the API failed
-        userLimit.count -= 1;
-        dailyImageLimits.set(userId, userLimit);
-        return interaction.editReply('⚠️ The Cloudflare image engine failed. Please check your API tokens or try again!');
       }
+    );
 
-      // 3. Cloudflare returns the image as a raw binary buffer
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      
-      // 4. Turn the buffer into a Discord Attachment
-      const attachment = new AttachmentBuilder(buffer, { name: 'cloudflare-image.png' });
+    const data = await response.json();
 
-      imagesGenerated++; 
+    if (!response.ok || !data.images || !data.images[0]?.url) {
+      throw new Error(JSON.stringify(data));
+    }
 
-      // 5. Send it to the user
-      return interaction.editReply({
-        embeds: [{
-          title: '🎨 Cloudflare AI Image',
-          description: `**Prompt:** ${prompt}`,
-          color: 0xF38020, // Cloudflare Orange
-          footer: { text: `Powered by FLUX.1 [schnell] • Daily Uses: ${userLimit.count}/5` }
-        }],
-        files: [attachment]
+    const imageUrl = data.images[0].url;
+
+    const embed = new EmbedBuilder()
+      .setColor('#00BFFF')
+      .setTitle('🎨 DoraBot Image')
+      .setDescription(`**Prompt:** ${prompt}`)
+      .setImage(imageUrl)
+      .setFooter({
+        text: `Remaining today: ${5 - userLimit.count}`
       });
 
-    } catch (error) {
-      console.error('Cloudflare API Error:', error);
-      // Refund their daily use if the code crashed
-      userLimit.count -= 1;
-      dailyImageLimits.set(userId, userLimit);
-      return interaction.editReply('⚠️ Sorry, the image generation failed. Your daily use was refunded!');
-    }
-  } // <--- END OF IMAGE COMMAND
+    await interaction.editReply({ embeds: [embed] });
 
+  } catch (err) {
+    console.error(err);
 
+    // Refund limit on failure
+    userLimit.count -= 1;
+    dailyImageLimits.set(userId, userLimit);
+
+    await interaction.editReply(
+      '⚠️ Failed to generate the image. Please try again later.'
+    );
+  }
+}
+
+      
 
   // =========================
   // /WANTED (SLASH COMMAND)
