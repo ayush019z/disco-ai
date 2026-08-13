@@ -50,6 +50,9 @@ const activeAdventures = new Map();
 // DAILY IMAGE LIMITS
 // =========================
 const dailyImageLimits = new Map();
+const OWNER_ID = '773574818121383958';
+const bonusImageCredits = new Map();
+
 
 
 // =========================
@@ -249,7 +252,9 @@ if (interaction.commandName === 'image') {
   const userId = interaction.user.id;
   const today = new Date().toDateString();
 
-  // Get user usage
+  const isOwner = userId === OWNER_ID;
+
+  // Get today's usage
   let userLimit = dailyImageLimits.get(userId) || {
     date: today,
     count: 0
@@ -263,17 +268,23 @@ if (interaction.commandName === 'image') {
     };
   }
 
-  // Check limit
-  if (userLimit.count >= 5) {
+  // Bonus credits
+  const bonus = bonusImageCredits.get(userId) || 0;
+  const maxImages = 5 + bonus;
+
+  // Check limit (owner is unlimited)
+  if (!isOwner && userLimit.count >= maxImages) {
     return interaction.reply({
-      content: '🚫 You have reached your daily limit of **5 images**. Please try again tomorrow.',
+      content: `🚫 You have reached your daily limit of **${maxImages} images**. Please try again tomorrow.`,
       flags: MessageFlags.Ephemeral
     });
   }
 
-  // Increase count
-  userLimit.count += 1;
-  dailyImageLimits.set(userId, userLimit);
+  // Increase count for normal users
+  if (!isOwner) {
+    userLimit.count += 1;
+    dailyImageLimits.set(userId, userLimit);
+  }
 
   await interaction.deferReply();
 
@@ -287,7 +298,9 @@ if (interaction.commandName === 'image') {
       .setDescription(`**Prompt:** ${prompt}`)
       .setImage(imageUrl)
       .setFooter({
-        text: `Remaining today: ${5 - userLimit.count}`
+        text: isOwner
+          ? '👑 Owner • Unlimited images'
+          : `Remaining today: ${maxImages - userLimit.count}`
       });
 
     await interaction.editReply({
@@ -297,14 +310,73 @@ if (interaction.commandName === 'image') {
   } catch (err) {
     console.error(err);
 
-    // Refund the usage if generation failed
-    userLimit.count -= 1;
-    dailyImageLimits.set(userId, userLimit);
+    // Refund usage on failure
+    if (!isOwner) {
+      userLimit.count -= 1;
+      dailyImageLimits.set(userId, userLimit);
+    }
 
     await interaction.editReply('⚠️ Failed to generate image.');
   }
 }
 
+// --- /ADMIN ---
+if (interaction.commandName === 'admin') {
+
+  // Owner only
+  if (interaction.user.id !== OWNER_ID) {
+    return interaction.reply({
+      content: '🚫 This command is restricted to the bot owner.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const sub = interaction.options.getSubcommand();
+  const user = interaction.options.getUser('user');
+
+  // Give extra images
+  if (sub === 'give') {
+    const amount = interaction.options.getInteger('amount');
+
+    const current = bonusImageCredits.get(user.id) || 0;
+    bonusImageCredits.set(user.id, current + amount);
+
+    return interaction.reply(
+      `✅ Gave **${amount}** extra image generations to **${user.username}**.`
+    );
+  }
+
+  // Reset limits
+  if (sub === 'reset') {
+    dailyImageLimits.delete(user.id);
+    bonusImageCredits.delete(user.id);
+
+    return interaction.reply(
+      `♻️ Reset all image limits for **${user.username}**.`
+    );
+  }
+
+  // Check stats
+  if (sub === 'stats') {
+    const today = new Date().toDateString();
+
+    let data = dailyImageLimits.get(user.id) || {
+      date: today,
+      count: 0
+    };
+
+    if (data.date !== today) {
+      data = { date: today, count: 0 };
+    }
+
+    const bonus = bonusImageCredits.get(user.id) || 0;
+    const max = 5 + bonus;
+
+    return interaction.reply(
+      `📊 **${user.username}**\nUsed: **${data.count}/${max}**\nBonus: **${bonus}**`
+    );
+  }
+}
 
 
 
