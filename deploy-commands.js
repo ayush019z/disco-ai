@@ -46,6 +46,18 @@ const commands = [
         .setDescription('Apply a greyscale filter to the poster')
         .setRequired(false)
     ),
+// -------------------------------------------------------------
+  // ADD THE NEW /IMAGE COMMAND HERE:
+  // -------------------------------------------------------------
+  new SlashCommandBuilder()
+    .setName('image')
+    .setDescription('Generate a high-quality AI image (Limit: 5 per day)')
+    .addStringOption(option =>
+      option
+        .setName('prompt')
+        .setDescription('What do you want to generate?')
+        .setRequired(true)
+    ),
 
 
   new SlashCommandBuilder()
