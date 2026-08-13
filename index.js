@@ -46,6 +46,12 @@ const blockedWords = [
 const activeAdventures = new Map();
 
 // =========================
+// DAILY IMAGE LIMITS
+// =========================
+const dailyImageLimits = new Map();
+
+
+// =========================
 // STATS
 // =========================
 let messagesAnswered = 0;
@@ -176,6 +182,7 @@ client.on(Events.InteractionCreate, async interaction => {
     });
   }
 
+
   if (interaction.commandName === 'stats') {
     const ping = client.ws.ping;
     const uptimeMs = Date.now() - startTime;
@@ -234,6 +241,88 @@ client.on(Events.InteractionCreate, async interaction => {
       }]
     });
   }
+
+  // =========================
+  // /IMAGE (PREMIUM HUGGING FACE)
+  // =========================
+  if (interaction.commandName === 'image') {
+    const prompt = interaction.options.getString('prompt');
+    const userId = interaction.user.id;
+    const today = new Date().toDateString(); // Grabs the current date (e.g., "Thu Aug 13 2026")
+
+    // 1. Check the daily limit
+    let userLimit = dailyImageLimits.get(userId) || { date: today, count: 0 };
+    
+    // If it is a new day, reset their counter to 0!
+    if (userLimit.date !== today) {
+      userLimit = { date: today, count: 0 };
+    }
+
+    // Block them if they hit 5
+    if (userLimit.count >= 5) {
+      return interaction.reply({ 
+        content: '🚫 You have reached your daily limit of 5 premium images. Please try again tomorrow!', 
+        flags: MessageFlags.Ephemeral 
+      });
+    }
+
+    // 2. Temporarily take one use away and save it
+    userLimit.count += 1;
+    dailyImageLimits.set(userId, userLimit);
+
+    // 3. Defer the reply so Discord knows we are thinking
+    await interaction.deferReply();
+
+    try {
+      const modelUrl = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev';
+
+      const response = await fetch(modelUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.HF_TOKEN}`, 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          inputs: `${prompt}, high quality, highly detailed, 8k resolution, masterpiece`, 
+        })
+      });
+
+      if (!response.ok) {
+        console.error('HF API Error:', await response.text());
+        // Refund their daily use if the API failed
+        userLimit.count -= 1;
+        dailyImageLimits.set(userId, userLimit);
+        return interaction.editReply('⚠️ The image engine is currently warming up or overloaded. Please try again in about 30 seconds!');
+      }
+
+      // Download and attach the image
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const attachment = new AttachmentBuilder(buffer, { name: 'premium-image.png' });
+
+      imagesGenerated++; // Update your global stats
+
+      // 4. Send the final image with a counter in the footer
+      return interaction.editReply({
+        embeds: [{
+          title: '🎨 Premium AI Image',
+          description: `**Prompt:** ${prompt}`,
+          color: 0x9B59B6,
+          footer: { text: `Powered by Hugging Face • Daily Uses: ${userLimit.count}/5` }
+        }],
+        files: [attachment]
+      });
+
+    } catch (error) {
+      console.error('Premium Image Error:', error);
+      // Refund their daily use if the code crashed
+      userLimit.count -= 1;
+      dailyImageLimits.set(userId, userLimit);
+      return interaction.editReply('⚠️ Sorry, the image generation failed. Your daily use was refunded!');
+    }
+  }
+
+
   // =========================
   // /WANTED (SLASH COMMAND)
   // =========================
