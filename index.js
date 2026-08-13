@@ -245,76 +245,49 @@ client.on(Events.InteractionCreate, async interaction => {
 // --- /IMAGE ---
 if (interaction.commandName === 'image') {
   const prompt = interaction.options.getString('prompt');
-  const userId = interaction.user.id;
-  const today = new Date().toDateString();
-
-  // Daily limit
-  let userLimit = dailyImageLimits.get(userId) || { date: today, count: 0 };
-
-  if (userLimit.date !== today) {
-    userLimit = { date: today, count: 0 };
-  }
-
-  if (userLimit.count >= 5) {
-    return interaction.reply({
-      content: '🚫 You have reached your daily limit of 5 images. Try again tomorrow!',
-      flags: MessageFlags.Ephemeral
-    });
-  }
-
-  userLimit.count += 1;
-  dailyImageLimits.set(userId, userLimit);
 
   await interaction.deferReply();
 
   try {
     const response = await fetch(
-      'https://api.siliconflow.cn/v1/images/generations',
+      'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.SILICONFLOW_API_KEY}`,
+          Authorization: `Bearer ${process.env.HF_TOKEN}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          model: 'black-forest-labs/FLUX.1-schnell',
-          prompt: prompt,
-          image_size: '1024x1024'
-        })
+        body: JSON.stringify({ inputs: prompt })
       }
     );
 
-    const data = await response.json();
-
-    if (!response.ok || !data.images || !data.images[0]?.url) {
-      throw new Error(JSON.stringify(data));
+    if (!response.ok) {
+      throw new Error(`HF API error: ${response.status}`);
     }
 
-    const imageUrl = data.images[0].url;
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    const attachment = new AttachmentBuilder(buffer, {
+      name: 'dorabot-image.png'
+    });
 
     const embed = new EmbedBuilder()
       .setColor('#00BFFF')
       .setTitle('🎨 DoraBot Image')
       .setDescription(`**Prompt:** ${prompt}`)
-      .setImage(imageUrl)
-      .setFooter({
-        text: `Remaining today: ${5 - userLimit.count}`
-      });
+      .setImage('attachment://dorabot-image.png');
 
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({
+      embeds: [embed],
+      files: [attachment]
+    });
 
   } catch (err) {
     console.error(err);
-
-    // Refund limit on failure
-    userLimit.count -= 1;
-    dailyImageLimits.set(userId, userLimit);
-
-    await interaction.editReply(
-      '⚠️ Failed to generate the image. Please try again later.'
-    );
+    await interaction.editReply('⚠️ Failed to generate image.');
   }
 }
+
 
       
 
