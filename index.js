@@ -341,9 +341,11 @@ if (interaction.commandName === 'admin') {
     const current = bonusImageCredits.get(user.id) || 0;
     bonusImageCredits.set(user.id, current + amount);
 
-    return interaction.reply(
-      `✅ Gave **${amount}** extra image generations to **${user.username}**.`
-    );
+    return interaction.reply({
+  content: `✅ Gave **${amount}** extra image generations to **${user.username}**.`,
+  flags: MessageFlags.Ephemeral
+});
+
   }
 
   // Reset limits
@@ -351,9 +353,11 @@ if (interaction.commandName === 'admin') {
     dailyImageLimits.delete(user.id);
     bonusImageCredits.delete(user.id);
 
-    return interaction.reply(
-      `♻️ Reset all image limits for **${user.username}**.`
-    );
+    return interaction.reply({
+  content: `♻️ Reset all image limits for **${user.username}**.`,
+  flags: MessageFlags.Ephemeral
+});
+
   }
 
   // Check stats
@@ -372,9 +376,11 @@ if (interaction.commandName === 'admin') {
     const bonus = bonusImageCredits.get(user.id) || 0;
     const max = 5 + bonus;
 
-    return interaction.reply(
-      `📊 **${user.username}**\nUsed: **${data.count}/${max}**\nBonus: **${bonus}**`
-    );
+    return interaction.reply({
+  content: `📊 **${user.username}**\nUsed: **${data.count}/${max}**\nBonus: **${bonus}**`,
+  flags: MessageFlags.Ephemeral
+});
+
   }
 }
 
