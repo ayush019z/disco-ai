@@ -28,8 +28,9 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
-    .setName('adventure')
-    .setDescription('Start an interactive AI text RPG adventure'),
+  .setName('adventure')
+  .setDescription('Play a Doraemon-style interactive adventure'),
+
 
   new SlashCommandBuilder()
     .setName('wanted')
