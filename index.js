@@ -275,7 +275,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
     try {
                         // Using Stable Diffusion 1.5 (Permanently supported on the free tier)
-      const modelUrl = 'https://router.huggingface.co/hf-inference/models/runwayml/stable-diffusion-v1-5';
+      const modelUrl = 'https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-2-1';
 
 
 
