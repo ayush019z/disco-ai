@@ -242,23 +242,18 @@ client.on(Events.InteractionCreate, async interaction => {
     });
   }
 
-  // =========================
-  // /IMAGE (PREMIUM HUGGING FACE)
-  // =========================
+  // --- /IMAGE ---
   if (interaction.commandName === 'image') {
     const prompt = interaction.options.getString('prompt');
     const userId = interaction.user.id;
-    const today = new Date().toDateString(); // Grabs the current date (e.g., "Thu Aug 13 2026")
+    const today = new Date().toDateString();
 
     // 1. Check the daily limit
     let userLimit = dailyImageLimits.get(userId) || { date: today, count: 0 };
-    
-    // If it is a new day, reset their counter to 0!
     if (userLimit.date !== today) {
       userLimit = { date: today, count: 0 };
     }
 
-    // Block them if they hit 5
     if (userLimit.count >= 5) {
       return interaction.reply({ 
         content: '🚫 You have reached your daily limit of 5 premium images. Please try again tomorrow!', 
@@ -266,57 +261,66 @@ client.on(Events.InteractionCreate, async interaction => {
       });
     }
 
-    // 2. Temporarily take one use away and save it
     userLimit.count += 1;
     dailyImageLimits.set(userId, userLimit);
 
-    // 3. Defer the reply so Discord knows we are thinking
     await interaction.deferReply();
 
-        try {
-      // 1. Generate a random seed for unique images and heavily enhance the prompt
-      const randomSeed = Math.floor(Math.random() * 999999);
-      const enhancedPrompt = encodeURIComponent(`${prompt}, high quality, highly detailed, 8k resolution, masterpiece, cinematic lighting`);
-      
-      // 2. Hit the free Pollinations endpoint (forcing the FLUX model and 1024x1024 HD resolution)
-      const modelUrl = `https://image.pollinations.ai/prompt/${enhancedPrompt}?width=1024&height=1024&model=flux&seed=${randomSeed}&nologo=true`;
+    try {
+      // 1. Define the Cloudflare REST API endpoint using your Account ID
+      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+      const modelUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
 
-      // 3. Fetch the image directly
-      const response = await fetch(modelUrl);
+      // 2. Send the request to Cloudflare
+      const response = await fetch(modelUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.CLOUDFLARE_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: `${prompt}, anime style, 2D illustration, masterpiece, high quality, trending on pixiv, detailed anime character design`
+        })
+      });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Cloudflare Error:', errorText);
         // Refund their daily use if the API failed
         userLimit.count -= 1;
         dailyImageLimits.set(userId, userLimit);
-        return interaction.editReply('⚠️ The image engine is currently overloaded. Please try again!');
+        return interaction.editReply('⚠️ The Cloudflare image engine failed. Please check your API tokens or try again!');
       }
 
-      // 4. Grab the raw binary data and turn it into a Discord Attachment
+      // 3. Cloudflare returns the image as a raw binary buffer
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      const attachment = new AttachmentBuilder(buffer, { name: 'premium-image.png' });
+      
+      // 4. Turn the buffer into a Discord Attachment
+      const attachment = new AttachmentBuilder(buffer, { name: 'cloudflare-image.png' });
 
-      imagesGenerated++; // Update your global stats
+      imagesGenerated++; 
 
-      // 5. Send the final image with a counter in the footer
+      // 5. Send it to the user
       return interaction.editReply({
         embeds: [{
-          title: '🎨 Premium AI Image',
+          title: '🎨 Cloudflare AI Image',
           description: `**Prompt:** ${prompt}`,
-          color: 0x9B59B6,
-          footer: { text: `Powered by FLUX HD • Daily Uses: ${userLimit.count}/5` }
+          color: 0xF38020, // Cloudflare Orange
+          footer: { text: `Powered by FLUX.1 [schnell] • Daily Uses: ${userLimit.count}/5` }
         }],
-        files: [attachment] // Attaches the downloaded image directly to Discord
+        files: [attachment]
       });
 
     } catch (error) {
-      console.error('Premium Image Error:', error);
+      console.error('Cloudflare API Error:', error);
       // Refund their daily use if the code crashed
       userLimit.count -= 1;
       dailyImageLimits.set(userId, userLimit);
       return interaction.editReply('⚠️ Sorry, the image generation failed. Your daily use was refunded!');
     }
-}
+  } // <--- END OF IMAGE COMMAND
+
 
 
   // =========================
