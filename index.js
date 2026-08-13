@@ -249,44 +249,24 @@ if (interaction.commandName === 'image') {
   await interaction.deferReply();
 
   try {
-    const response = await fetch(
-      'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.HF_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ inputs: prompt })
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HF API error: ${response.status}`);
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-
-    const attachment = new AttachmentBuilder(buffer, {
-      name: 'dorabot-image.png'
-    });
+    // Free FLUX Space endpoint
+    const imageUrl =
+      `https://black-forest-labs-flux-1-schnell.hf.space/?prompt=${encodeURIComponent(prompt)}`;
 
     const embed = new EmbedBuilder()
       .setColor('#00BFFF')
       .setTitle('🎨 DoraBot Image')
       .setDescription(`**Prompt:** ${prompt}`)
-      .setImage('attachment://dorabot-image.png');
+      .setImage(imageUrl);
 
-    await interaction.editReply({
-      embeds: [embed],
-      files: [attachment]
-    });
+    await interaction.editReply({ embeds: [embed] });
 
   } catch (err) {
     console.error(err);
     await interaction.editReply('⚠️ Failed to generate image.');
   }
 }
+
 
 
       
