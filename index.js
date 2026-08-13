@@ -273,49 +273,40 @@ client.on(Events.InteractionCreate, async interaction => {
     // 3. Defer the reply so Discord knows we are thinking
     await interaction.deferReply();
 
-    try {
-                                    // Using the working Router domain + the supported Schnell model
-      const modelUrl = 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell';
+        try {
+      // 1. Generate a random seed for unique images and heavily enhance the prompt
+      const randomSeed = Math.floor(Math.random() * 999999);
+      const enhancedPrompt = encodeURIComponent(`${prompt}, high quality, highly detailed, 8k resolution, masterpiece, cinematic lighting`);
+      
+      // 2. Hit the free Pollinations endpoint (forcing the FLUX model and 1024x1024 HD resolution)
+      const modelUrl = `https://image.pollinations.ai/prompt/${enhancedPrompt}?width=1024&height=1024&model=flux&seed=${randomSeed}&nologo=true`;
 
-
-
-
-
-      const response = await fetch(modelUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.HF_TOKEN}`, 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          inputs: `${prompt}, high quality, highly detailed, 8k resolution, masterpiece`, 
-        })
-      });
+      // 3. Fetch the image directly
+      const response = await fetch(modelUrl);
 
       if (!response.ok) {
-        console.error('HF API Error:', await response.text());
         // Refund their daily use if the API failed
         userLimit.count -= 1;
         dailyImageLimits.set(userId, userLimit);
-        return interaction.editReply('⚠️ The image engine is currently warming up or overloaded. Please try again in about 30 seconds!');
+        return interaction.editReply('⚠️ The image engine is currently overloaded. Please try again!');
       }
 
-      // Download and attach the image
+      // 4. Grab the raw binary data and turn it into a Discord Attachment
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       const attachment = new AttachmentBuilder(buffer, { name: 'premium-image.png' });
 
       imagesGenerated++; // Update your global stats
 
-      // 4. Send the final image with a counter in the footer
+      // 5. Send the final image with a counter in the footer
       return interaction.editReply({
         embeds: [{
           title: '🎨 Premium AI Image',
           description: `**Prompt:** ${prompt}`,
           color: 0x9B59B6,
-          footer: { text: `Powered by Hugging Face • Daily Uses: ${userLimit.count}/5` }
+          footer: { text: `Powered by FLUX HD • Daily Uses: ${userLimit.count}/5` }
         }],
-        files: [attachment]
+        files: [attachment] // Attaches the downloaded image directly to Discord
       });
 
     } catch (error) {
@@ -325,7 +316,7 @@ client.on(Events.InteractionCreate, async interaction => {
       dailyImageLimits.set(userId, userLimit);
       return interaction.editReply('⚠️ Sorry, the image generation failed. Your daily use was refunded!');
     }
-  }
+
 
 
   // =========================
