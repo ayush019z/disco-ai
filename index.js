@@ -773,148 +773,167 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 
 
 
-// =========================
-  // /QUIZ (SLASH COMMAND WITH LEVELS)
-  // =========================
+  // --- /QUIZ ---
   if (interaction.commandName === 'quiz') {
     await interaction.deferReply();
     
-    const topic = interaction.options.getString('topic') || 'random trivia';
-    const difficulty = interaction.options.getString('difficulty') || 'medium';
+    const topic = interaction.options.getString('topic') || '';
+    const difficulty = interaction.options.getString('difficulty') || 'Easy';
 
-    // Difficulty color coding for the embed
     const difficultyColors = {
-      easy: 0x00FF88,   // Green
-      medium: 0xFFCC00, // Yellow
-      hard: 0xFF3344    // Red
+      easy: 0x00FF88,
+      medium: 0xFFCC00,
+      hard: 0xFF3344
     };
 
     try {
-                  
-      // 1. Ask Groq AI to generate a JSON quiz
-      const wildSeed = Math.floor(Math.random() * 9999999);
-      
-      // Build the memory string to ban old questions
-      const historyText = askedQuestions.length > 0 
-        ? `\n\nCRITICAL: DO NOT REPEAT OR REPHRASE ANY OF THESE PREVIOUS QUESTIONS:\n- ${askedQuestions.join('\n- ')}` 
-        : '';
+      let quizData = null;
 
-      const response = await ai.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the specified topic. 
-            CRITICAL RULES:
-            1. You MUST include the correct answer as one of the 4 items in the "options" array.
-            2. The "answer" field MUST be the exact matching string from the "options" array.
-            3. Pick a completely random, obscure, and unique sub-category or fact within the topic.
-            Return ONLY a raw JSON object with no markdown formatting. Structure: {"question": "...", "options": ["Option1", "Option2", "Option3", "Option4"], "answer": "Exact matching string"}`
-          },
-          {
-            role: 'user',
-            content: `Topic: ${topic}\nDifficulty Level: ${difficulty}\nRandom Seed: ${Date.now()}-${wildSeed}${historyText}`
-          }
-        ],
-        temperature: 0.95,
-        presence_penalty: 0.8,
-        frequency_penalty: 0.8
+      // 1. TRY FETCHING FROM QUIZAPI.IO FIRST
+      // QuizAPI expects difficulty capitalized (Easy, Medium, Hard)
+      const formattedDiff = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+      let apiUrl = `https://quizapi.io/api/v1/questions?limit=1&difficulty=${formattedDiff}`;
+      
+      // If user provided a specific topic, try to use it as a tag
+      if (topic && topic.toLowerCase() !== 'random trivia') {
+        apiUrl += `&tags=${encodeURIComponent(topic)}`;
+      }
+
+      // Hit QuizAPI using the standard X-Api-Key header
+      const quizApiResponse = await fetch(apiUrl, {
+        headers: { 'X-Api-Key': process.env.QUIZAPI_KEY } 
       });
 
-      // 2. Parse the AI's JSON response
-      let jsonString = response.choices[0].message.content.trim();
-      
-      if (jsonString.startsWith('```json')) {
-        jsonString = jsonString.replace(/```json\n?/, '').replace(/```/, '');
-      }
-      
-      const quizData = JSON.parse(jsonString);
+      if (quizApiResponse.ok) {
+        const data = await quizApiResponse.json();
+        
+        // If QuizAPI found a question, map it to our bot's format
+        if (data && data.length > 0 && !data.error) {
+          const q = data[0];
+          const availableOptions = [];
+          let correctOptionString = "";
 
-      // --- SAVE TO MEMORY ---
-      // Add the brand new question to the memory array
+          // QuizAPI gives answers as { answer_a: "...", answer_b: "...", ... }
+          // and correct_answers as { answer_a_correct: "true", ... }
+          for (const [key, value] of Object.entries(q.answers)) {
+            if (value !== null) {
+              availableOptions.push(value);
+              if (q.correct_answers[`${key}_correct`] === "true") {
+                correctOptionString = value;
+              }
+            }
+          }
+
+          quizData = {
+            question: q.question,
+            options: availableOptions,
+            answer: correctOptionString
+          };
+        }
+      }
+
+      // 2. FALLBACK TO GROQ IF QUIZAPI FAILED OR DIDN'T HAVE THE TOPIC
+      if (!quizData) {
+        console.log("QuizAPI didn't have this topic, falling back to Groq AI...");
+        const wildSeed = Math.floor(Math.random() * 9999999);
+        const historyText = askedQuestions.length > 0 
+          ? `\n\nCRITICAL: DO NOT REPEAT OR REPHRASE ANY OF THESE PREVIOUS QUESTIONS:\n- ${askedQuestions.join('\n- ')}` 
+          : '';
+
+        const groqResponse = await ai.chat.completions.create({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the specified topic. 
+              CRITICAL RULES:
+              1. You MUST include the correct answer as one of the 4 items in the "options" array.
+              2. The "answer" field MUST be the exact matching string from the "options" array.
+              3. Pick a completely random, obscure, and unique sub-category or fact within the topic.
+              Return ONLY a raw JSON object with no markdown formatting. Structure: {"question": "...", "options": ["Option1", "Option2", "Option3", "Option4"], "answer": "Exact matching string"}`
+            },
+            {
+              role: 'user',
+              content: `Topic: ${topic || 'Random'}\nDifficulty Level: ${difficulty}\nRandom Seed: ${Date.now()}-${wildSeed}${historyText}`
+            }
+          ],
+          temperature: 0.95
+        });
+
+        let jsonString = groqResponse.choices[0].message.content.trim();
+        if (jsonString.startsWith('```json')) {
+          jsonString = jsonString.replace(/```json\n?/, '').replace(/```/, '');
+        }
+        quizData = JSON.parse(jsonString);
+      }
+
+      // 3. SAVE TO MEMORY SO WE DON'T REPEAT
       askedQuestions.push(quizData.question);
-      
-      // Keep the memory from getting too big (forgets the oldest question after 20 rounds)
       if (askedQuestions.length > 20) {
         askedQuestions.shift(); 
       }
 
-      // 3. Build options list
+      // 4. BUILD OPTIONS LIST & FIND CORRECT INDEX
       const optionsText = quizData.options.map((opt, i) => `**${i + 1}.** ${opt}`).join('\n\n');
       const correctIndex = quizData.options.indexOf(quizData.answer) + 1;
 
-            // 4. Build the Interactive Buttons
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('ans_1').setLabel('1').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('ans_2').setLabel('2').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('ans_3').setLabel('3').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('ans_4').setLabel('4').setStyle(ButtonStyle.Primary)
-      );
+      // 5. DYNAMICALLY BUILD BUTTONS 
+      // (QuizAPI sometimes returns 2, 4, or 6 options! We dynamically build the buttons so it never breaks).
+      const row = new ActionRowBuilder();
+      quizData.options.forEach((opt, index) => {
+        // Discord only allows 5 buttons per row max. We cap it at 5 just in case.
+        if (index < 5) {
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId(`ans_${index + 1}`)
+              .setLabel(`${index + 1}`)
+              .setStyle(ButtonStyle.Primary)
+          );
+        }
+      });
 
-      // 5. Send the embed AND the buttons, saving it to a variable
+      // 6. SEND THE EMBED AND BUTTONS
       const quizMessage = await interaction.editReply({
         embeds: [{
           title: `🧠 AI Quiz Time (${difficulty.toUpperCase()})`,
           description: `**${quizData.question}**\n\n${optionsText}\n\n*Click a button below within 20 seconds!*`,
-          color: difficultyColors[difficulty] || 0x00FFAA,
-          footer: { text: `Topic: ${topic.toUpperCase()} • Level: ${difficulty.toUpperCase()}` }
+          color: difficultyColors[difficulty.toLowerCase()] || 0x00FFAA,
+          footer: { text: `Topic: ${topic ? topic.toUpperCase() : 'RANDOM'} • Level: ${difficulty.toUpperCase()}` }
         }],
-        components: [row] // <--- Attaches the buttons!
+        components: [row]
       });
 
-            // 6. Create a Button Collector (Removed max: 1 so it runs for the full 20s)
+      // 7. HANDLE BUTTON CLICKS AND SCORING
       const collector = quizMessage.createMessageComponentCollector({ time: 20000 });
-      
-      // Map to store who played and what they guessed
       const players = new Map(); 
+
       collector.on('collect', async (i) => {
         const guess = parseInt(i.customId.split('_')[1]);
 
-        // Check if the user has already made a guess
         if (players.has(i.user.id)) {
           const previousGuess = players.get(i.user.id).guess;
-          
-          // If they clicked the exact same button again
           if (previousGuess === guess) {
-            return i.reply({ 
-              content: `⚠️ You already locked in **Option ${guess}**!`, 
-              flags: MessageFlags.Ephemeral 
-            });
+            return i.reply({ content: `⚠️ You already locked in **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
           } else {
-            // Update their guess in the Map
             players.set(i.user.id, { user: i.user, guess: guess });
-            return i.reply({ 
-              content: `🔄 You changed your guess to **Option ${guess}**!`, 
-              flags: MessageFlags.Ephemeral 
-            });
+            return i.reply({ content: `🔄 You changed your guess to **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
           }
         }
 
-        // If this is their first time guessing
         players.set(i.user.id, { user: i.user, guess: guess });
-        
-        await i.reply({ 
-          content: `✅ Your guess (**Option ${guess}**) is locked in! You can click another button to change it before time is up.`, 
-          flags: MessageFlags.Ephemeral 
-        });
+        await i.reply({ content: `✅ Your guess (**Option ${guess}**) is locked in!`, flags: MessageFlags.Ephemeral });
       });
 
-     
-
-      collector.on('end', async collected => {
-        // Disable the buttons when time is up
+      collector.on('end', async () => {
         const disabledRow = new ActionRowBuilder().addComponents(
           row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
         );
-        
         interaction.editReply({ components: [disabledRow] }).catch(() => {});
 
-        // If literally nobody clicked a button
         if (players.size === 0) {
           return interaction.followUp(`⏰ Time's up! Nobody clicked an answer. The answer was **${quizData.answer}**.`);
         }
 
-        // Build the winner and loser lists
         const winners = [];
         const losers = [];
 
@@ -926,27 +945,21 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           }
         });
 
-        // Format the final announcement
-        let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}** (${quizData.answer}).\n\n`;
-        
-        if (winners.length > 0) {
-          resultText += `🎉 **Correct:** ${winners.join(', ')}\n`;
-        } else {
-          resultText += `❌ **Correct:** Nobody got it right!\n`;
-        }
+        let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}**.\n\n`;
+        if (winners.length > 0) resultText += `🎉 **Correct:** ${winners.join(', ')}\n`;
+        else resultText += `❌ **Correct:** Nobody got it right!\n`;
 
-        if (losers.length > 0) {
-          resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
-        }
+        if (losers.length > 0) resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
 
         interaction.followUp(resultText);
       });
 
     } catch (error) {
       console.error('Quiz Error:', error);
-      return interaction.editReply('⚠️ Could not generate the quiz. The AI might have been confused!');
+      return interaction.editReply('⚠️ Could not generate the quiz. The system might be overloaded!');
     }
   }
+
 }); // <--- THIS BRACKET ENDS THE INTERACTION CREATE EVENT
 
 
