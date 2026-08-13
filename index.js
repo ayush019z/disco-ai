@@ -274,8 +274,9 @@ client.on(Events.InteractionCreate, async interaction => {
     await interaction.deferReply();
 
     try {
-                        // Using Stable Diffusion 1.5 (Permanently supported on the free tier)
-      const modelUrl = 'https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-2-1';
+                              // Using FLUX.1-schnell (Officially supported on the free tier)
+      const modelUrl = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
+
 
 
 
