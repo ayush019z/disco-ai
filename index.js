@@ -783,7 +783,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 }
 
   
-        // --- /BATTLE (ADVANCED PVP WITH MODALS & ROUNDS) ---
+   // --- /BATTLE (ADVANCED PVP WITH MODALS & ROUNDS) ---
   if (interaction.commandName === 'battle') {
     const target = interaction.options.getUser('target');
     const character1 = interaction.options.getString('character');
@@ -807,7 +807,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         color: 0xFF3333
       }],
       components: [actionRow],
-      fetchReply: true // We need this to attach a collector directly to the reply
+      fetchReply: true 
     });
 
     try {
@@ -834,27 +834,37 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       const modalSubmit = await btnInteraction.awaitModalSubmit({ filter: i => i.customId === 'char_modal' && i.user.id === target.id, time: 60000 });
       const character2 = modalSubmit.fields.getTextInputValue('char_input');
 
-      // Transform the original message into a loading screen
       await modalSubmit.update({
         content: `🔥 **${character1}** VS **${character2}**!\n\n*Analyzing fighters and generating combat moves...*`,
         embeds: [],
         components: []
       });
 
-      // --- HELPER FUNCTION: GROQ MOVE GENERATOR ---
+      // --- 🛡️ BULLETPROOF HELPER FUNCTION ---
       const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
-          ? `Generate exactly 3 ULTIMATE, HIGHLY OFFENSIVE canonical combat moves for each character. NO dodging or blocking. Keep names under 25 chars. You must output valid JSON. Format: {"c1_moves": [".."], "c2_moves": [".."]}`
-          : `Generate exactly 3 canonical combat moves for each character. Mix attacks and defensive/evasive moves. Keep names under 25 chars. You must output valid JSON. Format: {"c1_desc": "1 sentence lore", "c1_moves": [".."], "c2_desc": "1 sentence lore", "c2_moves": [".."]}`;
+          ? `Generate exactly 3 ULTIMATE OFFENSIVE canonical combat moves for each character. NO dodging or blocking. Keep names under 25 chars. Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move1", "Move2", "Move3"], "c2_moves": ["Move1", "Move2", "Move3"]}`
+          : `Generate exactly 3 canonical combat moves for each character. Mix attacks and defensive moves. Keep names under 25 chars. Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "Lore", "c1_moves": ["Move1", "Move2", "Move3"], "c2_desc": "Lore", "c2_moves": ["Move1", "Move2", "Move3"]}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: `${c1} VS ${c2}` }],
           temperature: 0.8,
-          response_format: { type: 'json_object' } // <--- Forces strict JSON to prevent crashes
+          response_format: { type: 'json_object' }
         });
         
-        return JSON.parse(res.choices[0].message.content.trim());
+        let jsonStr = res.choices[0].message.content.trim();
+        // Force strip any markdown code blocks the AI might sneak in
+        jsonStr = jsonStr.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim();
+        const data = JSON.parse(jsonStr);
+
+        // Fallbacks so if the AI renames the keys, the game still works perfectly
+        return {
+          c1_desc: data.c1_desc || "A powerful combatant.",
+          c1_moves: Array.isArray(data.c1_moves) ? data.c1_moves : ["Heavy Strike", "Quick Dodge", "Ultimate Attack"],
+          c2_desc: data.c2_desc || "A mysterious challenger.",
+          c2_moves: Array.isArray(data.c2_moves) ? data.c2_moves : ["Swift Strike", "Tactical Block", "Finishing Blow"]
+        };
       };
 
       // 5. Generate Round 1 Moves
@@ -869,7 +879,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       while (round <= 2 && !winner) {
         // --- PLAYER 1 TURN ---
         const p1Row = new ActionRowBuilder().addComponents(
-          movesData.c1_moves.map((m, i) => new ButtonBuilder().setCustomId(`p1m_${i}`).setLabel(m).setStyle(ButtonStyle.Primary))
+          // Slice guarantees only 3 buttons max, substring ensures they don't break Discord limits
+          movesData.c1_moves.slice(0, 3).map((m, i) => new ButtonBuilder().setCustomId(`p1m_${i}`).setLabel(String(m).substring(0, 75)).setStyle(ButtonStyle.Primary))
         );
         
         const p1Msg = await interaction.channel.send({
@@ -882,16 +893,15 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           components: [p1Row]
         });
 
-        // Wait for P1 to click
         const p1Click = await p1Msg.awaitMessageComponent({ filter: i => i.user.id === player1.id, time: 60000 });
         p1Move = movesData.c1_moves[parseInt(p1Click.customId.split('_')[1])];
         
         await p1Click.reply({ content: `🤫 Move locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
-        await p1Msg.delete(); // Delete P1's menu
+        await p1Msg.delete(); 
 
         // --- PLAYER 2 TURN ---
         const p2Row = new ActionRowBuilder().addComponents(
-          movesData.c2_moves.map((m, i) => new ButtonBuilder().setCustomId(`p2m_${i}`).setLabel(m).setStyle(ButtonStyle.Danger))
+          movesData.c2_moves.slice(0, 3).map((m, i) => new ButtonBuilder().setCustomId(`p2m_${i}`).setLabel(String(m).substring(0, 75)).setStyle(ButtonStyle.Danger))
         );
         
         const p2Msg = await interaction.channel.send({
@@ -904,34 +914,34 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           components: [p2Row]
         });
 
-        // Wait for P2 to click
         const p2Click = await p2Msg.awaitMessageComponent({ filter: i => i.user.id === target.id, time: 60000 });
         p2Move = movesData.c2_moves[parseInt(p2Click.customId.split('_')[1])];
         
         await p2Click.reply({ content: `🤫 Move locked in: **${p2Move}**!`, flags: MessageFlags.Ephemeral });
-        await p2Msg.delete(); // Delete P2's menu
+        await p2Msg.delete(); 
 
         // --- RESOLVE THE ROUND ---
         const clashMsg = await interaction.channel.send(`🔥 **${character1}** used *${p1Move}*!\n🔥 **${character2}** used *${p2Move}*!\n\n*Simulating clash...*`);
 
         const evalPrompt = round === 1 
           ? `Evaluate this clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. 
-          CRITICAL RULES FOR ROUND 1:
+          CRITICAL RULES:
           - If BOTH characters use defensive/evasive moves, it is a stall.
           - If one character attacks, but the other successfully blocks/dodges WITHOUT dealing counter-damage, it is a stall.
-          - Only declare a winner if an attack lands a decisive finishing blow, or if a counter-attack is lethal.
-          You must output valid JSON. Format: {"is_stall": boolean, "narrative": "A fast-paced, punchy 2-3 sentence fight scene.", "winner": "Name or null"}`
-          
-          : `Evaluate this final clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. Declare a definitive winner based on power levels and how the moves interact. You must output valid JSON. Format: {"is_stall": false, "narrative": "A fast-paced, punchy 2-3 sentence final clash.", "winner": "Name"}`;
+          - Only declare a winner if an attack lands a decisive blow.
+          You must output valid JSON. Format: {"is_stall": boolean, "narrative": "A fast-paced 2-3 sentence fight scene.", "winner": "Name or null"}`
+          : `Evaluate this final clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. Declare a definitive winner. You must output valid JSON. Format: {"is_stall": false, "narrative": "A fast-paced 2-3 sentence final clash.", "winner": "Name"}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: evalPrompt }],
           temperature: 0.8,
-          response_format: { type: 'json_object' } // <--- Forces strict JSON to prevent crashes
+          response_format: { type: 'json_object' } 
         });
         
-        const evalData = JSON.parse(res.choices[0].message.content.trim());
+        let evalJsonStr = res.choices[0].message.content.trim();
+        evalJsonStr = evalJsonStr.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim(); // Strip markdown
+        const evalData = JSON.parse(evalJsonStr);
 
         await clashMsg.delete();
 
@@ -944,12 +954,12 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
               color: 0xFFFF00
             }]
           });
-          movesData = await generateMoves(character1, character2, true); // Force offensive moves
+          movesData = await generateMoves(character1, character2, true);
           round++;
         } else {
           winner = evalData.winner;
           finalNarrative = evalData.narrative;
-          break; // End the loop!
+          break; 
         }
       }
 
@@ -973,6 +983,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       }
     }
   }
+
   
 
 
