@@ -989,26 +989,6 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-    // =========================
-  // FIRST-TIME GREETING (SELF-DESTRUCTING)
-  // =========================
-  if (
-    (message.mentions.has(client.user) || message.content.startsWith('!image ')) &&
-    !greetedUsers.has(message.author.id)
-  ) {
-    greetedUsers.add(message.author.id);
-
-    // Save the sent message to the 'greeting' variable
-    const greeting = await message.reply(
-      `👋 Hi! I’m **AI Bot**\n\n💬 Mention me to ask anything\n🖼️ \`!image prompt\` — Generate an image\n📄 Reply with \`!sum\` — Summarize a message\n🏏 \`!superover\` — Play Super Over\n⚔️ \`!batbattle\` — 15s Multiplayer Bat Battle\n❓ \`/help\` — View all commands\nℹ️ \`/info\` — Bot information\n📊 \`/stats\` — Bot statistics\n\n🧠 I remember our conversation for **2 hours**.`
-    );
-
-    // Tell the bot to delete the greeting after 15 seconds (15000 ms)
-    setTimeout(() => {
-      greeting.delete().catch(() => {}); // The catch prevents a crash if a server admin manually deleted it first!
-    }, 8000);
-  }
-
 
   // =========================
   // SUMMARY
