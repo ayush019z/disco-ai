@@ -60,6 +60,21 @@ const commands = [
         .setRequired(true)
     ),
 
+//// BATTLE ///
+new SlashCommandBuilder()
+    .setName('battle')
+    .setDescription('Challenge another user to an epic fiction battle!')
+    .addUserOption(option => 
+      option.setName('target')
+        .setDescription('The user you want to challenge')
+        .setRequired(true))
+    .addStringOption(option => 
+      option.setName('character')
+        .setDescription('The fictional character you will fight as')
+        .setRequired(true)),
+      
+       // //
+
 
 //// ADMIN////
 
