@@ -41,8 +41,9 @@ const ai = new OpenAI({
 // =========================
 const expAi = new OpenAI({
   apiKey: process.env.GEMINI_API_KEY,
-  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/'
+  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai'
 });
+
 
 // =========================
 // BLOCKED WORDS
@@ -441,30 +442,34 @@ if (interaction.commandName === 'admin') {
   }
 }
 
-    // --- /ASK ---
+      // --- /ASK ---
   if (interaction.commandName === 'ask') {
     const question = interaction.options.getString('question');
     const userId = interaction.user.id;
 
+    if (!process.env.GEMINI_API_KEY) {
+      return interaction.reply({
+        content: '⚠️ `GEMINI_API_KEY` is missing in environment variables.',
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
     await interaction.deferReply();
 
     try {
-      // Get previous history
       let history = askHistory.get(userId) || [];
 
-      // Add current question
       history.push({
         role: 'user',
         content: question
       });
 
-      // 🧪 USING GEMINI FLASH MODEL 🧪
       const response = await expAi.chat.completions.create({
         model: 'gemini-2.5-flash', 
         messages: [
           {
             role: 'system',
-            content: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally and remember previous messages from this user.'
+            content: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally.'
           },
           ...history
         ],
@@ -474,20 +479,17 @@ if (interaction.commandName === 'admin') {
 
       const answer = response.choices?.[0]?.message?.content || '⚠️ I could not generate a response.';
 
-      // Save assistant reply
       history.push({
         role: 'assistant',
         content: answer
       });
 
-      // Keep only last 20 messages to prevent hitting memory limits
       if (history.length > 20) {
         history = history.slice(-20);
       }
 
       askHistory.set(userId, history);
 
-      // Discord message limit is 2000 characters
       await interaction.editReply(answer.slice(0, 2000));
 
     } catch (err) {
@@ -495,6 +497,7 @@ if (interaction.commandName === 'admin') {
       await interaction.editReply('⚠️ Failed to contact the experimental AI service.');
     }
   }
+
 
 
 
