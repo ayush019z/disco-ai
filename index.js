@@ -783,27 +783,30 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 }
 
   
-  // --- /BATTLE (ADVANCED PVP WITH MODALS & ROUNDS) ---
+  // --- /BATTLE (OPEN LOBBY OR DIRECT PVP) ---
   if (interaction.commandName === 'battle') {
     const target = interaction.options.getUser('target');
     const character1 = interaction.options.getString('character');
     const player1 = interaction.user;
 
-    // Basic checks
-    if (target.bot) return interaction.reply({ content: "🤖 Bots lack the imagination for this fight!", flags: MessageFlags.Ephemeral });
-    if (target.id === player1.id) return interaction.reply({ content: "⚔️ You can't fight yourself!", flags: MessageFlags.Ephemeral });
+    if (target && target.bot) return interaction.reply({ content: "🤖 Bots lack the imagination for this fight!", flags: MessageFlags.Ephemeral });
+    if (target && target.id === player1.id) return interaction.reply({ content: "⚔️ You can't fight yourself!", flags: MessageFlags.Ephemeral });
 
     // 1. Send Accept/Deny Challenge
     const actionRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('accept_battle').setLabel('Accept').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('deny_battle').setLabel('Deny').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('deny_battle').setLabel('Deny/Cancel').setStyle(ButtonStyle.Danger)
     );
 
+    const challengeText = target 
+      ? `<@${target.id}>` 
+      : `📢 **OPEN BATTLE LOBBY!** Anyone can accept this challenge!`;
+
     const challengeMsg = await interaction.reply({
-      content: `<@${target.id}>`,
+      content: challengeText,
       embeds: [{
         title: '⚔️ FICTION BATTLE CHALLENGE!',
-        description: `<@${player1.id}> has challenged you using **${character1}**!\n\nDo you accept? You have **60 seconds**!`,
+        description: `<@${player1.id}> has challenged ${target ? `<@${target.id}>` : 'anyone'} using **${character1}**!\n\nClick **Accept** to join! You have **60 seconds**!`,
         color: 0xFF3333
       }],
       components: [actionRow],
@@ -812,11 +815,24 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 
     try {
       // 2. Wait for Accept/Deny Button Click
-      const btnInteraction = await challengeMsg.awaitMessageComponent({ filter: i => i.user.id === target.id, time: 60000 });
+      const filter = i => {
+        if (target) {
+          return i.user.id === target.id;
+        } else {
+          return i.user.id !== player1.id;
+        }
+      };
+
+      const btnInteraction = await challengeMsg.awaitMessageComponent({ filter, time: 60000 });
 
       if (btnInteraction.customId === 'deny_battle') {
-        return btnInteraction.update({ content: `🏃‍♂️ <@${target.id}> denied the challenge!`, embeds: [], components: [] });
+        if (target && btnInteraction.user.id !== target.id) {
+          return btnInteraction.reply({ content: "⚠️ Only the challenged user can cancel this!", flags: MessageFlags.Ephemeral });
+        }
+        return btnInteraction.update({ content: `🏃‍♂️ The battle challenge was cancelled.`, embeds: [], components: [] });
       }
+
+      const player2 = btnInteraction.user;
 
       // 3. Show a Popup Modal for Character Input
       const modal = new ModalBuilder().setCustomId('char_modal').setTitle('Choose Your Fighter');
@@ -831,16 +847,16 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       await btnInteraction.showModal(modal);
 
       // 4. Wait for the Modal to be submitted
-      const modalSubmit = await btnInteraction.awaitModalSubmit({ filter: i => i.customId === 'char_modal' && i.user.id === target.id, time: 60000 });
+      const modalSubmit = await btnInteraction.awaitModalSubmit({ filter: i => i.customId === 'char_modal' && i.user.id === player2.id, time: 60000 });
       const character2 = modalSubmit.fields.getTextInputValue('char_input');
 
       await modalSubmit.update({
-        content: `🔥 **${character1}** VS **${character2}**!\n\n*Analyzing fighters and generating combat moves...*`,
+        content: `🔥 **${character1}** (<@${player1.id}>) VS **${character2}** (<@${player2.id}>)!\n\n*Analyzing fighters and generating combat moves...*`,
         embeds: [],
         components: []
       });
 
-            // --- 🛡️ HELPER FUNCTION: ULTRA-SHORT MOVE GENERATOR ---
+      // --- 🛡️ HELPER FUNCTION: ULTRA-SHORT MOVE GENERATOR ---
       const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
           ? `Generate exactly 3 ULTIMATE OFFENSIVE canonical attacks. NO dodging/blocking. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Spirit Bomb", "Chidori"). If you do not recognize a character, INVENT cool, thematic offensive moves based on their name. Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move1", "Move2", "Move3"], "c2_moves": ["Move1", "Move2", "Move3"]}`
@@ -865,9 +881,11 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         };
       };
 
-
       // 5. Generate Round 1 Moves
       let movesData = await generateMoves(character1, character2, false);
+
+      // --- SAFE CHANNEL HELPER ---
+      const activeChannel = interaction.channel || await interaction.guild.channels.fetch(interaction.channelId);
 
       // --- THE BATTLE LOOP ---
       let round = 1;
@@ -876,20 +894,17 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       let p1Move, p2Move;
 
       while (round <= 2 && !winner) {
-        // --- PLAYER 1 TURN (Classic 3-Button Row) ---
+        // --- PLAYER 1 TURN ---
         const p1Row = new ActionRowBuilder().addComponents(
           movesData.c1_moves.slice(0, 3).map((m, i) => 
             new ButtonBuilder()
               .setCustomId(`p1m_${i}`)
-              .setLabel(String(m).substring(0, 14)) // Force cap at 14 chars to prevent crashing
+              .setLabel(String(m).substring(0, 14))
               .setStyle(ButtonStyle.Primary)
           )
         );
         
-                // Safely get or fetch the channel even if interaction.channel is null
-        const channel = interaction.channel || await interaction.guild.channels.fetch(interaction.channelId);
-
-        const p1Msg = await channel.send({
+        const p1Msg = await activeChannel.send({
           content: `<@${player1.id}>`,
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character1.toUpperCase()}'S TURN`,
@@ -901,14 +916,13 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           components: [p1Row]
         });
 
-
         const p1Click = await p1Msg.awaitMessageComponent({ filter: i => i.user.id === player1.id, time: 60000 });
         p1Move = movesData.c1_moves[parseInt(p1Click.customId.split('_')[1])];
         
         await p1Click.reply({ content: `🤫 Locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
         await p1Msg.delete();
 
-        // --- PLAYER 2 TURN (Classic 3-Button Row) ---
+        // --- PLAYER 2 TURN ---
         const p2Row = new ActionRowBuilder().addComponents(
           movesData.c2_moves.slice(0, 3).map((m, i) => 
             new ButtonBuilder()
@@ -918,9 +932,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           )
         );
         
-                const channelP2 = interaction.channel || await interaction.guild.channels.fetch(interaction.channelId);
-
-        const p2Msg = await channelP2.send({
+        const p2Msg = await activeChannel.send({
           content: `<@${player2.id}>`,
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character2.toUpperCase()}'S TURN`,
@@ -932,15 +944,14 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           components: [p2Row]
         });
 
-
-        const p2Click = await p2Msg.awaitMessageComponent({ filter: i => i.user.id === target.id, time: 60000 });
+        const p2Click = await p2Msg.awaitMessageComponent({ filter: i => i.user.id === player2.id, time: 60000 });
         p2Move = movesData.c2_moves[parseInt(p2Click.customId.split('_')[1])];
         
         await p2Click.reply({ content: `🤫 Locked in: **${p2Move}**!`, flags: MessageFlags.Ephemeral });
         await p2Msg.delete();
 
         // --- RESOLVE THE ROUND ---
-        const clashMsg = await interaction.channel.send(`🔥 **${character1}** used *${p1Move}*!\n🔥 **${character2}** used *${p2Move}*!\n\n*Simulating clash...*`);
+        const clashMsg = await activeChannel.send(`🔥 **${character1}** used *${p1Move}*!\n🔥 **${character2}** used *${p2Move}*!\n\n*Simulating clash...*`);
 
         const evalPrompt = round === 1 
           ? `Evaluate this clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. 
@@ -965,7 +976,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         await clashMsg.delete();
 
         if (evalData.is_stall && round === 1) {
-          await interaction.channel.send({
+          await activeChannel.send({
             embeds: [{
               title: `🛡️ ROUND 1 DRAW!`,
               description: `${evalData.narrative}\n\n**Both fighters stalled! Proceeding to SUDDEN DEATH ROUND 2!**`,
@@ -982,8 +993,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       }
 
       // --- FINAL WINNER ANNOUNCEMENT ---
-      await interaction.channel.send({
-        content: `🏆 <@${player1.id}> ⚔️ <@${target.id}>`,
+      await activeChannel.send({
+        content: `🏆 <@${player1.id}> ⚔️ <@${player2.id}>`,
         embeds: [{
           title: `⚔️ BATTLE CONCLUDED!`,
           description: `${finalNarrative}\n\n🏆 **WINNER: ${winner ? winner.toUpperCase() : 'DRAW'}**`,
@@ -995,12 +1006,15 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
     } catch (error) {
       console.error('Battle Error:', error);
       if (error.code === 'InteractionCollectorError') {
-        interaction.channel.send(`⏳ Time's up! Someone took too long to respond. The battle has been cancelled.`);
+        const activeChannel = interaction.channel || await interaction.guild.channels.fetch(interaction.channelId);
+        activeChannel.send(`⏳ Time's up! Someone took too long to respond. The battle has been cancelled.`);
       } else {
-        interaction.channel.send("⚠️ The simulation crashed! The combined power of these moves broke the server.");
+        const activeChannel = interaction.channel || await interaction.guild.channels.fetch(interaction.channelId);
+        activeChannel.send("⚠️ The simulation crashed! The combined power of these moves broke the server.");
       }
     }
   }
+
 
 
  
