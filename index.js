@@ -141,88 +141,76 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   
-     if (interaction.commandName === 'help') {
-  await interaction.reply({
-    embeds: [
-      {
-        title: '🤖 DoraBot Help Center',
-        description:
-          'Welcome to **DoraBot** 🩵\nYour Doraemon-inspired AI companion for chatting, images, quizzes, games, and magical adventures.',
-
-        color: 0x00BFFF,
-
-        thumbnail: {
-          url: client.user.displayAvatarURL()
-        },
-
-        fields: [
-          {
-            name: '🧠 AI & Memory',
-            value:
-              '`/ask chat question:<text>` — Chat with DoraBot\n' +
-              '`@DoraBot <message>` — Quick AI reply\n' +
-              '`@DoraBot forget everything i said` — Clear memory',
-
-            inline: false
+       if (interaction.commandName === 'help') {
+    await interaction.reply({
+      embeds: [
+        {
+          title: '🤖 DoraBot Help Center',
+          description:
+            'Welcome to **DoraBot** 🩵\nYour Doraemon-inspired AI companion for chatting, images, quizzes, games, and magical adventures.',
+          color: 0x00BFFF,
+          thumbnail: {
+            url: client.user.displayAvatarURL()
           },
-
-          {
-            name: '🎨 Image Generation',
-            value:
-              '`/image prompt:<text>` — Generate an AI image\n' +
-              '`!image <text>` — Quick image command',
-
-            inline: false
+          fields: [
+            {
+              name: '🧠 AI & Memory',
+              value:
+                '`/ask question:<text>` — Chat with DoraBot\n' +
+                '`@DoraBot <message>` — Quick AI reply\n' +
+                '`@DoraBot forget everything i said` — Clear memory',
+              inline: false
+            },
+            {
+              name: '🎨 Image Generation',
+              value:
+                '`/image prompt:<text>` — Generate an AI image\n' +
+                '`!image <text>` — Quick image command',
+              inline: false
+            },
+            {
+              name: '📄 Utilities',
+              value:
+                '`!sum` — Summarize a replied message\n' +
+                '`/stats` — Bot statistics\n' +
+                '`/info` — Bot information',
+              inline: false
+            },
+            {
+              name: '🎮 Games',
+              value:
+                '`!superover` — Solo cricket challenge\n' +
+                '`!batbattle` — Multiplayer batting battle\n' +
+                '`!scramble` — Word scramble race\n' +
+                '`/quiz` — Interactive Quiz with Topic\n' +
+                '`/battle` — Challenge a friend to an epic fiction battle!',
+              inline: false
+            },
+            {
+              name: '🚪 Doraemon Adventures',
+              value:
+                '`/adventure` — Play a Doraemon-style interactive adventure\n' +
+                'Use gadgets, travel through time, and explore magical stories with Doraemon!',
+              inline: false
+            },
+            {
+              name: '😂 Fun & Pranks',
+              value:
+                '`/wanted` — Create a funny wanted poster (Slash Command)\n' +
+                '`!wanted @user` — Quick wanted poster\n' +
+                '`!wanted gs @user` — Grayscale wanted poster',
+              inline: false
+            }
+          ],
+          footer: {
+            text: 'Made with 🩵 by Ayush • DoraBot'
           },
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+  }
 
-          {
-            name: '📄 Utilities',
-            value:
-              '`!sum` — Summarize a replied message\n' +
-              '`/stats` — Bot statistics\n' +
-              '`/info` — Bot information',
-
-            inline: false
-          },
-
-          {
-            name: '🎮 Games',
-            value:
-              '`!superover` — Solo cricket challenge\n' +
-              '`!batbattle` — Multiplayer batting battle\n' +
-              '`!scramble` — Word scramble race' +
-              '`/quiz` - Interactive Quiz with Topic',
-
-            inline: false
-          },
-
-          {
-            name: '🚪 Doraemon Adventures',
-            value:
-              '`/adventure` — Play a Doraemon-style interactive adventure\n' +
-              'Use gadgets, travel through time, and explore magical stories with Doraemon!',
-
-            inline: false
-          },
-
-          {
-            name: '😂 Fun & Pranks',
-            value:
-              '`/wanted` — Create a funny wanted poster',
-
-            inline: false
-          }
-        ],
-
-        footer: {
-          text: 'Made with 🩵 by Ayush • DoraBot'
-        },
-
-        timestamp: new Date().toISOString()
-      }
-    ]
-  });
-}
 
 
 
