@@ -812,16 +812,18 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       ? `<@${target.id}>` 
       : `📢 **OPEN BATTLE LOBBY!** Anyone can accept this challenge!`;
 
-    const challengeMsg = await interaction.reply({
+        await interaction.reply({
       content: challengeText,
       embeds: [{
         title: '⚔️ FICTION BATTLE CHALLENGE!',
         description: `<@${player1.id}> has challenged ${target ? `<@${target.id}>` : 'anyone'} using **${character1}**!\n\nClick **Accept** to join! You have **60 seconds**!`,
         color: 0xFF3333
       }],
-      components: [actionRow],
-      fetchReply: true 
+      components: [actionRow]
     });
+
+    const challengeMsg = await interaction.fetchReply();
+
 
     try {
       // 2. Wait for Accept/Deny Button Click
