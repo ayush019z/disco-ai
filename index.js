@@ -284,11 +284,28 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
 // --- /IMAGE ---
+// --- /IMAGE ---
 if (interaction.commandName === 'image') {
   const prompt = interaction.options.getString('prompt');
   const userId = interaction.user.id;
-  const today = new Date().toDateString();
 
+  // NSFW / blocked words filter
+  const blockedWords = [
+    'porn', 'nude', 'sex', 'hentai', 'onlyfans', 'rape',
+    'boobs', 'breasts', 'sexy', 'underwear', 'lingerie',
+    'bikini', 'topless', 'naked', 'nsfw', 'fetish'
+  ];
+
+  const lowerPrompt = prompt.toLowerCase();
+
+  if (blockedWords.some(word => lowerPrompt.includes(word))) {
+    return interaction.reply({
+      content: '🚫 NSFW or inappropriate image prompts are not allowed.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const today = new Date().toDateString();
   const isOwner = userId === OWNER_ID;
 
   // Get today's usage
@@ -336,7 +353,7 @@ if (interaction.commandName === 'image') {
       .setImage(imageUrl)
       .setFooter({
         text: isOwner
-          ? 'Developer 🩵 • Unlimited images'
+          ? '👑 Owner • Unlimited images'
           : `Remaining today: ${maxImages - userLimit.count}`
       });
 
@@ -356,6 +373,7 @@ if (interaction.commandName === 'image') {
     await interaction.editReply('⚠️ Failed to generate image.');
   }
 }
+
 
 // --- /ADMIN ---
 if (interaction.commandName === 'admin') {
