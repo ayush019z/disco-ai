@@ -1028,6 +1028,9 @@ if (!interaction.inGuild()) {
   }
 }
 
+}); // closes client.on('interactionCreate', ...)
+
+
 
 
 
