@@ -794,7 +794,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
   }
 }
 
-  // --- /BATTLE (ADVANCED PVP WITH MODALS & ROUNDS) ---
+  
+        // --- /BATTLE (ADVANCED PVP WITH MODALS & ROUNDS) ---
   if (interaction.commandName === 'battle') {
     const target = interaction.options.getUser('target');
     const character1 = interaction.options.getString('character');
@@ -855,18 +856,17 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       // --- HELPER FUNCTION: GROQ MOVE GENERATOR ---
       const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
-          ? `Generate exactly 3 ULTIMATE, HIGHLY OFFENSIVE canonical combat moves for each character. NO dodging or blocking. Keep names under 25 chars. Return ONLY raw JSON: {"c1_moves": [".."], "c2_moves": [".."]}`
-          : `Generate exactly 3 canonical combat moves for each character. Mix attacks and defensive/evasive moves. Keep names under 25 chars. Return ONLY raw JSON: {"c1_desc": "1 sentence lore", "c1_moves": [".."], "c2_desc": "1 sentence lore", "c2_moves": [".."]}`;
+          ? `Generate exactly 3 ULTIMATE, HIGHLY OFFENSIVE canonical combat moves for each character. NO dodging or blocking. Keep names under 25 chars. You must output valid JSON. Format: {"c1_moves": [".."], "c2_moves": [".."]}`
+          : `Generate exactly 3 canonical combat moves for each character. Mix attacks and defensive/evasive moves. Keep names under 25 chars. You must output valid JSON. Format: {"c1_desc": "1 sentence lore", "c1_moves": [".."], "c2_desc": "1 sentence lore", "c2_moves": [".."]}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: `${c1} VS ${c2}` }],
-          temperature: 0.8
+          temperature: 0.8,
+          response_format: { type: 'json_object' } // <--- Forces strict JSON to prevent crashes
         });
         
-        let jsonStr = res.choices[0].message.content.trim();
-        if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/```json\n?/, '').replace(/```/, '');
-        return JSON.parse(jsonStr);
+        return JSON.parse(res.choices[0].message.content.trim());
       };
 
       // 5. Generate Round 1 Moves
@@ -927,18 +927,23 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         const clashMsg = await interaction.channel.send(`🔥 **${character1}** used *${p1Move}*!\n🔥 **${character2}** used *${p2Move}*!\n\n*Simulating clash...*`);
 
         const evalPrompt = round === 1 
-          ? `Evaluate this clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. If BOTH moves are highly defensive, evasive, or non-lethal, it's a stall. If one or both attack, declare a winner based on power levels. Return ONLY raw JSON: {"is_stall": boolean, "narrative": "Epic 2-paragraph fight scene", "winner": "Name or null"}`
-          : `Evaluate this final clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. Declare a definitive winner based on power levels. Return ONLY raw JSON: {"is_stall": false, "narrative": "Epic 2-paragraph final clash", "winner": "Name"}`;
+          ? `Evaluate this clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. 
+          CRITICAL RULES FOR ROUND 1:
+          - If BOTH characters use defensive/evasive moves, it is a stall.
+          - If one character attacks, but the other successfully blocks/dodges WITHOUT dealing counter-damage, it is a stall.
+          - Only declare a winner if an attack lands a decisive finishing blow, or if a counter-attack is lethal.
+          You must output valid JSON. Format: {"is_stall": boolean, "narrative": "A fast-paced, punchy 2-3 sentence fight scene.", "winner": "Name or null"}`
+          
+          : `Evaluate this final clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. Declare a definitive winner based on power levels and how the moves interact. You must output valid JSON. Format: {"is_stall": false, "narrative": "A fast-paced, punchy 2-3 sentence final clash.", "winner": "Name"}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: evalPrompt }],
-          temperature: 0.8
+          temperature: 0.8,
+          response_format: { type: 'json_object' } // <--- Forces strict JSON to prevent crashes
         });
         
-        let evalJsonStr = res.choices[0].message.content.trim();
-        if (evalJsonStr.startsWith('```json')) evalJsonStr = evalJsonStr.replace(/```json\n?/, '').replace(/```/, '');
-        const evalData = JSON.parse(evalJsonStr);
+        const evalData = JSON.parse(res.choices[0].message.content.trim());
 
         await clashMsg.delete();
 
@@ -980,6 +985,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       }
     }
   }
+  
 
 
 
