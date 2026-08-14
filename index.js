@@ -308,7 +308,7 @@ if (!isOwner && blockedWords.some(word => lowerPrompt.includes(word))) {
 
 
   const today = new Date().toDateString();
-  const isOwner = userId === OWNER_ID;
+ 
 
   // Get today's usage
   let userLimit = dailyImageLimits.get(userId) || {
