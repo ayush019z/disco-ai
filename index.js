@@ -790,7 +790,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
   if (interaction.commandName === 'battle') {
     if (!interaction.inGuild()) {
       return interaction.reply({
-        content: '⚠️ This command can only be used inside a server.',
+        content: '⚠️ This command can only be used inside a server where DoraBot is active.',
         flags: MessageFlags.Ephemeral
       });
     }
