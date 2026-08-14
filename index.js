@@ -877,10 +877,15 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       let p1Move, p2Move;
 
       while (round <= 2 && !winner) {
-        // --- PLAYER 1 TURN ---
-        const p1Row = new ActionRowBuilder().addComponents(
-          // Slice guarantees only 3 buttons max, substring ensures they don't break Discord limits
-          movesData.c1_moves.slice(0, 3).map((m, i) => new ButtonBuilder().setCustomId(`p1m_${i}`).setLabel(String(m).substring(0, 75)).setStyle(ButtonStyle.Primary))
+                // --- PLAYER 1 TURN ---
+        // Create 1 ActionRow per button so text has full width on mobile
+        const p1Rows = movesData.c1_moves.slice(0, 3).map((m, i) => 
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`p1m_${i}`)
+              .setLabel(String(m).substring(0, 75))
+              .setStyle(ButtonStyle.Primary)
+          )
         );
         
         const p1Msg = await interaction.channel.send({
@@ -890,8 +895,9 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
             description: round === 1 ? `*${movesData.c1_desc}*\n\nSelect your move below! Your opponent won't see it.` : `**SUDDEN DEATH!** Select your ultimate attack!`,
             color: 0x3498DB
           }],
-          components: [p1Row]
+          components: p1Rows // Pass the array of rows
         });
+
 
         const p1Click = await p1Msg.awaitMessageComponent({ filter: i => i.user.id === player1.id, time: 60000 });
         p1Move = movesData.c1_moves[parseInt(p1Click.customId.split('_')[1])];
@@ -899,9 +905,15 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         await p1Click.reply({ content: `🤫 Move locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
         await p1Msg.delete(); 
 
-        // --- PLAYER 2 TURN ---
-        const p2Row = new ActionRowBuilder().addComponents(
-          movesData.c2_moves.slice(0, 3).map((m, i) => new ButtonBuilder().setCustomId(`p2m_${i}`).setLabel(String(m).substring(0, 75)).setStyle(ButtonStyle.Danger))
+                // --- PLAYER 2 TURN ---
+        // Create 1 ActionRow per button so text has full width on mobile
+        const p2Rows = movesData.c2_moves.slice(0, 3).map((m, i) => 
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`p2m_${i}`)
+              .setLabel(String(m).substring(0, 75))
+              .setStyle(ButtonStyle.Danger)
+          )
         );
         
         const p2Msg = await interaction.channel.send({
@@ -911,8 +923,9 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
             description: round === 1 ? `*${movesData.c2_desc}*\n\nSelect your move below! Your opponent won't see it.` : `**SUDDEN DEATH!** Select your ultimate attack!`,
             color: 0xE74C3C
           }],
-          components: [p2Row]
+          components: p2Rows // Pass the array of rows
         });
+
 
         const p2Click = await p2Msg.awaitMessageComponent({ filter: i => i.user.id === target.id, time: 60000 });
         p2Move = movesData.c2_moves[parseInt(p2Click.customId.split('_')[1])];
