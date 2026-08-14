@@ -886,7 +886,10 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           )
         );
         
-        const p1Msg = await interaction.channel.send({
+                // Safely get or fetch the channel even if interaction.channel is null
+        const channel = interaction.channel || await interaction.guild.channels.fetch(interaction.channelId);
+
+        const p1Msg = await channel.send({
           content: `<@${player1.id}>`,
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character1.toUpperCase()}'S TURN`,
@@ -897,6 +900,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           }],
           components: [p1Row]
         });
+
 
         const p1Click = await p1Msg.awaitMessageComponent({ filter: i => i.user.id === player1.id, time: 60000 });
         p1Move = movesData.c1_moves[parseInt(p1Click.customId.split('_')[1])];
@@ -914,8 +918,10 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           )
         );
         
-        const p2Msg = await interaction.channel.send({
-          content: `<@${target.id}>`,
+                const channelP2 = interaction.channel || await interaction.guild.channels.fetch(interaction.channelId);
+
+        const p2Msg = await channelP2.send({
+          content: `<@${player2.id}>`,
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character2.toUpperCase()}'S TURN`,
             description: round === 1 
@@ -925,6 +931,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           }],
           components: [p2Row]
         });
+
 
         const p2Click = await p2Msg.awaitMessageComponent({ filter: i => i.user.id === target.id, time: 60000 });
         p2Move = movesData.c2_moves[parseInt(p2Click.customId.split('_')[1])];
