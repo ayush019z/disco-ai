@@ -355,7 +355,7 @@ if (!isOwner && blockedWords.some(word => lowerPrompt.includes(word))) {
       .setImage(imageUrl)
       .setFooter({
         text: isOwner
-          ? '👑 Owner • Unlimited images'
+          ? '🩵 Developer • Unlimited images'
           : `Remaining today: ${maxImages - userLimit.count}`
       });
 
