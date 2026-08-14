@@ -69,7 +69,7 @@ const commands = [
         .setRequired(true)
     )),
 
-  // --- BATTLE (NOW SUPPORTS OPEN LOBBIES / OPTIONAL TARGET) ---
+  // --- BATTLE (SUPPORTS OPEN LOBBIES / OPTIONAL TARGET) ---
   enableDMs(new SlashCommandBuilder()
     .setName('battle')
     .setDescription('Challenge another user or open a public lobby for an epic fiction battle!')
