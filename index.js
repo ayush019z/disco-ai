@@ -783,7 +783,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 }
 
   
-   // --- /BATTLE (ADVANCED PVP WITH MODALS & ROUNDS) ---
+  // --- /BATTLE (ADVANCED PVP WITH MODALS & ROUNDS) ---
   if (interaction.commandName === 'battle') {
     const target = interaction.options.getUser('target');
     const character1 = interaction.options.getString('character');
@@ -843,8 +843,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       // --- 🛡️ BULLETPROOF HELPER FUNCTION ---
       const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
-          ? `Generate exactly 3 ULTIMATE OFFENSIVE canonical combat moves for each character. NO dodging or blocking. Keep names under 25 chars. Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move1", "Move2", "Move3"], "c2_moves": ["Move1", "Move2", "Move3"]}`
-          : `Generate exactly 3 canonical combat moves for each character. Mix attacks and defensive moves. Keep names under 25 chars. Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "Lore", "c1_moves": ["Move1", "Move2", "Move3"], "c2_desc": "Lore", "c2_moves": ["Move1", "Move2", "Move3"]}`;
+          ? `Generate exactly 3 iconic, full-name ULTIMATE OFFENSIVE canonical attacks for each character (e.g. "Super Kamehameha", "Final Flash", "Spirit Bomb"). NO basic attacks like "Punch" or "Kick". NO dodging/blocking. Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move 1", "Move 2", "Move 3"], "c2_moves": ["Move 1", "Move 2", "Move 3"]}`
+          : `Generate exactly 3 iconic, full-name canonical combat moves/techniques for each character (e.g. "Kamehameha", "Instant Transmission", "Solar Flare"). Do NOT use generic 1-word names like "Punch", "Block", or "Blast". Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "1-sentence lore", "c1_moves": ["Move 1", "Move 2", "Move 3"], "c2_desc": "1-sentence lore", "c2_moves": ["Move 1", "Move 2", "Move 3"]}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
@@ -854,16 +854,14 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         });
         
         let jsonStr = res.choices[0].message.content.trim();
-        // Force strip any markdown code blocks the AI might sneak in
         jsonStr = jsonStr.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim();
         const data = JSON.parse(jsonStr);
 
-        // Fallbacks so if the AI renames the keys, the game still works perfectly
         return {
-          c1_desc: data.c1_desc || "A powerful combatant.",
-          c1_moves: Array.isArray(data.c1_moves) ? data.c1_moves : ["Heavy Strike", "Quick Dodge", "Ultimate Attack"],
-          c2_desc: data.c2_desc || "A mysterious challenger.",
-          c2_moves: Array.isArray(data.c2_moves) ? data.c2_moves : ["Swift Strike", "Tactical Block", "Finishing Blow"]
+          c1_desc: data.c1_desc || "A formidable warrior.",
+          c1_moves: Array.isArray(data.c1_moves) ? data.c1_moves : ["Ultimate Strike", "Tactical Evasion", "Signature Blast"],
+          c2_desc: data.c2_desc || "A formidable challenger.",
+          c2_moves: Array.isArray(data.c2_moves) ? data.c2_moves : ["Ultimate Strike", "Tactical Evasion", "Signature Blast"]
         };
       };
 
@@ -877,13 +875,16 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       let p1Move, p2Move;
 
       while (round <= 2 && !winner) {
-                // --- PLAYER 1 TURN ---
-        // Create 1 ActionRow per button so text has full width on mobile
-        const p1Rows = movesData.c1_moves.slice(0, 3).map((m, i) => 
-          new ActionRowBuilder().addComponents(
+        // Build nicely formatted move lists for the embeds
+        const p1MoveList = movesData.c1_moves.slice(0, 3).map((m, i) => `**${i + 1}.** ${m}`).join('\n');
+        const p2MoveList = movesData.c2_moves.slice(0, 3).map((m, i) => `**${i + 1}.** ${m}`).join('\n');
+
+        // --- PLAYER 1 TURN (Single Horizontal Row) ---
+        const p1Row = new ActionRowBuilder().addComponents(
+          movesData.c1_moves.slice(0, 3).map((_, i) => 
             new ButtonBuilder()
               .setCustomId(`p1m_${i}`)
-              .setLabel(String(m).substring(0, 75))
+              .setLabel(`Option ${i + 1}`)
               .setStyle(ButtonStyle.Primary)
           )
         );
@@ -892,26 +893,26 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           content: `<@${player1.id}>`,
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character1.toUpperCase()}'S TURN`,
-            description: round === 1 ? `*${movesData.c1_desc}*\n\nSelect your move below! Your opponent won't see it.` : `**SUDDEN DEATH!** Select your ultimate attack!`,
+            description: round === 1 
+              ? `*${movesData.c1_desc}*\n\n${p1MoveList}\n\n*Click an option below! (Opponent cannot see your choice)*` 
+              : `**🔥 SUDDEN DEATH!** Select your ultimate attack:\n\n${p1MoveList}`,
             color: 0x3498DB
           }],
-          components: p1Rows // Pass the array of rows
+          components: [p1Row]
         });
-
 
         const p1Click = await p1Msg.awaitMessageComponent({ filter: i => i.user.id === player1.id, time: 60000 });
         p1Move = movesData.c1_moves[parseInt(p1Click.customId.split('_')[1])];
         
-        await p1Click.reply({ content: `🤫 Move locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
-        await p1Msg.delete(); 
+        await p1Click.reply({ content: `🤫 Locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
+        await p1Msg.delete();
 
-                // --- PLAYER 2 TURN ---
-        // Create 1 ActionRow per button so text has full width on mobile
-        const p2Rows = movesData.c2_moves.slice(0, 3).map((m, i) => 
-          new ActionRowBuilder().addComponents(
+        // --- PLAYER 2 TURN (Single Horizontal Row) ---
+        const p2Row = new ActionRowBuilder().addComponents(
+          movesData.c2_moves.slice(0, 3).map((_, i) => 
             new ButtonBuilder()
               .setCustomId(`p2m_${i}`)
-              .setLabel(String(m).substring(0, 75))
+              .setLabel(`Option ${i + 1}`)
               .setStyle(ButtonStyle.Danger)
           )
         );
@@ -920,18 +921,19 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           content: `<@${target.id}>`,
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character2.toUpperCase()}'S TURN`,
-            description: round === 1 ? `*${movesData.c2_desc}*\n\nSelect your move below! Your opponent won't see it.` : `**SUDDEN DEATH!** Select your ultimate attack!`,
+            description: round === 1 
+              ? `*${movesData.c2_desc}*\n\n${p2MoveList}\n\n*Click an option below! (Opponent cannot see your choice)*` 
+              : `**🔥 SUDDEN DEATH!** Select your ultimate attack:\n\n${p2MoveList}`,
             color: 0xE74C3C
           }],
-          components: p2Rows // Pass the array of rows
+          components: [p2Row]
         });
-
 
         const p2Click = await p2Msg.awaitMessageComponent({ filter: i => i.user.id === target.id, time: 60000 });
         p2Move = movesData.c2_moves[parseInt(p2Click.customId.split('_')[1])];
         
-        await p2Click.reply({ content: `🤫 Move locked in: **${p2Move}**!`, flags: MessageFlags.Ephemeral });
-        await p2Msg.delete(); 
+        await p2Click.reply({ content: `🤫 Locked in: **${p2Move}**!`, flags: MessageFlags.Ephemeral });
+        await p2Msg.delete();
 
         // --- RESOLVE THE ROUND ---
         const clashMsg = await interaction.channel.send(`🔥 **${character1}** used *${p1Move}*!\n🔥 **${character2}** used *${p2Move}*!\n\n*Simulating clash...*`);
@@ -996,6 +998,10 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       }
     }
   }
+
+ 
+ 
+  
 
   
 
