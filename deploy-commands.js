@@ -69,18 +69,19 @@ const commands = [
         .setRequired(true)
     )),
 
-  // --- BATTLE (SUPPORTS OPEN LOBBIES / OPTIONAL TARGET) ---
+    // --- BATTLE (REQUIRED OPTIONS FIRST) ---
   enableDMs(new SlashCommandBuilder()
     .setName('battle')
     .setDescription('Challenge another user or open a public lobby for an epic fiction battle!')
-    .addUserOption(option => 
-      option.setName('target')
-        .setDescription('The user you want to challenge (Leave blank for an open lobby!)')
-        .setRequired(false))
     .addStringOption(option => 
       option.setName('character')
         .setDescription('The fictional character you will fight as')
-        .setRequired(true))),
+        .setRequired(true)) // <--- Required option first!
+    .addUserOption(option => 
+      option.setName('target')
+        .setDescription('The user you want to challenge (Leave blank for an open lobby!)')
+        .setRequired(false))), // <--- Optional option after!
+
 
   enableDMs(new SlashCommandBuilder()
     .setName('admin')
