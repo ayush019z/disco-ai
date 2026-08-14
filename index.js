@@ -1024,25 +1024,15 @@ if (!interaction.inGuild()) {
       interaction.channel
         .send('⚠️ The simulation crashed! The combined power of these moves broke the server.')
         .catch(() => {});
+        }
+      }
     }
   }
-}
-
-}); // closes client.on('interactionCreate', ...)
-
-
-
-
-
- 
- 
-  
-
-  
 
 
 
   // --- /QUIZ ---
+
   if (interaction.commandName === 'quiz') {
     await interaction.deferReply();
     
