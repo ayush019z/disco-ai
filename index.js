@@ -783,14 +783,15 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 }
 
   
+  
   // --- /BATTLE (OPEN LOBBY OR DIRECT PVP) ---
   if (interaction.commandName === 'battle') {
-if (!interaction.inGuild()) {
-  return interaction.reply({
-    content: '⚠️ This command can only be used inside a server.',
-    flags: MessageFlags.Ephemeral
-  });
-}
+    if (!interaction.inGuild()) {
+      return interaction.reply({
+        content: '⚠️ This command can only be used inside a server.',
+        flags: MessageFlags.Ephemeral
+      });
+    }
 
     const target = interaction.options.getUser('target');
     const character1 = interaction.options.getString('character');
@@ -869,7 +870,6 @@ if (!interaction.inGuild()) {
           ? `Generate exactly 3 ULTIMATE OFFENSIVE canonical attacks. NO dodging/blocking. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Spirit Bomb", "Chidori"). Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move1", "Move2", "Move3"], "c2_moves": ["Move1", "Move2", "Move3"]}`
           : `Generate exactly 3 canonical combat moves. Mix attacks and defense. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Rasengan", "Shield", "Heat Vision"). Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "1-sentence lore", "c1_moves": ["Move1", "Move2", "Move3"], "c2_desc": "1-sentence lore", "c2_moves": ["Move1", "Move2", "Move3"]}`;
 
-
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: `${c1} VS ${c2}` }],
@@ -930,7 +930,7 @@ if (!interaction.inGuild()) {
         await p1Click.reply({ content: `🤫 Locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
         await p1Msg.delete();
 
-        // --- PLAYER 2 TURN ---
+        // --- PLAYER 2 TURN (Using player2 instead of target to prevent null crashes) ---
         const p2Row = new ActionRowBuilder().addComponents(
           movesData.c2_moves.slice(0, 3).map((m, i) => 
             new ButtonBuilder()
@@ -941,7 +941,7 @@ if (!interaction.inGuild()) {
         );
         
         const p2Msg = await activeChannel.send({
-          content: `<@${player2.id}>`,
+          content: `<@${player2.id}>`, // Safely uses player2
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character2.toUpperCase()}'S TURN`,
             description: round === 1 
@@ -1012,24 +1012,19 @@ if (!interaction.inGuild()) {
       });
 
     } catch (error) {
-  console.error('Battle Error:', error);
-
-  if (error.code === 'InteractionCollectorError') {
-    if (interaction.channel) {
-      interaction.channel
-        .send("⏳ Time's up! Someone took too long to respond. The battle has been cancelled.")
-        .catch(() => {});
-    }
-  } else {
-    if (interaction.channel) {
-      interaction.channel
-        .send('⚠️ The simulation crashed! The combined power of these moves broke the server.')
-        .catch(() => {});
+      console.error('Battle Error:', error);
+      if (error.code === 'InteractionCollectorError') {
+        if (interaction.channel) {
+          interaction.channel.send("⏳ Time's up! Someone took too long to respond. The battle has been cancelled.").catch(() => {});
+        }
+      } else {
+        if (interaction.channel) {
+          interaction.channel.send('⚠️ The simulation crashed! The combined power of these moves broke the server.').catch(() => {});
         }
       }
     }
   }
-
+  
 
 
   // --- /QUIZ ---
