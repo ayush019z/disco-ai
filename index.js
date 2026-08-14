@@ -840,11 +840,11 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         components: []
       });
 
-      // --- 🛡️ HELPER FUNCTION: ULTRA-SHORT MOVE GENERATOR ---
+            // --- 🛡️ HELPER FUNCTION: ULTRA-SHORT MOVE GENERATOR ---
       const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
-          ? `Generate exactly 3 ULTIMATE OFFENSIVE canonical attacks. NO dodging/blocking. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Spirit Bomb", "Chidori"). Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move1", "Move2", "Move3"], "c2_moves": ["Move1", "Move2", "Move3"]}`
-          : `Generate exactly 3 canonical combat moves. Mix attacks and defense. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Rasengan", "Shield", "Heat Vision"). Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "1-sentence lore", "c1_moves": ["Move1", "Move2", "Move3"], "c2_desc": "1-sentence lore", "c2_moves": ["Move1", "Move2", "Move3"]}`;
+          ? `Generate exactly 3 ULTIMATE OFFENSIVE canonical attacks. NO dodging/blocking. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Spirit Bomb", "Chidori"). If you do not recognize a character, INVENT cool, thematic offensive moves based on their name. Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move1", "Move2", "Move3"], "c2_moves": ["Move1", "Move2", "Move3"]}`
+          : `Generate exactly 3 canonical combat moves. Mix attacks and defense. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Rasengan", "Shield", "Heat Vision"). If you do not recognize a character, INVENT cool, thematic moves based on their name. Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "1-sentence lore", "c1_moves": ["Move1", "Move2", "Move3"], "c2_desc": "1-sentence lore", "c2_moves": ["Move1", "Move2", "Move3"]}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
@@ -864,6 +864,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           c2_moves: Array.isArray(data.c2_moves) ? data.c2_moves : ["Heavy Strike", "Quick Dodge", "Power Blast"]
         };
       };
+
 
       // 5. Generate Round 1 Moves
       let movesData = await generateMoves(character1, character2, false);
