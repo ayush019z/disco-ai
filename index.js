@@ -287,23 +287,25 @@ client.on(Events.InteractionCreate, async interaction => {
 // --- /IMAGE ---
 if (interaction.commandName === 'image') {
   const prompt = interaction.options.getString('prompt');
-  const userId = interaction.user.id;
+const userId = interaction.user.id;
+const isOwner = userId === OWNER_ID;
 
-  // NSFW / blocked words filter
-  const blockedWords = [
-    'porn', 'nude', 'sex', 'hentai', 'onlyfans', 'rape',
-    'boobs', 'breasts', 'sexy', 'underwear', 'lingerie',
-    'bikini', 'topless', 'naked', 'nsfw', 'fetish'
-  ];
+// NSFW / blocked words filter (non-owners only)
+const blockedWords = [
+  'porn', 'nude', 'sex', 'hentai', 'onlyfans', 'rape',
+  'boobs', 'breasts', 'sexy', 'underwear', 'lingerie',
+  'bikini', 'topless', 'naked', 'nsfw', 'fetish'
+];
 
-  const lowerPrompt = prompt.toLowerCase();
+const lowerPrompt = prompt.toLowerCase();
 
-  if (blockedWords.some(word => lowerPrompt.includes(word))) {
-    return interaction.reply({
-      content: '🚫 NSFW or inappropriate image prompts are not allowed.',
-      flags: MessageFlags.Ephemeral
-    });
-  }
+if (!isOwner && blockedWords.some(word => lowerPrompt.includes(word))) {
+  return interaction.reply({
+    content: '🚫 NSFW or inappropriate image prompts are not allowed.',
+    flags: MessageFlags.Ephemeral
+  });
+}
+
 
   const today = new Date().toDateString();
   const isOwner = userId === OWNER_ID;
