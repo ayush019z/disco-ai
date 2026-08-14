@@ -786,7 +786,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
   
   
   
-        // --- /BATTLE (OPEN LOBBY OR DIRECT PVP WITH DROPDOWN MENUS) ---
+          // --- /BATTLE (OPEN LOBBY OR DIRECT PVP WITH RICH DROPDOWN MENUS) ---
   if (interaction.commandName === 'battle') {
     if (!interaction.inGuild()) {
       return interaction.reply({
@@ -869,8 +869,11 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       // --- 🛡️ HELPER FUNCTION: ENHANCED MOVE GENERATOR ---
       const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
-          ? `Generate exactly 3 EPIC, high-impact ULTIMATE OFFENSIVE canonical combat attacks. NO dodging/blocking. Make the move names descriptive and cinematic. If you do not recognize a character, INVENT legendary thematic offensive moves based on their name. Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move Name 1", "Move Name 2", "Move Name 3"], "c2_moves": ["Move Name 1", "Move Name 2", "Move Name 3"]}`
-          : `Generate exactly 3 dynamic canonical combat moves combining signature attacks, tactical counters, or powers. Make the move names creative and cinematic. If you do not recognize a character, INVENT cool, thematic moves based on their name. Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "1-sentence atmospheric lore", "c1_moves": ["Move Name 1", "Move Name 2", "Move Name 3"], "c2_desc": "1-sentence atmospheric lore", "c2_moves": ["Move Name 1", "Move Name 2", "Move Name 3"]}`;
+          ? `Generate exactly 3 EPIC, high-impact ULTIMATE OFFENSIVE combat attacks. NO dodging/blocking. 
+             Output strictly valid JSON. Format: {"c1_moves": [{"name": "Move 1", "desc": "Short description"}], "c2_moves": [{"name": "Move 1", "desc": "Short description"}]}`
+          : `Generate exactly 3 combat moves for each character. 
+             CRITICAL RULE: You MUST provide exactly 2 attacks AND exactly 1 purely defensive/evasive maneuver (e.g., Block, Dodge, Force Field) for EACH character.
+             Output strictly valid JSON. Format: {"c1_desc": "1-sentence atmospheric lore", "c1_moves": [{"name": "Move 1", "desc": "Short combat description"}], "c2_desc": "1-sentence atmospheric lore", "c2_moves": [{"name": "Move 1", "desc": "Short combat description"}]}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
@@ -883,11 +886,20 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         jsonStr = jsonStr.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim();
         const data = JSON.parse(jsonStr);
 
+        // Safe mapper in case the AI hallucinates plain strings instead of objects
+        const formatMoves = (moves) => {
+          if (!Array.isArray(moves)) return Array(3).fill({ name: "Basic Strike", desc: "A standard attack." });
+          return moves.map((m, i) => {
+            if (typeof m === 'string') return { name: m, desc: `Combat move ${i + 1}` };
+            return { name: m.name || "Unknown Move", desc: m.desc || "No description provided." };
+          });
+        };
+
         return {
           c1_desc: data.c1_desc || "A formidable warrior enters the arena.",
-          c1_moves: Array.isArray(data.c1_moves) ? data.c1_moves : ["Devastating Strike", "Tactical Evasion", "Energy Blast"],
+          c1_moves: formatMoves(data.c1_moves),
           c2_desc: data.c2_desc || "A formidable challenger steps forward.",
-          c2_moves: Array.isArray(data.c2_moves) ? data.c2_moves : ["Devastating Strike", "Tactical Evasion", "Energy Blast"]
+          c2_moves: formatMoves(data.c2_moves)
         };
       };
 
@@ -910,9 +922,9 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           .setPlaceholder('Choose your combat move...')
           .addOptions(
             movesData.c1_moves.slice(0, 3).map((m, i) => ({
-              label: String(m).substring(0, 100),
+              label: String(m.name).substring(0, 100),
               value: `p1m_${i}`,
-              description: `Execute move option ${i + 1}`
+              description: String(m.desc).substring(0, 100) // Discord limits descriptions to 100 characters max
             }))
           );
 
@@ -936,7 +948,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         });
         
         const p1Index = parseInt(p1Click.values[0].split('_')[1]);
-        p1Move = movesData.c1_moves[p1Index];
+        p1Move = movesData.c1_moves[p1Index].name; // Extracting just the name for the clash
         
         await p1Click.reply({ content: `🤫 Locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
         await p1Msg.delete();
@@ -947,9 +959,9 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           .setPlaceholder('Choose your combat move...')
           .addOptions(
             movesData.c2_moves.slice(0, 3).map((m, i) => ({
-              label: String(m).substring(0, 100),
+              label: String(m.name).substring(0, 100),
               value: `p2m_${i}`,
-              description: `Execute move option ${i + 1}`
+              description: String(m.desc).substring(0, 100) 
             }))
           );
 
@@ -973,7 +985,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         });
         
         const p2Index = parseInt(p2Click.values[0].split('_')[1]);
-        p2Move = movesData.c2_moves[p2Index];
+        p2Move = movesData.c2_moves[p2Index].name;
         
         await p2Click.reply({ content: `🤫 Locked in: **${p2Move}**!`, flags: MessageFlags.Ephemeral });
         await p2Msg.delete();
@@ -1044,6 +1056,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       }
     }
   }
+
   
   
 
