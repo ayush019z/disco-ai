@@ -785,6 +785,13 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
   
   // --- /BATTLE (OPEN LOBBY OR DIRECT PVP) ---
   if (interaction.commandName === 'battle') {
+if (!interaction.inGuild()) {
+  return interaction.reply({
+    content: '⚠️ This command can only be used inside a server.',
+    flags: MessageFlags.Ephemeral
+  });
+}
+
     const target = interaction.options.getUser('target');
     const character1 = interaction.options.getString('character');
     const player1 = interaction.user;
@@ -1004,16 +1011,23 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       });
 
     } catch (error) {
-      console.error('Battle Error:', error);
-      if (error.code === 'InteractionCollectorError') {
-        const activeChannel = interaction.channel || await interaction.guild.channels.fetch(interaction.channelId);
-        activeChannel.send(`⏳ Time's up! Someone took too long to respond. The battle has been cancelled.`);
-      } else {
-        const activeChannel = interaction.channel || await interaction.guild.channels.fetch(interaction.channelId);
-        activeChannel.send("⚠️ The simulation crashed! The combined power of these moves broke the server.");
-      }
+  console.error('Battle Error:', error);
+
+  if (error.code === 'InteractionCollectorError') {
+    if (interaction.channel) {
+      interaction.channel
+        .send("⏳ Time's up! Someone took too long to respond. The battle has been cancelled.")
+        .catch(() => {});
+    }
+  } else {
+    if (interaction.channel) {
+      interaction.channel
+        .send('⚠️ The simulation crashed! The combined power of these moves broke the server.')
+        .catch(() => {});
     }
   }
+}
+
 
 
 
