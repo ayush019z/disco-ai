@@ -1,12 +1,24 @@
-const { REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { REST, Routes, SlashCommandBuilder, ApplicationIntegrationType, InteractionContextType } = require('discord.js');
+
+// Helper configurations for DM support across all commands
+const enableDMs = command => command
+  .setIntegrationTypes([
+    ApplicationIntegrationType.GuildInstall,
+    ApplicationIntegrationType.UserInstall,
+  ])
+  .setContexts([
+    InteractionContextType.Guild,
+    InteractionContextType.BotDM,
+    InteractionContextType.PrivateChannel,
+  ]);
 
 // Define all your slash commands here
 const commands = [
-  new SlashCommandBuilder()
+  enableDMs(new SlashCommandBuilder()
     .setName('stats')
-    .setDescription('View bot statistics'),
+    .setDescription('View bot statistics')),
 
-  new SlashCommandBuilder()
+  enableDMs(new SlashCommandBuilder()
     .setName('quiz')
     .setDescription('Start an interactive trivia game')
     .addStringOption(option =>
@@ -25,14 +37,13 @@ const commands = [
           { name: 'Medium', value: 'medium' },
           { name: 'Hard', value: 'hard' }
         )
-    ),
+    )),
 
-  new SlashCommandBuilder()
-  .setName('adventure')
-  .setDescription('Play a Doraemon-style interactive adventure'),
+  enableDMs(new SlashCommandBuilder()
+    .setName('adventure')
+    .setDescription('Play a Doraemon-style interactive adventure')),
 
-
-  new SlashCommandBuilder()
+  enableDMs(new SlashCommandBuilder()
     .setName('wanted')
     .setDescription('Create a wanted poster for a user')
     .addUserOption(option => 
@@ -46,11 +57,9 @@ const commands = [
         .setName('grayscale')
         .setDescription('Apply a greyscale filter to the poster')
         .setRequired(false)
-    ),
-// -------------------------------------------------------------
-  // ADD THE NEW /IMAGE COMMAND HERE:
-  // -------------------------------------------------------------
-  new SlashCommandBuilder()
+    )),
+
+  enableDMs(new SlashCommandBuilder()
     .setName('image')
     .setDescription('Generate a high-quality AI image (Limit: 5 per day)')
     .addStringOption(option =>
@@ -58,74 +67,58 @@ const commands = [
         .setName('prompt')
         .setDescription('What do you want to generate?')
         .setRequired(true)
-    ),
+    )),
 
-//// BATTLE ///
-new SlashCommandBuilder()
+  // --- BATTLE (NOW SUPPORTS OPEN LOBBIES / OPTIONAL TARGET) ---
+  enableDMs(new SlashCommandBuilder()
     .setName('battle')
-    .setDescription('Challenge another user to an epic fiction battle!')
+    .setDescription('Challenge another user or open a public lobby for an epic fiction battle!')
     .addUserOption(option => 
       option.setName('target')
-        .setDescription('The user you want to challenge')
-        .setRequired(true))
+        .setDescription('The user you want to challenge (Leave blank for an open lobby!)')
+        .setRequired(false))
     .addStringOption(option => 
       option.setName('character')
         .setDescription('The fictional character you will fight as')
-        .setRequired(true)),
-      
-       // //
+        .setRequired(true))),
 
+  enableDMs(new SlashCommandBuilder()
+    .setName('admin')
+    .setDescription('Owner admin commands')
+    .addSubcommand(sub =>
+      sub.setName('give')
+        .setDescription('Give extra image generations')
+        .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
+        .addIntegerOption(o => o.setName('amount').setDescription('Amount').setRequired(true))
+    )
+    .addSubcommand(sub =>
+      sub.setName('reset')
+        .setDescription('Reset a user’s image limits')
+        .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
+    )
+    .addSubcommand(sub =>
+      sub.setName('stats')
+        .setDescription('Check a user’s image usage')
+        .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
+    )),
 
-//// ADMIN////
+  enableDMs(new SlashCommandBuilder()
+    .setName('ask')
+    .setDescription('Ask DoraBot anything')
+    .addStringOption(option =>
+      option
+        .setName('question')
+        .setDescription('What do you want to ask❓')
+        .setRequired(true)
+    )),
 
-
-new SlashCommandBuilder()
-  .setName('admin')
-  .setDescription('Owner admin commands')
-
-  .addSubcommand(sub =>
-    sub.setName('give')
-      .setDescription('Give extra image generations')
-      .addUserOption(o =>
-        o.setName('user').setDescription('User').setRequired(true))
-      .addIntegerOption(o =>
-        o.setName('amount').setDescription('Amount').setRequired(true))
-  )
-
-  .addSubcommand(sub =>
-    sub.setName('reset')
-      .setDescription('Reset a user’s image limits')
-      .addUserOption(o =>
-        o.setName('user').setDescription('User').setRequired(true))
-  )
-
-  .addSubcommand(sub =>
-    sub.setName('stats')
-      .setDescription('Check a user’s image usage')
-      .addUserOption(o =>
-        o.setName('user').setDescription('User').setRequired(true))
-  ),
-
-//// /////
-
-new SlashCommandBuilder()
-  .setName('ask')
-  .setDescription('Ask DoraBot anything')
-  .addStringOption(option =>
-    option
-      .setName('question')
-      .setDescription('What do you want to ask❓')
-      .setRequired(true)
-  ),
-
-
-  new SlashCommandBuilder()
+  enableDMs(new SlashCommandBuilder()
     .setName('info')
-    .setDescription('View bot information'),
+    .setDescription('View bot information')),
 
-  new SlashCommandBuilder()
+  enableDMs(new SlashCommandBuilder()
     .setName('help')
-    .setDescription('View all available commands')
+    .setDescription('View all available commands'))
 ].map(command => command.toJSON());
 
 // Prepare the REST module
@@ -136,7 +129,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   try {
     console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
-    // Global registration (Registers commands across all servers where the bot is present)
+    // Global registration (Registers commands across servers and DMs where the bot is present)
     await rest.put(
       Routes.applicationCommands(process.env.CLIENT_ID),
       { body: commands }
