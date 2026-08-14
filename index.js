@@ -10,7 +10,8 @@ const {
 EmbedBuilder,
 ModalBuilder,      // <--- ADD THIS
   TextInputBuilder,  // <--- ADD THIS
-  TextInputStyle     // <--- ADD THIS
+  TextInputStyle,     // <--- ADD THIS
+  StringSelectMenuBuilder
 } = require('discord.js');
 
 
@@ -784,7 +785,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 
   
   
-  // --- /BATTLE (OPEN LOBBY OR DIRECT PVP) ---
+  
+        // --- /BATTLE (OPEN LOBBY OR DIRECT PVP WITH DROPDOWN MENUS) ---
   if (interaction.commandName === 'battle') {
     if (!interaction.inGuild()) {
       return interaction.reply({
@@ -859,21 +861,21 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       const character2 = modalSubmit.fields.getTextInputValue('char_input');
 
       await modalSubmit.update({
-        content: `🔥 **${character1}** (<@${player1.id}>) VS **${character2}** (<@${player2.id}>)!\n\n*Analyzing fighters and generating combat moves...*`,
+        content: `🔥 **${character1}** (<@${player1.id}>) VS **${character2}** (<@${player2.id}>)!\n\n*Analyzing fighters and generating cinematic combat moves...*`,
         embeds: [],
         components: []
       });
 
-      // --- 🛡️ HELPER FUNCTION: ULTRA-SHORT MOVE GENERATOR ---
+      // --- 🛡️ HELPER FUNCTION: ENHANCED MOVE GENERATOR ---
       const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
-          ? `Generate exactly 3 ULTIMATE OFFENSIVE canonical attacks. NO dodging/blocking. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Spirit Bomb", "Chidori"). Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move1", "Move2", "Move3"], "c2_moves": ["Move1", "Move2", "Move3"]}`
-          : `Generate exactly 3 canonical combat moves. Mix attacks and defense. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Rasengan", "Shield", "Heat Vision"). Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "1-sentence lore", "c1_moves": ["Move1", "Move2", "Move3"], "c2_desc": "1-sentence lore", "c2_moves": ["Move1", "Move2", "Move3"]}`;
+          ? `Generate exactly 3 EPIC, high-impact ULTIMATE OFFENSIVE canonical combat attacks. NO dodging/blocking. Make the move names descriptive and cinematic. If you do not recognize a character, INVENT legendary thematic offensive moves based on their name. Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move Name 1", "Move Name 2", "Move Name 3"], "c2_moves": ["Move Name 1", "Move Name 2", "Move Name 3"]}`
+          : `Generate exactly 3 dynamic canonical combat moves combining signature attacks, tactical counters, or powers. Make the move names creative and cinematic. If you do not recognize a character, INVENT cool, thematic moves based on their name. Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "1-sentence atmospheric lore", "c1_moves": ["Move Name 1", "Move Name 2", "Move Name 3"], "c2_desc": "1-sentence atmospheric lore", "c2_moves": ["Move Name 1", "Move Name 2", "Move Name 3"]}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: `${c1} VS ${c2}` }],
-          temperature: 0.8,
+          temperature: 0.85,
           response_format: { type: 'json_object' }
         });
         
@@ -882,10 +884,10 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         const data = JSON.parse(jsonStr);
 
         return {
-          c1_desc: data.c1_desc || "A formidable warrior.",
-          c1_moves: Array.isArray(data.c1_moves) ? data.c1_moves : ["Heavy Strike", "Quick Dodge", "Power Blast"],
-          c2_desc: data.c2_desc || "A formidable challenger.",
-          c2_moves: Array.isArray(data.c2_moves) ? data.c2_moves : ["Heavy Strike", "Quick Dodge", "Power Blast"]
+          c1_desc: data.c1_desc || "A formidable warrior enters the arena.",
+          c1_moves: Array.isArray(data.c1_moves) ? data.c1_moves : ["Devastating Strike", "Tactical Evasion", "Energy Blast"],
+          c2_desc: data.c2_desc || "A formidable challenger steps forward.",
+          c2_moves: Array.isArray(data.c2_moves) ? data.c2_moves : ["Devastating Strike", "Tactical Evasion", "Energy Blast"]
         };
       };
 
@@ -902,64 +904,82 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       let p1Move, p2Move;
 
       while (round <= 2 && !winner) {
-        // --- PLAYER 1 TURN ---
-        const p1Row = new ActionRowBuilder().addComponents(
-          movesData.c1_moves.slice(0, 3).map((m, i) => 
-            new ButtonBuilder()
-              .setCustomId(`p1m_${i}`)
-              .setLabel(String(m).substring(0, 14))
-              .setStyle(ButtonStyle.Primary)
-          )
-        );
+        // --- PLAYER 1 TURN (DROPDOWN MENU) ---
+        const p1Menu = new StringSelectMenuBuilder()
+          .setCustomId('p1_select_move')
+          .setPlaceholder('Choose your combat move...')
+          .addOptions(
+            movesData.c1_moves.slice(0, 3).map((m, i) => ({
+              label: String(m).substring(0, 100),
+              value: `p1m_${i}`,
+              description: `Execute move option ${i + 1}`
+            }))
+          );
+
+        const p1Row = new ActionRowBuilder().addComponents(p1Menu);
         
         const p1Msg = await activeChannel.send({
           content: `<@${player1.id}>`,
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character1.toUpperCase()}'S TURN`,
             description: round === 1 
-              ? `*${movesData.c1_desc}*\n\nSelect your move below! Your opponent won't see it.` 
-              : `**🔥 SUDDEN DEATH!** Select your ultimate attack!`,
+              ? `*${movesData.c1_desc}*\n\nSelect your move from the dropdown menu below! Your opponent won't see it.` 
+              : `**🔥 SUDDEN DEATH!** Select your ultimate finishing move!`,
             color: 0x3498DB
           }],
           components: [p1Row]
         });
 
-        const p1Click = await p1Msg.awaitMessageComponent({ filter: i => i.user.id === player1.id, time: 60000 });
-        p1Move = movesData.c1_moves[parseInt(p1Click.customId.split('_')[1])];
+        const p1Click = await p1Msg.awaitMessageComponent({ 
+          filter: i => i.user.id === player1.id && i.isStringSelectMenu(), 
+          time: 60000 
+        });
+        
+        const p1Index = parseInt(p1Click.values[0].split('_')[1]);
+        p1Move = movesData.c1_moves[p1Index];
         
         await p1Click.reply({ content: `🤫 Locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
         await p1Msg.delete();
 
-        // --- PLAYER 2 TURN (Using player2 instead of target to prevent null crashes) ---
-        const p2Row = new ActionRowBuilder().addComponents(
-          movesData.c2_moves.slice(0, 3).map((m, i) => 
-            new ButtonBuilder()
-              .setCustomId(`p2m_${i}`)
-              .setLabel(String(m).substring(0, 14))
-              .setStyle(ButtonStyle.Danger)
-          )
-        );
+        // --- PLAYER 2 TURN (DROPDOWN MENU) ---
+        const p2Menu = new StringSelectMenuBuilder()
+          .setCustomId('p2_select_move')
+          .setPlaceholder('Choose your combat move...')
+          .addOptions(
+            movesData.c2_moves.slice(0, 3).map((m, i) => ({
+              label: String(m).substring(0, 100),
+              value: `p2m_${i}`,
+              description: `Execute move option ${i + 1}`
+            }))
+          );
+
+        const p2Row = new ActionRowBuilder().addComponents(p2Menu);
         
         const p2Msg = await activeChannel.send({
-          content: `<@${player2.id}>`, // Safely uses player2
+          content: `<@${player2.id}>`,
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character2.toUpperCase()}'S TURN`,
             description: round === 1 
-              ? `*${movesData.c2_desc}*\n\nSelect your move below! Your opponent won't see it.` 
-              : `**🔥 SUDDEN DEATH!** Select your ultimate attack!`,
+              ? `*${movesData.c2_desc}*\n\nSelect your move from the dropdown menu below! Your opponent won't see it.` 
+              : `**🔥 SUDDEN DEATH!** Select your ultimate finishing move!`,
             color: 0xE74C3C
           }],
           components: [p2Row]
         });
 
-        const p2Click = await p2Msg.awaitMessageComponent({ filter: i => i.user.id === player2.id, time: 60000 });
-        p2Move = movesData.c2_moves[parseInt(p2Click.customId.split('_')[1])];
+        const p2Click = await p2Msg.awaitMessageComponent({ 
+          filter: i => i.user.id === player2.id && i.isStringSelectMenu(), 
+          time: 60000 
+        });
+        
+        const p2Index = parseInt(p2Click.values[0].split('_')[1]);
+        p2Move = movesData.c2_moves[p2Index];
         
         await p2Click.reply({ content: `🤫 Locked in: **${p2Move}**!`, flags: MessageFlags.Ephemeral });
         await p2Msg.delete();
 
         // --- RESOLVE THE ROUND ---
-        const clashMsg = await activeChannel.send(`🔥 **${character1}** used *${p1Move}*!\n🔥 **${character2}** used *${p2Move}*!\n\n*Simulating clash...*`);
+        const clashMsg = await activeChannel.send(`🔥 **${character1}** used *${p1Move}*!\n🔥 **${character2}** used *${p2Move}*!\n\n*Simulating cinematic clash...*`);
 
         const evalPrompt = round === 1 
           ? `Evaluate this clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. 
@@ -967,8 +987,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           - If BOTH characters use defensive/evasive moves, it is a stall.
           - If one character attacks, but the other successfully blocks/dodges WITHOUT dealing counter-damage, it is a stall.
           - Only declare a winner if an attack lands a decisive blow.
-          You must output valid JSON. Format: {"is_stall": boolean, "narrative": "A fast-paced 2-3 sentence fight scene.", "winner": "Name or null"}`
-          : `Evaluate this final clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. Declare a definitive winner. You must output valid JSON. Format: {"is_stall": false, "narrative": "A fast-paced 2-3 sentence final clash.", "winner": "Name"}`;
+          You must output valid JSON. Format: {"is_stall": boolean, "narrative": "A fast-paced 2-3 sentence epic fight scene.", "winner": "Name or null"}`
+          : `Evaluate this final clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. Declare a definitive winner. You must output valid JSON. Format: {"is_stall": false, "narrative": "A fast-paced 2-3 sentence final showdown.", "winner": "Name"}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
@@ -987,7 +1007,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           await activeChannel.send({
             embeds: [{
               title: `🛡️ ROUND 1 DRAW!`,
-              description: `${evalData.narrative}\n\n**Both fighters stalled! Proceeding to SUDDEN DEATH ROUND 2!**`,
+              description: `${evalData.narrative}\n\n**Both fighters clashed evenly! Proceeding to SUDDEN DEATH ROUND 2!**`,
               color: 0xFFFF00
             }]
           });
@@ -1024,6 +1044,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       }
     }
   }
+  
   
 
 
