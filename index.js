@@ -7,7 +7,10 @@ const {
   ActionRowBuilder, // <--- ADD THIS
   ButtonBuilder,    // <--- ADD THIS
   ButtonStyle,       // <--- ADD THIS
-EmbedBuilder
+EmbedBuilder,
+ModalBuilder,      // <--- ADD THIS
+  TextInputBuilder,  // <--- ADD THIS
+  TextInputStyle     // <--- ADD THIS
 } = require('discord.js');
 
 
@@ -790,6 +793,192 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
   }
 }
 
+  // --- /BATTLE (ADVANCED PVP WITH MODALS & ROUNDS) ---
+  if (interaction.commandName === 'battle') {
+    const target = interaction.options.getUser('target');
+    const character1 = interaction.options.getString('character');
+    const player1 = interaction.user;
+
+    // Basic checks
+    if (target.bot) return interaction.reply({ content: "🤖 Bots lack the imagination for this fight!", flags: MessageFlags.Ephemeral });
+    if (target.id === player1.id) return interaction.reply({ content: "⚔️ You can't fight yourself!", flags: MessageFlags.Ephemeral });
+
+    // 1. Send Accept/Deny Challenge
+    const actionRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('accept_battle').setLabel('Accept').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('deny_battle').setLabel('Deny').setStyle(ButtonStyle.Danger)
+    );
+
+    const challengeMsg = await interaction.reply({
+      content: `<@${target.id}>`,
+      embeds: [{
+        title: '⚔️ FICTION BATTLE CHALLENGE!',
+        description: `<@${player1.id}> has challenged you using **${character1}**!\n\nDo you accept? You have **60 seconds**!`,
+        color: 0xFF3333
+      }],
+      components: [actionRow],
+      fetchReply: true // We need this to attach a collector directly to the reply
+    });
+
+    try {
+      // 2. Wait for Accept/Deny Button Click
+      const btnInteraction = await challengeMsg.awaitMessageComponent({ filter: i => i.user.id === target.id, time: 60000 });
+
+      if (btnInteraction.customId === 'deny_battle') {
+        return btnInteraction.update({ content: `🏃‍♂️ <@${target.id}> denied the challenge!`, embeds: [], components: [] });
+      }
+
+      // 3. Show a Popup Modal for Character Input
+      const modal = new ModalBuilder().setCustomId('char_modal').setTitle('Choose Your Fighter');
+      const charInput = new TextInputBuilder()
+        .setCustomId('char_input')
+        .setLabel("Who are you fighting as?")
+        .setPlaceholder("e.g. Ben 10, Goku, Batman...")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+      
+      modal.addComponents(new ActionRowBuilder().addComponents(charInput));
+      await btnInteraction.showModal(modal);
+
+      // 4. Wait for the Modal to be submitted
+      const modalSubmit = await btnInteraction.awaitModalSubmit({ filter: i => i.customId === 'char_modal' && i.user.id === target.id, time: 60000 });
+      const character2 = modalSubmit.fields.getTextInputValue('char_input');
+
+      // Transform the original message into a loading screen
+      await modalSubmit.update({
+        content: `🔥 **${character1}** VS **${character2}**!\n\n*Analyzing fighters and generating combat moves...*`,
+        embeds: [],
+        components: []
+      });
+
+      // --- HELPER FUNCTION: GROQ MOVE GENERATOR ---
+      const generateMoves = async (c1, c2, forceOffensive = false) => {
+        const sysPrompt = forceOffensive 
+          ? `Generate exactly 3 ULTIMATE, HIGHLY OFFENSIVE canonical combat moves for each character. NO dodging or blocking. Keep names under 25 chars. Return ONLY raw JSON: {"c1_moves": [".."], "c2_moves": [".."]}`
+          : `Generate exactly 3 canonical combat moves for each character. Mix attacks and defensive/evasive moves. Keep names under 25 chars. Return ONLY raw JSON: {"c1_desc": "1 sentence lore", "c1_moves": [".."], "c2_desc": "1 sentence lore", "c2_moves": [".."]}`;
+
+        const res = await ai.chat.completions.create({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: `${c1} VS ${c2}` }],
+          temperature: 0.8
+        });
+        
+        let jsonStr = res.choices[0].message.content.trim();
+        if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/```json\n?/, '').replace(/```/, '');
+        return JSON.parse(jsonStr);
+      };
+
+      // 5. Generate Round 1 Moves
+      let movesData = await generateMoves(character1, character2, false);
+
+      // --- THE BATTLE LOOP ---
+      let round = 1;
+      let winner = null;
+      let finalNarrative = "";
+      let p1Move, p2Move;
+
+      while (round <= 2 && !winner) {
+        // --- PLAYER 1 TURN ---
+        const p1Row = new ActionRowBuilder().addComponents(
+          movesData.c1_moves.map((m, i) => new ButtonBuilder().setCustomId(`p1m_${i}`).setLabel(m).setStyle(ButtonStyle.Primary))
+        );
+        
+        const p1Msg = await interaction.channel.send({
+          content: `<@${player1.id}>`,
+          embeds: [{
+            title: `⚔️ ROUND ${round}: ${character1.toUpperCase()}'S TURN`,
+            description: round === 1 ? `*${movesData.c1_desc}*\n\nSelect your move below! Your opponent won't see it.` : `**SUDDEN DEATH!** Select your ultimate attack!`,
+            color: 0x3498DB
+          }],
+          components: [p1Row]
+        });
+
+        // Wait for P1 to click
+        const p1Click = await p1Msg.awaitMessageComponent({ filter: i => i.user.id === player1.id, time: 60000 });
+        p1Move = movesData.c1_moves[parseInt(p1Click.customId.split('_')[1])];
+        
+        await p1Click.reply({ content: `🤫 Move locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
+        await p1Msg.delete(); // Delete P1's menu
+
+        // --- PLAYER 2 TURN ---
+        const p2Row = new ActionRowBuilder().addComponents(
+          movesData.c2_moves.map((m, i) => new ButtonBuilder().setCustomId(`p2m_${i}`).setLabel(m).setStyle(ButtonStyle.Danger))
+        );
+        
+        const p2Msg = await interaction.channel.send({
+          content: `<@${target.id}>`,
+          embeds: [{
+            title: `⚔️ ROUND ${round}: ${character2.toUpperCase()}'S TURN`,
+            description: round === 1 ? `*${movesData.c2_desc}*\n\nSelect your move below! Your opponent won't see it.` : `**SUDDEN DEATH!** Select your ultimate attack!`,
+            color: 0xE74C3C
+          }],
+          components: [p2Row]
+        });
+
+        // Wait for P2 to click
+        const p2Click = await p2Msg.awaitMessageComponent({ filter: i => i.user.id === target.id, time: 60000 });
+        p2Move = movesData.c2_moves[parseInt(p2Click.customId.split('_')[1])];
+        
+        await p2Click.reply({ content: `🤫 Move locked in: **${p2Move}**!`, flags: MessageFlags.Ephemeral });
+        await p2Msg.delete(); // Delete P2's menu
+
+        // --- RESOLVE THE ROUND ---
+        const clashMsg = await interaction.channel.send(`🔥 **${character1}** used *${p1Move}*!\n🔥 **${character2}** used *${p2Move}*!\n\n*Simulating clash...*`);
+
+        const evalPrompt = round === 1 
+          ? `Evaluate this clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. If BOTH moves are highly defensive, evasive, or non-lethal, it's a stall. If one or both attack, declare a winner based on power levels. Return ONLY raw JSON: {"is_stall": boolean, "narrative": "Epic 2-paragraph fight scene", "winner": "Name or null"}`
+          : `Evaluate this final clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. Declare a definitive winner based on power levels. Return ONLY raw JSON: {"is_stall": false, "narrative": "Epic 2-paragraph final clash", "winner": "Name"}`;
+
+        const res = await ai.chat.completions.create({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'system', content: evalPrompt }],
+          temperature: 0.8
+        });
+        
+        let evalJsonStr = res.choices[0].message.content.trim();
+        if (evalJsonStr.startsWith('```json')) evalJsonStr = evalJsonStr.replace(/```json\n?/, '').replace(/```/, '');
+        const evalData = JSON.parse(evalJsonStr);
+
+        await clashMsg.delete();
+
+        // If it's a stall in Round 1, trigger SUDDEN DEATH!
+        if (evalData.is_stall && round === 1) {
+          await interaction.channel.send({
+            embeds: [{
+              title: `🛡️ ROUND 1 DRAW!`,
+              description: `${evalData.narrative}\n\n**Both fighters stalled! Proceeding to SUDDEN DEATH ROUND 2!**`,
+              color: 0xFFFF00
+            }]
+          });
+          movesData = await generateMoves(character1, character2, true); // Force offensive moves
+          round++;
+        } else {
+          winner = evalData.winner;
+          finalNarrative = evalData.narrative;
+          break; // End the loop!
+        }
+      }
+
+      // --- FINAL WINNER ANNOUNCEMENT ---
+      await interaction.channel.send({
+        content: `🏆 <@${player1.id}> ⚔️ <@${target.id}>`,
+        embeds: [{
+          title: `⚔️ BATTLE CONCLUDED!`,
+          description: `${finalNarrative}\n\n🏆 **WINNER: ${winner ? winner.toUpperCase() : 'DRAW'}**`,
+          color: 0xFF3333,
+          footer: { text: `Simulated by Groq AI` }
+        }]
+      });
+
+    } catch (error) {
+      console.error('Battle Error:', error);
+      if (error.code === 'InteractionCollectorError') {
+        interaction.channel.send(`⏳ Time's up! Someone took too long to respond. The battle has been cancelled.`);
+      } else {
+        interaction.channel.send("⚠️ The simulation crashed! The combined power of these moves broke the server.");
+      }
+    }
+  }
 
 
 
