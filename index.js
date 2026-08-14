@@ -441,7 +441,7 @@ if (interaction.commandName === 'admin') {
   }
 }
 
-  // --- /ASK ---
+    // --- /ASK ---
   if (interaction.commandName === 'ask') {
     const question = interaction.options.getString('question');
     const userId = interaction.user.id;
@@ -458,9 +458,9 @@ if (interaction.commandName === 'admin') {
         content: question
       });
 
-      // 🧪 USING THE EXPERIMENTAL GEMINI AI 🧪
+      // 🧪 USING GEMINI FLASH MODEL 🧪
       const response = await expAi.chat.completions.create({
-        model: 'gemini-2.0-flash', 
+        model: 'gemini-2.5-flash', 
         messages: [
           {
             role: 'system',
@@ -495,6 +495,7 @@ if (interaction.commandName === 'admin') {
       await interaction.editReply('⚠️ Failed to contact the experimental AI service.');
     }
   }
+
 
 
 
