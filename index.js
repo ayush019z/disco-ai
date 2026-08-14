@@ -840,11 +840,11 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         components: []
       });
 
-      // --- 🛡️ BULLETPROOF HELPER FUNCTION ---
+      // --- 🛡️ HELPER FUNCTION: ULTRA-SHORT MOVE GENERATOR ---
       const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
-          ? `Generate exactly 3 iconic, full-name ULTIMATE OFFENSIVE canonical attacks for each character (e.g. "Super Kamehameha", "Final Flash", "Spirit Bomb"). NO basic attacks like "Punch" or "Kick". NO dodging/blocking. Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move 1", "Move 2", "Move 3"], "c2_moves": ["Move 1", "Move 2", "Move 3"]}`
-          : `Generate exactly 3 iconic, full-name canonical combat moves/techniques for each character (e.g. "Kamehameha", "Instant Transmission", "Solar Flare"). Do NOT use generic 1-word names like "Punch", "Block", or "Blast". Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "1-sentence lore", "c1_moves": ["Move 1", "Move 2", "Move 3"], "c2_desc": "1-sentence lore", "c2_moves": ["Move 1", "Move 2", "Move 3"]}`;
+          ? `Generate exactly 3 ULTIMATE OFFENSIVE canonical attacks. NO dodging/blocking. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Spirit Bomb", "Chidori"). Output strictly valid JSON using EXACT keys: "c1_moves" and "c2_moves". Format: {"c1_moves": ["Move1", "Move2", "Move3"], "c2_moves": ["Move1", "Move2", "Move3"]}`
+          : `Generate exactly 3 canonical combat moves. Mix attacks and defense. CRITICAL: Move names MUST be ultra-short (1-2 words, MAX 14 chars) to fit on mobile buttons (e.g., "Rasengan", "Shield", "Heat Vision"). Output strictly valid JSON using EXACT keys: "c1_desc", "c1_moves", "c2_desc", "c2_moves". Format: {"c1_desc": "1-sentence lore", "c1_moves": ["Move1", "Move2", "Move3"], "c2_desc": "1-sentence lore", "c2_moves": ["Move1", "Move2", "Move3"]}`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
@@ -859,9 +859,9 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 
         return {
           c1_desc: data.c1_desc || "A formidable warrior.",
-          c1_moves: Array.isArray(data.c1_moves) ? data.c1_moves : ["Ultimate Strike", "Tactical Evasion", "Signature Blast"],
+          c1_moves: Array.isArray(data.c1_moves) ? data.c1_moves : ["Heavy Strike", "Quick Dodge", "Power Blast"],
           c2_desc: data.c2_desc || "A formidable challenger.",
-          c2_moves: Array.isArray(data.c2_moves) ? data.c2_moves : ["Ultimate Strike", "Tactical Evasion", "Signature Blast"]
+          c2_moves: Array.isArray(data.c2_moves) ? data.c2_moves : ["Heavy Strike", "Quick Dodge", "Power Blast"]
         };
       };
 
@@ -875,16 +875,12 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       let p1Move, p2Move;
 
       while (round <= 2 && !winner) {
-        // Build nicely formatted move lists for the embeds
-        const p1MoveList = movesData.c1_moves.slice(0, 3).map((m, i) => `**${i + 1}.** ${m}`).join('\n');
-        const p2MoveList = movesData.c2_moves.slice(0, 3).map((m, i) => `**${i + 1}.** ${m}`).join('\n');
-
-        // --- PLAYER 1 TURN (Single Horizontal Row) ---
+        // --- PLAYER 1 TURN (Classic 3-Button Row) ---
         const p1Row = new ActionRowBuilder().addComponents(
-          movesData.c1_moves.slice(0, 3).map((_, i) => 
+          movesData.c1_moves.slice(0, 3).map((m, i) => 
             new ButtonBuilder()
               .setCustomId(`p1m_${i}`)
-              .setLabel(`Option ${i + 1}`)
+              .setLabel(String(m).substring(0, 14)) // Force cap at 14 chars to prevent crashing
               .setStyle(ButtonStyle.Primary)
           )
         );
@@ -894,8 +890,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character1.toUpperCase()}'S TURN`,
             description: round === 1 
-              ? `*${movesData.c1_desc}*\n\n${p1MoveList}\n\n*Click an option below! (Opponent cannot see your choice)*` 
-              : `**🔥 SUDDEN DEATH!** Select your ultimate attack:\n\n${p1MoveList}`,
+              ? `*${movesData.c1_desc}*\n\nSelect your move below! Your opponent won't see it.` 
+              : `**🔥 SUDDEN DEATH!** Select your ultimate attack!`,
             color: 0x3498DB
           }],
           components: [p1Row]
@@ -907,12 +903,12 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         await p1Click.reply({ content: `🤫 Locked in: **${p1Move}**!`, flags: MessageFlags.Ephemeral });
         await p1Msg.delete();
 
-        // --- PLAYER 2 TURN (Single Horizontal Row) ---
+        // --- PLAYER 2 TURN (Classic 3-Button Row) ---
         const p2Row = new ActionRowBuilder().addComponents(
-          movesData.c2_moves.slice(0, 3).map((_, i) => 
+          movesData.c2_moves.slice(0, 3).map((m, i) => 
             new ButtonBuilder()
               .setCustomId(`p2m_${i}`)
-              .setLabel(`Option ${i + 1}`)
+              .setLabel(String(m).substring(0, 14))
               .setStyle(ButtonStyle.Danger)
           )
         );
@@ -922,8 +918,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           embeds: [{
             title: `⚔️ ROUND ${round}: ${character2.toUpperCase()}'S TURN`,
             description: round === 1 
-              ? `*${movesData.c2_desc}*\n\n${p2MoveList}\n\n*Click an option below! (Opponent cannot see your choice)*` 
-              : `**🔥 SUDDEN DEATH!** Select your ultimate attack:\n\n${p2MoveList}`,
+              ? `*${movesData.c2_desc}*\n\nSelect your move below! Your opponent won't see it.` 
+              : `**🔥 SUDDEN DEATH!** Select your ultimate attack!`,
             color: 0xE74C3C
           }],
           components: [p2Row]
@@ -955,12 +951,11 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         });
         
         let evalJsonStr = res.choices[0].message.content.trim();
-        evalJsonStr = evalJsonStr.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim(); // Strip markdown
+        evalJsonStr = evalJsonStr.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim(); 
         const evalData = JSON.parse(evalJsonStr);
 
         await clashMsg.delete();
 
-        // If it's a stall in Round 1, trigger SUDDEN DEATH!
         if (evalData.is_stall && round === 1) {
           await interaction.channel.send({
             embeds: [{
@@ -998,6 +993,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       }
     }
   }
+
 
  
  
