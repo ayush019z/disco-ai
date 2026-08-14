@@ -866,32 +866,68 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         components: []
       });
 
-      // --- 🛡️ HELPER FUNCTION: ENHANCED MOVE GENERATOR ---
+            // --- 🛡️ HELPER FUNCTION: ENHANCED MOVE GENERATOR ---
       const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
-          ? `Generate exactly 3 EPIC, high-impact ULTIMATE OFFENSIVE combat attacks. NO dodging/blocking. 
-             Output strictly valid JSON. Format: {"c1_moves": [{"name": "Move 1", "desc": "Short description"}], "c2_moves": [{"name": "Move 1", "desc": "Short description"}]}`
+          ? `Generate exactly 3 EPIC combat attacks for each character. NO dodging/blocking.
+             Output STRICTLY valid JSON. Do not use Markdown.
+             Format MUST BE EXACTLY:
+             {
+               "c1_moves": [{"name": "Attack 1", "desc": "Desc 1"}, {"name": "Attack 2", "desc": "Desc 2"}, {"name": "Attack 3", "desc": "Desc 3"}],
+               "c2_moves": [{"name": "Attack 1", "desc": "Desc 1"}, {"name": "Attack 2", "desc": "Desc 2"}, {"name": "Attack 3", "desc": "Desc 3"}]
+             }`
           : `Generate exactly 3 combat moves for each character. 
-             CRITICAL RULE: You MUST provide exactly 2 attacks AND exactly 1 purely defensive/evasive maneuver (e.g., Block, Dodge, Force Field) for EACH character.
-             Output strictly valid JSON. Format: {"c1_desc": "1-sentence atmospheric lore", "c1_moves": [{"name": "Move 1", "desc": "Short combat description"}], "c2_desc": "1-sentence atmospheric lore", "c2_moves": [{"name": "Move 1", "desc": "Short combat description"}]}`;
+             CRITICAL RULE: Exactly 2 attacks AND 1 defensive/evasive maneuver per character.
+             Output STRICTLY valid JSON. Do not use Markdown.
+             Format MUST BE EXACTLY:
+             {
+               "c1_desc": "1-sentence lore",
+               "c1_moves": [{"name": "Attack 1", "desc": "Desc 1"}, {"name": "Attack 2", "desc": "Desc 2"}, {"name": "Block 3", "desc": "Desc 3"}],
+               "c2_desc": "1-sentence lore",
+               "c2_moves": [{"name": "Attack 1", "desc": "Desc 1"}, {"name": "Attack 2", "desc": "Desc 2"}, {"name": "Dodge 3", "desc": "Desc 3"}]
+             }`;
 
         const res = await ai.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: `${c1} VS ${c2}` }],
-          temperature: 0.85,
+          temperature: 0.7, // Lowered for more stable JSON formatting
           response_format: { type: 'json_object' }
         });
         
         let jsonStr = res.choices[0].message.content.trim();
         jsonStr = jsonStr.replace(/^```(json)?\n?/, '').replace(/\n?```$/, '').trim();
-        const data = JSON.parse(jsonStr);
+        
+        let data = {};
+        try {
+          data = JSON.parse(jsonStr);
+        } catch (e) {
+          console.error("Battle JSON Parse Error:", e);
+        }
 
-        // Safe mapper in case the AI hallucinates plain strings instead of objects
+        // Ultra-aggressive parser that salvages slightly messed up AI formatting
         const formatMoves = (moves) => {
-          if (!Array.isArray(moves)) return Array(3).fill({ name: "Basic Strike", desc: "A standard attack." });
-          return moves.map((m, i) => {
-            if (typeof m === 'string') return { name: m, desc: `Combat move ${i + 1}` };
-            return { name: m.name || "Unknown Move", desc: m.desc || "No description provided." };
+          let parsedMoves = [];
+          if (Array.isArray(moves)) {
+            parsedMoves = moves;
+          } else if (typeof moves === 'object' && moves !== null) {
+            parsedMoves = Object.values(moves);
+          }
+          
+          if (!Array.isArray(parsedMoves) || parsedMoves.length === 0) {
+            return [
+              { name: "Heavy Strike", desc: "A powerful, damaging attack." },
+              { name: "Quick Flurry", desc: "A fast sequence of light attacks." },
+              { name: "Tactical Guard", desc: "A swift defensive maneuver." }
+            ];
+          }
+
+          return parsedMoves.slice(0, 3).map((m, i) => {
+            if (typeof m === 'string') return { name: m.substring(0, 50), desc: `Combat move ${i + 1}` };
+            return { 
+              // Checks for common AI hallucinations like 'title' or 'action' instead of 'name'
+              name: String(m.name || m.title || m.action || `Move ${i + 1}`).substring(0, 50), 
+              desc: String(m.desc || m.description || m.detail || "A combat maneuver.").substring(0, 100) 
+            };
           });
         };
 
@@ -902,6 +938,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           c2_moves: formatMoves(data.c2_moves)
         };
       };
+
 
       // 5. Generate Round 1 Moves
       let movesData = await generateMoves(character1, character2, false);
