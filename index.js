@@ -1098,17 +1098,32 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           break; 
         }
       }
-
       // --- FINAL WINNER ANNOUNCEMENT ---
+      let winnerAnnouncement;
+      const winLower = (winner || '').toLowerCase();
+      const c1Lower = character1.toLowerCase();
+      const c2Lower = character2.toLowerCase();
+
+      // Check which player won
+      if (winLower.includes(c1Lower) || c1Lower.includes(winLower)) {
+        winnerAnnouncement = `🏆 **WINNER: <@${player1.id}> (${character1.toUpperCase()})**`;
+      } else if (winLower.includes(c2Lower) || c2Lower.includes(winLower)) {
+        winnerAnnouncement = `🏆 **WINNER: <@${player2.id}> (${character2.toUpperCase()})**`;
+      } else {
+        // Fallback default to Player 1 if AI output string doesn't cleanly match either name
+        winnerAnnouncement = `🏆 **WINNER: <@${player1.id}> (${character1.toUpperCase()})**`;
+      }
+
       await activeChannel.send({
         content: `🏆 <@${player1.id}> ⚔️ <@${player2.id}>`,
         embeds: [{
           title: `⚔️ BATTLE CONCLUDED!`,
-          description: `${finalNarrative}\n\n🏆 **WINNER: ${winner ? winner.toUpperCase() : 'DRAW'}**`,
+          description: `${finalNarrative}\n\n${winnerAnnouncement}`,
           color: 0xFF3333,
           footer: { text: `Simulated by Groq AI` }
         }]
       });
+
 
     } catch (error) {
       console.error('Battle Error:', error);
