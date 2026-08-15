@@ -28,6 +28,36 @@ const client = new Client({
   ]
 });
 
+/*
+==========================================================
+ 🤖 DORABOT COMMAND REFERENCE & ARCHITECTURE
+==========================================================
+
+✦ SLASH COMMANDS (Ordered):
+  1. /help       - DoraBot help desk & interactive command menu
+  2. /info       - System specifications & creator information
+  3. /stats      - Live server count, latency, uptime & analytics
+  4. /ask        - Gemini 3.6 Flash conversational engine
+  5. /image      - Flux/Pollinations text-to-image generator
+  6. /admin      - Image credit quotas & administrative control
+  7. /wanted     - Dynamic bounty poster generator (Canvas)
+  8. /adventure  - Interactive Doraemon text RPG (Groq LLaMA 3.3)
+  9. /battle     - Fiction combat simulator & matchmaker (Groq)
+ 10. /quiz       - Structured multiple-choice trivia (Gemini)
+
+✦ MESSAGE COMMANDS (Ordered):
+  1. !sum / !summary  - Bulleted AI summarizer for replied messages
+  2. !wanted          - Avatar bounty poster generator (!wanted gs for B&W)
+  3. !superover       - Single-player cricket over simulation
+  4. !scramble        - Word unscramble race with dynamic hints
+  5. !batbattle       - Multiplayer lobby cricket batting duel
+  6. !image <prompt>  - Direct chat image generation
+  7. @DoraBot         - Natural conversation with memory retention
+==========================================================
+*/
+
+
+
 // =========================
 // GROQ AI
 // =========================
