@@ -316,99 +316,114 @@ client.on(Events.InteractionCreate, async interaction => {
     });
   }
 
-// --- /IMAGE ---
-// --- /IMAGE ---
-if (interaction.commandName === 'image') {
-  const prompt = interaction.options.getString('prompt');
-const userId = interaction.user.id;
-const isOwner = userId === OWNER_ID;
-
-// NSFW / blocked words filter (non-owners only)
-const blockedWords = [
-  'porn', 'nude', 'sex', 'hentai', 'onlyfans', 'rape',
-  'boobs', 'breasts', 'sexy', 'underwear', 'lingerie',
-  'bikini', 'topless', 'naked', 'nsfw', 'fetish'
-];
-
-const lowerPrompt = prompt.toLowerCase();
-
-if (!isOwner && blockedWords.some(word => lowerPrompt.includes(word))) {
-  return interaction.reply({
-    content: '🚫 NSFW or inappropriate image prompts are not allowed.',
-    flags: MessageFlags.Ephemeral
-  });
-}
 
 
-  const today = new Date().toDateString();
- 
 
-  // Get today's usage
-  let userLimit = dailyImageLimits.get(userId) || {
-    date: today,
-    count: 0
-  };
+      // --- /IMAGE (POWERED BY GOOGLE IMAGEN 3) ---
+    if (interaction.commandName === 'image') {
+      const prompt = interaction.options.getString('prompt');
+      const userId = interaction.user.id;
+      const isOwner = userId === OWNER_ID;
 
-  // Reset on a new day
-  if (userLimit.date !== today) {
-    userLimit = {
-      date: today,
-      count: 0
-    };
-  }
+      const lowerPrompt = prompt.toLowerCase();
 
-  // Bonus credits
-  const bonus = bonusImageCredits.get(userId) || 0;
-  const maxImages = 5 + bonus;
+      if (!isOwner && blockedWords.some(word => lowerPrompt.includes(word))) {
+        return interaction.reply({
+          content: '🚫 NSFW or inappropriate image prompts are not allowed.',
+          flags: MessageFlags.Ephemeral
+        });
+      }
 
-  // Check limit (owner is unlimited)
-  if (!isOwner && userLimit.count >= maxImages) {
-    return interaction.reply({
-      content: `🚫 You have reached your daily limit of **${maxImages} images**. Please try again tomorrow.`,
-      flags: MessageFlags.Ephemeral
-    });
-  }
+      if (!process.env.GEMINI_API_KEY) {
+        return interaction.reply({
+          content: '⚠️ `GEMINI_API_KEY` is missing in Railway environment variables.',
+          flags: MessageFlags.Ephemeral
+        });
+      }
 
-  // Increase count for normal users
-  if (!isOwner) {
-    userLimit.count += 1;
-    dailyImageLimits.set(userId, userLimit);
-  }
+      const today = new Date().toDateString();
+      let userLimit = dailyImageLimits.get(userId) || { date: today, count: 0 };
 
-  await interaction.deferReply();
+      if (userLimit.date !== today) {
+        userLimit = { date: today, count: 0 };
+      }
 
-  try {
-    const imageUrl =
-      `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&model=flux`;
+      const bonus = bonusImageCredits.get(userId) || 0;
+      const maxImages = 5 + bonus;
 
-    const embed = new EmbedBuilder()
-      .setColor('#00BFFF')
-      .setTitle('🎨 DoraBot Image')
-      .setDescription(`**Prompt:** ${prompt}`)
-      .setImage(imageUrl)
-      .setFooter({
-        text: isOwner
-          ? '🩵 Developer • Unlimited images'
-          : `Remaining today: ${maxImages - userLimit.count}`
-      });
+      if (!isOwner && userLimit.count >= maxImages) {
+        return interaction.reply({
+          content: `🚫 You have reached your daily limit of **${maxImages} images**. Please try again tomorrow.`,
+          flags: MessageFlags.Ephemeral
+        });
+      }
 
-    await interaction.editReply({
-      embeds: [embed]
-    });
+      if (!isOwner) {
+        userLimit.count += 1;
+        dailyImageLimits.set(userId, userLimit);
+      }
 
-  } catch (err) {
-    console.error(err);
+      await interaction.deferReply();
 
-    // Refund usage on failure
-    if (!isOwner) {
-      userLimit.count -= 1;
-      dailyImageLimits.set(userId, userLimit);
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${process.env.GEMINI_API_KEY}`;
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instances: [{ prompt: prompt }],
+            parameters: {
+              sampleCount: 1,
+              aspectRatio: '1:1',
+              outputMimeType: 'image/jpeg'
+            }
+          })
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Imagen API Error ${res.status}: ${errText}`);
+        }
+
+        const data = await res.json();
+        const base64Data = data.predictions?.[0]?.bytesBase64Encoded;
+
+        if (!base64Data) {
+          throw new Error('No image data returned from Imagen.');
+        }
+
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'generated.jpg' });
+
+        const embed = new EmbedBuilder()
+          .setColor('#00BFFF')
+          .setTitle('🎨 DoraBot Image')
+          .setDescription(`**Prompt:** ${prompt}`)
+          .setImage('attachment://generated.jpg')
+          .setFooter({
+            text: isOwner
+              ? '🩵 Developer • Unlimited images'
+              : `Remaining today: ${maxImages - userLimit.count}`
+          });
+
+        await interaction.editReply({
+          embeds: [embed],
+          files: [attachment]
+        });
+
+      } catch (err) {
+        console.error('Image Gen Error:', err);
+
+        if (!isOwner) {
+          userLimit.count -= 1;
+          dailyImageLimits.set(userId, userLimit);
+        }
+
+        await interaction.editReply('⚠️ Failed to generate image with Gemini/Imagen.');
+      }
     }
-
-    await interaction.editReply('⚠️ Failed to generate image.');
-  }
-}
-
+  
 
 // --- /ADMIN ---
 if (interaction.commandName === 'admin') {
