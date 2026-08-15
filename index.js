@@ -444,19 +444,23 @@ if (interaction.commandName === 'admin') {
   }
 }
 
-          // --- /ASK (POWERED BY GEMINI INTERACTIONS API) ---
+            // --- /ASK (POWERED BY GEMINI INTERACTIONS API) ---
   if (interaction.commandName === 'ask') {
-    const question = interaction.options.getString('question');
-    const userId = interaction.user.id;
+    const question = interaction.options.getString('question');[span_1](start_span)[span_1](end_span)
+    const isEphemeral = interaction.options.getBoolean('ephemeral') || false; // 👈 Read option (defaults to public)
+    const userId = interaction.user.id;[span_2](start_span)[span_2](end_span)
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {[span_3](start_span)[span_3](end_span)
       return interaction.reply({
         content: '⚠️ `GEMINI_API_KEY` is missing in Railway environment variables.',
-        flags: MessageFlags.Ephemeral
+        flags: MessageFlags.Ephemeral[span_4](start_span)[span_4](end_span)
       });
     }
 
-    await interaction.deferReply();
+    // 👈 Apply ephemeral flag dynamically to deferReply
+    await interaction.deferReply({
+      flags: isEphemeral ? MessageFlags.Ephemeral : undefined
+    });
 
     try {
       let previousId = askHistory.get(userId);
@@ -464,10 +468,12 @@ if (interaction.commandName === 'admin') {
       const payload = {
         model: 'gemini-3.6-flash',
         input: question,
-        system_instruction: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally, be witty, and remember previous messages.'
+        system_instruction: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Keep your answers concise, direct, and limited to 2-3 sentences max unless explicitly asked for detail.',
+        generation_config: {
+          max_output_tokens: 200
+        }
       };
 
-      // Connect to existing server-side conversation history if available
       if (previousId) {
         payload.previous_interaction_id = previousId;
       }
@@ -488,7 +494,6 @@ if (interaction.commandName === 'admin') {
 
       const data = await res.json();
 
-      // Extract output text from model_output step
       let answer = '';
       if (data.steps && Array.isArray(data.steps)) {
         for (const step of data.steps) {
@@ -504,7 +509,6 @@ if (interaction.commandName === 'admin') {
         answer = '⚠️ I could not generate a response.';
       }
 
-      // Save interaction ID for stateful multi-turn chat
       if (data.id) {
         askHistory.set(userId, data.id);
       }
@@ -513,11 +517,11 @@ if (interaction.commandName === 'admin') {
 
     } catch (err) {
       console.error('Gemini Ask Error:', err);
-      // Reset interaction session on failure
       askHistory.delete(userId);
       await interaction.editReply('⚠️ Failed to contact the Gemini AI service.');
     }
   }
+
 
 
 
@@ -1318,6 +1322,130 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         await i.reply({ content: `✅ Your guess (**Option ${guess}**) is locked in!`, flags: MessageFlags.Ephemeral });
       });
 
+  // --- /QUIZ (POWERED EXCLUSIVELY BY GEMINI) ---
+  if (interaction.commandName === 'quiz') {
+    await interaction.deferReply();
+    
+    const topic = interaction.options.getString('topic') || '';
+    const difficulty = interaction.options.getString('difficulty') || 'Easy';
+
+    const difficultyColors = {
+      easy: 0x00FF88,
+      medium: 0xFFCC00,
+      hard: 0xFF3344
+    };
+
+    try {
+      const wildSeed = Math.floor(Math.random() * 9999999);
+      const historyText = askedQuestions.length > 0 
+        ? `\n\nCRITICAL: DO NOT REPEAT OR REPHRASE ANY OF THESE PREVIOUS QUESTIONS:\n- ${askedQuestions.join('\n- ')}` 
+        : '';
+
+      const prompt = `Topic: ${topic || 'Random Trivia'}\nDifficulty Level: ${difficulty}\nRandom Seed: ${Date.now()}-${wildSeed}${historyText}`;
+      const sysInstruction = `You are a quiz master. Generate a single ${difficulty.toUpperCase()} level multiple-choice question about the specified topic.
+CRITICAL RULES:
+1. Provide exactly 4 options in the "options" array.
+2. Include the correct answer as one of the 4 items in the "options" array.
+3. The "answer" field MUST be the exact matching string from the "options" array.
+4. Pick a completely unique, engaging fact or sub-topic.`;
+
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': process.env.GEMINI_API_KEY
+        },
+        body: JSON.stringify({
+          model: 'gemini-3.6-flash',
+          input: prompt,
+          system_instruction: sysInstruction,
+          response_format: {
+            type: 'text',
+            mime_type: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                question: { type: 'string' },
+                options: {
+                  type: 'array',
+                  items: { type: 'string' }
+                },
+                answer: { type: 'string' }
+              },
+              required: ['question', 'options', 'answer']
+            }
+          }
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Gemini Quiz API Error ${res.status}: ${errText}`);
+      }
+
+      const data = await res.json();
+      let rawText = '';
+      if (data.steps && Array.isArray(data.steps)) {
+        for (const step of data.steps) {
+          if (step.type === 'model_output' && Array.isArray(step.content)) {
+            for (const item of step.content) {
+              if (item.type === 'text') rawText += item.text;
+            }
+          }
+        }
+      }
+
+      const quizData = JSON.parse(rawText);
+
+      // Save to memory to prevent repeat questions
+      askedQuestions.push(quizData.question);
+      if (askedQuestions.length > 20) {
+        askedQuestions.shift(); 
+      }
+
+      const optionsText = quizData.options.map((opt, i) => `**${i + 1}.** ${opt}`).join('\n\n');
+      const correctIndex = quizData.options.indexOf(quizData.answer) + 1;
+
+      const row = new ActionRowBuilder();
+      quizData.options.slice(0, 4).forEach((opt, index) => {
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`ans_${index + 1}`)
+            .setLabel(`${index + 1}`)
+            .setStyle(ButtonStyle.Primary)
+        );
+      });
+
+      const quizMessage = await interaction.editReply({
+        embeds: [{
+          title: `🧠 AI Quiz Time (${difficulty.toUpperCase()})`,
+          description: `**${quizData.question}**\n\n${optionsText}\n\n*Click a button below within 20 seconds!*`,
+          color: difficultyColors[difficulty.toLowerCase()] || 0x00FFAA,
+          footer: { text: `Topic: ${topic ? topic.toUpperCase() : 'RANDOM'} • Level: ${difficulty.toUpperCase()}` }
+        }],
+        components: [row]
+      });
+
+      const collector = quizMessage.createMessageComponentCollector({ time: 20000 });
+      const players = new Map(); 
+
+      collector.on('collect', async (i) => {
+        const guess = parseInt(i.customId.split('_')[1]);
+
+        if (players.has(i.user.id)) {
+          const previousGuess = players.get(i.user.id).guess;
+          if (previousGuess === guess) {
+            return i.reply({ content: `⚠️ You already locked in **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
+          } else {
+            players.set(i.user.id, { user: i.user, guess: guess });
+            return i.reply({ content: `🔄 You changed your guess to **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
+          }
+        }
+
+        players.set(i.user.id, { user: i.user, guess: guess });
+        await i.reply({ content: `✅ Your guess (**Option ${guess}**) is locked in!`, flags: MessageFlags.Ephemeral });
+      });
+
       collector.on('end', async () => {
         const disabledRow = new ActionRowBuilder().addComponents(
           row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
@@ -1331,15 +1459,15 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         const winners = [];
         const losers = [];
 
-        players.forEach((data, userId) => {
-          if (data.guess === correctIndex) {
-            winners.push(`<@${userId}>`);
+        players.forEach((playerData, uid) => {
+          if (playerData.guess === correctIndex) {
+            winners.push(`<@${uid}>`);
           } else {
-            losers.push(`<@${userId}> (Guessed ${data.guess})`);
+            losers.push(`<@${uid}> (Guessed ${playerData.guess})`);
           }
         });
 
-        let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}**.\n\n`;
+        let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}** (${quizData.answer}).\n\n`;
         if (winners.length > 0) resultText += `🎉 **Correct:** ${winners.join(', ')}\n`;
         else resultText += `❌ **Correct:** Nobody got it right!\n`;
 
@@ -1350,7 +1478,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 
     } catch (error) {
       console.error('Quiz Error:', error);
-      return interaction.editReply('⚠️ Could not generate the quiz. The system might be overloaded!');
+      return interaction.editReply('⚠️ Could not generate the quiz.');
     }
   }
 
