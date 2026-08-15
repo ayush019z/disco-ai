@@ -103,15 +103,22 @@ const commands = [
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
     )),
 
-  enableDMs(new SlashCommandBuilder()
-    .setName('ask')
-    .setDescription('Ask DoraBot anything')
-    .addStringOption(option =>
-      option
-        .setName('question')
-        .setDescription('What do you want to ask❓')
-        .setRequired(true)
-    )),
+  new SlashCommandBuilder()
+  .setName('ask')
+  .setDescription('Ask DoraBot anything')
+  .setDMPermission(true) // 👈 Enables command in Direct Messages
+  .addStringOption(option =>
+    option
+      .setName('question')
+      .setDescription('What do you want to ask❓')
+      .setRequired(true)
+  )
+  .addBooleanOption(option =>
+    option
+      .setName('ephemeral')
+      .setDescription('Make the answer visible only to you (default: false)')
+      .setRequired(false)
+  )),
 
   enableDMs(new SlashCommandBuilder()
     .setName('info')
