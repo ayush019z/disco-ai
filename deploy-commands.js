@@ -118,7 +118,7 @@ const commands = [
       .setName('ephemeral')
       .setDescription('Make the answer visible only to you (default: false)')
       .setRequired(false)
-  )),
+  ),
 
   enableDMs(new SlashCommandBuilder()
     .setName('info')
