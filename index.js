@@ -465,11 +465,11 @@ if (interaction.commandName === 'admin') {
       });
 
       const response = await expAi.chat.completions.create({
-        model: 'gemini-2.5-flash', 
+        model: 'gemini-2.5-flash',
         messages: [
           {
             role: 'system',
-            content: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally.'
+            content: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally and remember previous context.'
           },
           ...history
         ],
