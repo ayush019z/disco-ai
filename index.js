@@ -36,14 +36,6 @@ const ai = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
-// =========================
-// EXPERIMENTAL AI (Google Gemini - Used for /ask)
-// =========================
-const expAi = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/'
-});
-
 
 
 // =========================
@@ -443,14 +435,14 @@ if (interaction.commandName === 'admin') {
   }
 }
 
-      // --- /ASK ---
+        // --- /ASK (POWERED EXCLUSIVELY BY GEMINI 2.0 FLASH) ---
   if (interaction.commandName === 'ask') {
     const question = interaction.options.getString('question');
     const userId = interaction.user.id;
 
     if (!process.env.GEMINI_API_KEY) {
       return interaction.reply({
-        content: '⚠️ `GEMINI_API_KEY` is missing in environment variables.',
+        content: '⚠️ `GEMINI_API_KEY` is missing in Railway environment variables.',
         flags: MessageFlags.Ephemeral
       });
     }
@@ -460,44 +452,58 @@ if (interaction.commandName === 'admin') {
     try {
       let history = askHistory.get(userId) || [];
 
+      // Add user's question
       history.push({
         role: 'user',
-        content: question
+        parts: [{ text: question }]
       });
 
-      const response = await expAi.chat.completions.create({
-        model: 'gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally and remember previous context.'
+      // Direct REST call to Gemini 2.0 Flash
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally, be witty, and remember previous messages.' }]
           },
-          ...history
-        ],
-        temperature: 0.7,
-        max_tokens: 1200
+          contents: history
+        })
       });
 
-      const answer = response.choices?.[0]?.message?.content || '⚠️ I could not generate a response.';
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Gemini API Error ${res.status}: ${errorText}`);
+      }
 
+      const data = await res.json();
+      const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || '⚠️ I could not generate a response.';
+
+      // Save assistant reply to memory
       history.push({
-        role: 'assistant',
-        content: answer
+        role: 'model',
+        parts: [{ text: answer }]
       });
 
+      // Retain last 20 messages for memory
       if (history.length > 20) {
         history = history.slice(-20);
       }
 
       askHistory.set(userId, history);
 
+      // Reply within Discord's 2000 character limit
       await interaction.editReply(answer.slice(0, 2000));
 
     } catch (err) {
-      console.error('Ask Error:', err);
-      await interaction.editReply('⚠️ Failed to contact the experimental AI service.');
+      console.error('Gemini Ask Error:', err);
+      await interaction.editReply('⚠️ Failed to contact the Gemini AI service.');
     }
   }
+
 
 
 
