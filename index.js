@@ -435,7 +435,7 @@ if (interaction.commandName === 'admin') {
   }
 }
 
-        // --- /ASK (POWERED EXCLUSIVELY BY GEMINI 2.0 FLASH) ---
+          // --- /ASK (POWERED BY GEMINI INTERACTIONS API) ---
   if (interaction.commandName === 'ask') {
     const question = interaction.options.getString('question');
     const userId = interaction.user.id;
@@ -450,28 +450,26 @@ if (interaction.commandName === 'admin') {
     await interaction.deferReply();
 
     try {
-      let history = askHistory.get(userId) || [];
+      let previousId = askHistory.get(userId);
 
-      // Add user's question
-      history.push({
-        role: 'user',
-        parts: [{ text: question }]
-      });
+      const payload = {
+        model: 'gemini-3.6-flash',
+        input: question,
+        system_instruction: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally, be witty, and remember previous messages.'
+      };
 
-      // Direct REST call to Gemini 2.0 Flash
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      // Connect to existing server-side conversation history if available
+      if (previousId) {
+        payload.previous_interaction_id = previousId;
+      }
 
-      const res = await fetch(url, {
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-goog-api-key': process.env.GEMINI_API_KEY
         },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Continue the conversation naturally, be witty, and remember previous messages.' }]
-          },
-          contents: history
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
@@ -480,29 +478,38 @@ if (interaction.commandName === 'admin') {
       }
 
       const data = await res.json();
-      const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || '⚠️ I could not generate a response.';
 
-      // Save assistant reply to memory
-      history.push({
-        role: 'model',
-        parts: [{ text: answer }]
-      });
-
-      // Retain last 20 messages for memory
-      if (history.length > 20) {
-        history = history.slice(-20);
+      // Extract output text from model_output step
+      let answer = '';
+      if (data.steps && Array.isArray(data.steps)) {
+        for (const step of data.steps) {
+          if (step.type === 'model_output' && Array.isArray(step.content)) {
+            for (const item of step.content) {
+              if (item.type === 'text') answer += item.text;
+            }
+          }
+        }
       }
 
-      askHistory.set(userId, history);
+      if (!answer) {
+        answer = '⚠️ I could not generate a response.';
+      }
 
-      // Reply within Discord's 2000 character limit
+      // Save interaction ID for stateful multi-turn chat
+      if (data.id) {
+        askHistory.set(userId, data.id);
+      }
+
       await interaction.editReply(answer.slice(0, 2000));
 
     } catch (err) {
       console.error('Gemini Ask Error:', err);
+      // Reset interaction session on failure
+      askHistory.delete(userId);
       await interaction.editReply('⚠️ Failed to contact the Gemini AI service.');
     }
   }
+
 
 
 
