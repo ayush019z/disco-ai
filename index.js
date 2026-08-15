@@ -37,6 +37,15 @@ const ai = new OpenAI({
 });
 
 
+// Prevent process crashes on Discord API timeouts (like Unknown interaction 10062)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err);
+});
+
 
 // =========================
 // BLOCKED WORDS
