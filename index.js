@@ -1506,14 +1506,15 @@ CRITICAL RULES:
         interaction.followUp(resultText);
       });
 
-    } catch (error) {
-      console.error('Quiz Error:', error);
-      return interaction.editReply('⚠️ Could not generate the quiz.');
+    // 👇 ADD THIS OUTER CATCH BLOCK HERE 👇
+  } catch (err) {
+    if (err.code === 10062) {
+      console.warn('⚠️ Interaction timed out before replying (10062). Safely ignored.');
+    } else {
+      console.error('Interaction Error:', err);
     }
   }
-
 }); // <--- THIS BRACKET ENDS THE INTERACTION CREATE EVENT
-
 
 // =========================
 // MESSAGE COMMANDS
