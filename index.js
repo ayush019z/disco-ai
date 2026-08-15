@@ -365,19 +365,18 @@ client.on(Events.InteractionCreate, async interaction => {
 
       await interaction.deferReply();
 
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${process.env.GEMINI_API_KEY}`;
+            try {
+        // 👈 Standard Google AI Studio endpoint for Imagen 3
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${process.env.GEMINI_API_KEY}`;
 
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            instances: [{ prompt: prompt }],
-            parameters: {
-              sampleCount: 1,
-              aspectRatio: '1:1',
-              outputMimeType: 'image/jpeg'
-            }
+            prompt: prompt,
+            numberOfImages: 1,
+            outputMimeType: 'image/jpeg',
+            aspectRatio: '1:1'
           })
         });
 
@@ -387,7 +386,9 @@ client.on(Events.InteractionCreate, async interaction => {
         }
 
         const data = await res.json();
-        const base64Data = data.predictions?.[0]?.bytesBase64Encoded;
+        
+        // 👈 Extract generated base64 JPEG from generateImages response format
+        const base64Data = data.generatedImages?.[0]?.image?.imageBytes;
 
         if (!base64Data) {
           throw new Error('No image data returned from Imagen.');
