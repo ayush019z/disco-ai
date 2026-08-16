@@ -318,8 +318,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
 
 
-
-      // --- /IMAGE (POWERED BY GOOGLE IMAGEN 3) ---
+      // --- /IMAGE (POWERED BY GEMINI NATIVE INTERACTIONS API) ---
     if (interaction.commandName === 'image') {
       const prompt = interaction.options.getString('prompt');
       const userId = interaction.user.id;
@@ -365,33 +364,50 @@ client.on(Events.InteractionCreate, async interaction => {
 
       await interaction.deferReply();
 
-            try {
-        // 👈 Standard Google AI Studio endpoint for Imagen 3
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${process.env.GEMINI_API_KEY}`;
+      try {
+        const payload = {
+          model: 'gemini-3.1-flash-image',
+          input: prompt,
+          response_format: {
+            type: 'image',
+            mime_type: 'image/jpeg',
+            aspect_ratio: '1:1'
+          }
+        };
 
-        const res = await fetch(url, {
+        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: prompt,
-            numberOfImages: 1,
-            outputMimeType: 'image/jpeg',
-            aspectRatio: '1:1'
-          })
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': process.env.GEMINI_API_KEY
+          },
+          body: JSON.stringify(payload)
         });
 
         if (!res.ok) {
           const errText = await res.text();
-          throw new Error(`Imagen API Error ${res.status}: ${errText}`);
+          throw new Error(`Gemini Image API Error ${res.status}: ${errText}`);
         }
 
         const data = await res.json();
-        
-        // 👈 Extract generated base64 JPEG from generateImages response format
-        const base64Data = data.generatedImages?.[0]?.image?.imageBytes;
+
+        // Extract base64 image from the model output steps
+        let base64Data = null;
+        if (data.steps && Array.isArray(data.steps)) {
+          for (const step of data.steps) {
+            if (step.type === 'model_output' && Array.isArray(step.content)) {
+              for (const item of step.content) {
+                if (item.type === 'image' && item.data) {
+                  base64Data = item.data;
+                  break;
+                }
+              }
+            }
+          }
+        }
 
         if (!base64Data) {
-          throw new Error('No image data returned from Imagen.');
+          throw new Error('No image data returned from Gemini.');
         }
 
         const imageBuffer = Buffer.from(base64Data, 'base64');
@@ -408,6 +424,8 @@ client.on(Events.InteractionCreate, async interaction => {
               : `Remaining today: ${maxImages - userLimit.count}`
           });
 
+        imagesGenerated++;
+
         await interaction.editReply({
           embeds: [embed],
           files: [attachment]
@@ -421,9 +439,10 @@ client.on(Events.InteractionCreate, async interaction => {
           dailyImageLimits.set(userId, userLimit);
         }
 
-        await interaction.editReply('⚠️ Failed to generate image with Gemini/Imagen.');
+        await interaction.editReply('⚠️ Failed to generate image with Gemini.');
       }
     }
+  
   
 
 // --- /ADMIN ---
