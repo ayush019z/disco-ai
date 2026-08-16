@@ -1706,7 +1706,7 @@ if (message.content.toLowerCase() === '!scramble') {
   return;
 }
 // =========================
-// BAT BATTLE MULTIPLAYER
+// BAT BATTLE MULTIPLAYER (6-Ball Over, 2 Wickets)
 // =========================
 if (message.content.toLowerCase() === '!batbattle') {
   // Prevent multiple games in the same channel
@@ -1718,40 +1718,36 @@ if (message.content.toLowerCase() === '!batbattle') {
 
   await message.channel.send({
     embeds: [{
-      title: '🏏 BAT BATTLE STARTING!',
-      description: 'You have **15 seconds**! Type one of the following to hit your shot:\n\n`defensive` 🛡️\n`drive` 🏏\n`loft` 🚀\n`scoop` 🪄\n\nHighest score wins!',
+      title: '🏏 6-BALL BAT BATTLE STARTING!',
+      description: 'You have **20 seconds** to play your over!\n\nType exactly **6 letters** representing your shots (e.g., `L D S P D L` or `LDSPDL`).\n\n**Shot Types:**\n`D` - Drive 🏏\n`P` - Pull 💥\n`L` - Loft 🚀\n`S` - Scoop 🪄\n\nHighest total score wins! *(Warning: If you lose **2 Wickets**, your innings ends early!)*',
       color: 0xFF9900
     }]
   });
 
-  // Filter allows only valid shots and ignores bots
-  const validShots = ['defensive', 'drive', 'loft', 'scoop'];
-  const filter = (m) => validShots.includes(m.content.toLowerCase()) && !m.author.bot;
+  // Filter allows only messages that contain exactly 6 valid shot letters
+  const validLetters = ['d', 'p', 'l', 's'];
+  const filter = (m) => {
+    if (m.author.bot) return false;
+    // Remove all spaces and non-alphabet characters
+    const chars = m.content.toLowerCase().replace(/[^a-z]/g, '').split('');
+    return chars.length === 6 && chars.every(c => validLetters.includes(c));
+  };
   
-  // Create a collector that runs for 15,000 ms (15 seconds)
-  const collector = message.channel.createMessageCollector({ filter, time: 15000 });
-  const players = new Map(); // Store user ID -> their result
+  const collector = message.channel.createMessageCollector({ filter, time: 20000 });
+  const players = new Map();
 
   collector.on('collect', (m) => {
-    // Only accept the user's first shot
+    // Only accept the user's first valid 6-ball submission
     if (players.has(m.author.id)) return;
 
-    const shot = m.content.toLowerCase();
-    let outcome;
-
-    // Calculate run/wicket based on shot risk
-    if (shot === 'defensive') outcome = [0, 1, 1, 2, 2, 'W'][Math.floor(Math.random() * 6)];
-    else if (shot === 'drive') outcome = [0, 1, 2, 3, 4, 'W'][Math.floor(Math.random() * 6)];
-    else if (shot === 'loft') outcome = [0, 0, 2, 4, 6, 'W'][Math.floor(Math.random() * 6)];
-    else outcome = [0, 0, 4, 6, 6, 'W'][Math.floor(Math.random() * 6)];
-
-    players.set(m.author.id, { user: m.author, shot, outcome });
+    const shots = m.content.toLowerCase().replace(/[^a-z]/g, '').split('');
+    players.set(m.author.id, { user: m.author, shots });
     
-    // React to let them know their shot is locked in
+    // React to let them know their over is locked in
     m.react('🏏').catch(() => {});
   });
 
-    collector.on('end', () => {
+  collector.on('end', () => {
     activeBatBattles.delete(message.channelId);
 
     // If no human played, cancel the game
@@ -1762,47 +1758,79 @@ if (message.content.toLowerCase() === '!batbattle') {
     // =========================
     // 🤖 THE BOT TAKES ITS TURN
     // =========================
-    const botShots = ['defensive', 'drive', 'loft', 'scoop'];
-    const botChoice = botShots[Math.floor(Math.random() * botShots.length)];
-    
-    let botOutcome;
-    if (botChoice === 'defensive') botOutcome = [0, 1, 1, 2, 2, 'W'][Math.floor(Math.random() * 6)];
-    else if (botChoice === 'drive') botOutcome = [0, 1, 2, 3, 4, 'W'][Math.floor(Math.random() * 6)];
-    else if (botChoice === 'loft') botOutcome = [0, 0, 2, 4, 6, 'W'][Math.floor(Math.random() * 6)];
-    else botOutcome = [0, 0, 4, 6, 6, 'W'][Math.floor(Math.random() * 6)];
+    const botShots = [];
+    for (let i = 0; i < 6; i++) {
+      botShots.push(validLetters[Math.floor(Math.random() * validLetters.length)]);
+    }
+    players.set(client.user.id, { user: client.user, shots: botShots });
 
-    // Add the bot to the players list
-    players.set(client.user.id, { 
-      user: client.user, 
-      shot: botChoice, 
-      outcome: botOutcome 
+    // =========================
+    // 🏏 CALCULATE INNINGS
+    // =========================
+    const results = [];
+
+    players.forEach((playerData) => {
+      let totalRuns = 0;
+      let wickets = 0;
+      let ballLog = [];
+
+      for (let i = 0; i < 6; i++) {
+        const shot = playerData.shots[i];
+        let outcome;
+
+        // Risk/Reward profiles for each shot type
+        if (shot === 'd') outcome = [0, 1, 2, 3, 4, 'W'][Math.floor(Math.random() * 6)];
+        else if (shot === 'p') outcome = [0, 1, 2, 4, 6, 'W'][Math.floor(Math.random() * 6)];
+        else if (shot === 'l') outcome = [0, 0, 2, 4, 6, 'W'][Math.floor(Math.random() * 6)];
+        else outcome = [0, 0, 4, 6, 6, 'W'][Math.floor(Math.random() * 6)];
+
+        if (outcome === 'W') {
+          wickets++;
+          ballLog.push('**W**');
+          if (wickets >= 2) {
+            break; // Innings is over after 2 wickets
+          }
+        } else {
+          totalRuns += outcome;
+          ballLog.push(outcome);
+        }
+      }
+
+      // Pad the rest of the over with dashes if they got out early
+      while (ballLog.length < 6) {
+        ballLog.push('-');
+      }
+
+      results.push({
+        user: playerData.user,
+        runs: totalRuns,
+        wickets: wickets,
+        balls: ballLog.join(' • '),
+        isOut: wickets >= 2
+      });
     });
 
-    // Sort all players (including the bot) by highest runs
-    const sortedPlayers = Array.from(players.values()).sort((a, b) => {
-      const scoreA = a.outcome === 'W' ? -1 : a.outcome;
-      const scoreB = b.outcome === 'W' ? -1 : b.outcome;
-      return scoreB - scoreA; // Descending order
-    });
+    // Sort players by highest runs
+    results.sort((a, b) => b.runs - a.runs);
 
-    // Build the leaderboard string
+    // =========================
+    // 📊 BUILD LEADERBOARD
+    // =========================
     let leaderboardText = '';
-    sortedPlayers.forEach((p, index) => {
+    results.forEach((r, index) => {
       const rankIcon = index === 0 ? '🏆' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : '🏅'));
-      const resultText = p.outcome === 'W' ? '💥 **WICKET**' : `**${p.outcome}** runs`;
+      const nameDisplay = r.user.id === client.user.id ? `🤖 ${r.user.username}` : r.user.username;
+      const status = r.isOut ? `*(All Out)*` : `*(Not Out)*`;
       
-      // Add a robot emoji next to the bot's name so it stands out
-      const nameDisplay = p.user.id === client.user.id ? `🤖 ${p.user.username}` : p.user.username;
-      
-      leaderboardText += `${rankIcon} **${nameDisplay}** — *${p.shot}* ➔ ${resultText}\n`;
+      leaderboardText += `${rankIcon} **${nameDisplay}** — **${r.runs}/${r.wickets}** ${status}\n└ [ ${r.balls} ]\n\n`;
     });
 
     // Determine winner text
-    const topPlayer = sortedPlayers[0];
+    const topPlayer = results[0];
     let winnerText;
     
-    if (topPlayer.outcome === 'W') {
-      winnerText = 'Everyone got out! No winner this round.';
+    if (topPlayer.runs === 0 && topPlayer.isOut) {
+      winnerText = 'Everyone got out for a duck! 🦆 No winner this round.';
     } else if (topPlayer.user.id === client.user.id) {
       winnerText = '🤖 I take the crown! Better luck next time.';
     } else {
@@ -1811,7 +1839,7 @@ if (message.content.toLowerCase() === '!batbattle') {
 
     message.channel.send({
       embeds: [{
-        title: '📊 Bat Battle Results!',
+        title: '📊 6-Ball Bat Battle Results!',
         description: leaderboardText,
         color: 0x00FF88,
         footer: {
@@ -1823,6 +1851,7 @@ if (message.content.toLowerCase() === '!batbattle') {
 
   return;
 }
+
   
   uniqueUsers.add(message.author.id);
 
