@@ -537,7 +537,7 @@ if (interaction.commandName === 'admin') {
         input: question,
         system_instruction: 'You are DoraBot, a helpful Discord assistant inspired by Doraemon. Keep your answers concise, direct, and limited to 2-3 sentences max unless explicitly asked for detail.',
         generation_config: {
-          max_output_tokens: 200
+          max_output_tokens: 500
         }
       };
 
