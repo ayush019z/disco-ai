@@ -2018,7 +2018,7 @@ if (message.content.toLowerCase() === '!batbattle') {
       ...history.messages
     ];
 
-    // =========================
+        // =========================
     // ⚡ 2. ASK GROQ FIRST
     // =========================
     const response = await ai.chat.completions.create({
@@ -2027,7 +2027,12 @@ if (message.content.toLowerCase() === '!batbattle') {
       max_tokens: wantsDetailed ? 500 : 120
     });
 
-    let finalAnswer = response.choices[0].message.content.trim();
+    // SAFELY extract Groq's answer to prevent "reading '0'" crashes
+    let finalAnswer = response.choices?.[0]?.message?.content?.trim();
+
+    if (!finalAnswer) {
+      throw new Error("Groq API returned an empty response or hit a rate limit.");
+    }
 
     // =========================
     // 🔄 3. FALLBACK TO GEMINI (WITH MEMORY)
@@ -2037,10 +2042,16 @@ if (message.content.toLowerCase() === '!batbattle') {
       await message.channel.sendTyping();
 
       // Translate Groq's memory array format into Gemini's format
-      const geminiHistory = history.messages.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user', // Gemini uses "model" instead of "assistant"
+      let geminiHistory = history.messages.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user', 
         parts: [{ text: msg.content }]
       }));
+
+      // Google strict rule: The conversation MUST start with a 'user' message
+      // If the slice left an 'assistant' message at the front, remove it so Gemini doesn't crash
+      if (geminiHistory.length > 0 && geminiHistory[0].role === 'model') {
+        geminiHistory.shift(); 
+      }
 
       const geminiPayload = {
         model: 'gemini-3.6-flash',
@@ -2061,12 +2072,15 @@ if (message.content.toLowerCase() === '!batbattle') {
 
       const geminiData = await geminiRes.json();
       
-      if (geminiData.candidates && geminiData.candidates.length > 0) {
+      // SAFELY extract Gemini's answer
+      if (geminiData.candidates?.[0]?.content?.parts?.[0]?.text) {
         finalAnswer = geminiData.candidates[0].content.parts[0].text;
       } else {
-        finalAnswer = "⚠️ Gemini took over but couldn't generate an up-to-date response.";
+        console.error("Gemini Fallback Error Dump:", JSON.stringify(geminiData));
+        finalAnswer = "⚠️ Gemini took over but ran into an issue processing the conversation.";
       }
     }
+
 
     // =========================
     // 💾 4. SAVE & SEND
