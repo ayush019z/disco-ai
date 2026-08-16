@@ -511,17 +511,18 @@ if (interaction.commandName === 'admin') {
 }
 
             // --- /ASK (POWERED BY GEMINI INTERACTIONS API) ---
-  if (interaction.commandName === 'ask') {
-    const question = interaction.options.getString('question');[span_1](start_span)[span_1](end_span)
+    if (interaction.commandName === 'ask') {
+    const question = interaction.options.getString('question');
     const isEphemeral = interaction.options.getBoolean('ephemeral') || false; // 👈 Read option (defaults to public)
-    const userId = interaction.user.id;[span_2](start_span)[span_2](end_span)
+    const userId = interaction.user.id;
 
-    if (!process.env.GEMINI_API_KEY) {[span_3](start_span)[span_3](end_span)
+    if (!process.env.GEMINI_API_KEY) {
       return interaction.reply({
         content: '⚠️ `GEMINI_API_KEY` is missing in Railway environment variables.',
-        flags: MessageFlags.Ephemeral[span_4](start_span)[span_4](end_span)
+        flags: MessageFlags.Ephemeral
       });
     }
+
 
     // 👈 Apply ephemeral flag dynamically to deferReply
     await interaction.deferReply({
