@@ -103,6 +103,16 @@ const commands = [
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
     )),
 
+const profileCommand = new SlashCommandBuilder()
+  .setName('profile')
+  .setDescription('View your or another user\'s mini-game stats')
+  .addUserOption(option =>
+    option
+      .setName('user')
+      .setDescription('The user whose profile you want to view')
+      .setRequired(false)
+  );
+
   new SlashCommandBuilder()
   .setName('ask')
   .setDescription('Ask DoraBot anything')
