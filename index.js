@@ -318,7 +318,8 @@ client.on(Events.InteractionCreate, async interaction => {
 
 
 
-          // --- /IMAGE (POWERED BY GEMINI 3.1 FLASH LITE IMAGE) ---
+          
+    // --- /IMAGE (POWERED BY POLLINATIONS FLUX - 100% FREE) ---
     if (interaction.commandName === 'image') {
       const prompt = interaction.options.getString('prompt');
       const userId = interaction.user.id;
@@ -329,13 +330,6 @@ client.on(Events.InteractionCreate, async interaction => {
       if (!isOwner && blockedWords.some(word => lowerPrompt.includes(word))) {
         return interaction.reply({
           content: '🚫 NSFW or inappropriate image prompts are not allowed.',
-          flags: MessageFlags.Ephemeral
-        });
-      }
-
-      if (!process.env.GEMINI_API_KEY) {
-        return interaction.reply({
-          content: '⚠️ `GEMINI_API_KEY` is missing in Railway environment variables.',
           flags: MessageFlags.Ephemeral
         });
       }
@@ -365,59 +359,13 @@ client.on(Events.InteractionCreate, async interaction => {
       await interaction.deferReply();
 
       try {
-        const payload = {
-          model: 'gemini-3.1-flash-lite-image',
-          input: prompt,
-          response_format: {
-            type: 'image',
-            mime_type: 'image/jpeg',
-            aspect_ratio: '1:1'
-          }
-        };
-
-        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': process.env.GEMINI_API_KEY
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(`Gemini Flash Lite API Error ${res.status}: ${errText}`);
-        }
-
-        const data = await res.json();
-
-        // Extract base64 image from the Interactions API steps
-        let base64Data = null;
-        if (data.steps && Array.isArray(data.steps)) {
-          for (const step of data.steps) {
-            if (step.type === 'model_output' && Array.isArray(step.content)) {
-              for (const item of step.content) {
-                if (item.type === 'image' && item.data) {
-                  base64Data = item.data;
-                  break;
-                }
-              }
-            }
-          }
-        }
-
-        if (!base64Data) {
-          throw new Error('No image data returned from Gemini.');
-        }
-
-        const imageBuffer = Buffer.from(base64Data, 'base64');
-        const attachment = new AttachmentBuilder(imageBuffer, { name: 'generated.jpg' });
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&model=flux`;
 
         const embed = new EmbedBuilder()
-          .setColor('#00FF88')
-          .setTitle('🎨 DoraBot Image (Flash Lite)')
+          .setColor('#00BFFF')
+          .setTitle('🎨 DoraBot Image')
           .setDescription(`**Prompt:** ${prompt}`)
-          .setImage('attachment://generated.jpg')
+          .setImage(imageUrl)
           .setFooter({
             text: isOwner
               ? '🩵 Developer • Unlimited images'
@@ -427,8 +375,7 @@ client.on(Events.InteractionCreate, async interaction => {
         imagesGenerated++;
 
         await interaction.editReply({
-          embeds: [embed],
-          files: [attachment]
+          embeds: [embed]
         });
 
       } catch (err) {
@@ -439,10 +386,9 @@ client.on(Events.InteractionCreate, async interaction => {
           dailyImageLimits.set(userId, userLimit);
         }
 
-        await interaction.editReply('⚠️ Failed to generate image with Gemini Flash Lite.');
+        await interaction.editReply('⚠️ Failed to generate image.');
       }
     }
-  
   
   
 
