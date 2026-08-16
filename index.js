@@ -135,6 +135,39 @@ const askHistory = new Map();
 // =========================
 client.once(Events.ClientReady, () => {
   console.log(`Logged in as ${client.user.tag}`);
+
+  // =========================
+  // BOTBOARD STATS POSTING
+  // =========================
+  const postBotStats = async () => {
+    try {
+      // Get the live server count from the bot's cache
+      const serverCount = client.guilds.cache.size;
+
+      const response = await fetch('https://www.botboard.gg/api/v1/bots/1535781723563102338/stats', {
+        method: 'POST',
+        headers: {
+          'Authorization': process.env.BOTBOARD_TOKEN,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ server_count: serverCount })
+      });
+
+      if (!response.ok) {
+        console.error(`⚠️ BotBoard API Error: ${response.status} ${response.statusText}`);
+      } else {
+        console.log(`📊 Successfully posted stats to BotBoard: ${serverCount} servers`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to post stats to BotBoard:', error);
+    }
+  };
+
+  // 1. Post immediately on startup
+  postBotStats();
+
+  // 2. Post every 30 minutes (30 minutes * 60 seconds * 1000 milliseconds)
+  setInterval(postBotStats, 30 * 60 * 1000);
 });
 
 // =========================
