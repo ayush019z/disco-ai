@@ -1977,8 +1977,7 @@ if (message.content.toLowerCase() === '!batbattle') {
     return message.reply('❌ NSFW or inappropriate questions are not allowed.');
   }
 
-  // Detailed mode
-  const wantsDetailed =
+    const wantsDetailed =
     /(detailed|detail|explain fully|full explanation|long answer|elaborate|in depth)/i
       .test(question);
 
@@ -1989,7 +1988,9 @@ if (message.content.toLowerCase() === '!batbattle') {
   try {
     await message.channel.sendTyping();
 
-    // Memory
+    // =========================
+    // 🧠 1. LOAD USER MEMORY
+    // =========================
     let history = userMemory.get(message.author.id);
 
     if (!history || (Date.now() - history.lastUsed) > MEMORY_TIME) {
@@ -1999,32 +2000,81 @@ if (message.content.toLowerCase() === '!batbattle') {
       };
     }
 
+    // Add their new question to the memory array
     history.messages.push({
       role: 'user',
       content: question
     });
 
+    // Keep only the last 10 messages so the bot doesn't crash from token limits
     history.messages = history.messages.slice(-10);
 
+    // Add the Trap to Groq's System Prompt
     const chatMessages = [
       {
         role: 'system',
-        content: systemPrompt
+        content: systemPrompt + " IMPORTANT: Your knowledge cutoff is 2024. If the conversation requires knowledge of 2025 or 2026, DO NOT GUESS. Reply EXACTLY and ONLY with the phrase: [NEEDS_GEMINI]."
       },
       ...history.messages
     ];
 
+    // =========================
+    // ⚡ 2. ASK GROQ FIRST
+    // =========================
     const response = await ai.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: chatMessages,
       max_tokens: wantsDetailed ? 500 : 120
     });
 
-    const answer = response.choices[0].message.content;
+    let finalAnswer = response.choices[0].message.content.trim();
 
+    // =========================
+    // 🔄 3. FALLBACK TO GEMINI (WITH MEMORY)
+    // =========================
+    if (finalAnswer.includes('[NEEDS_GEMINI]')) {
+      console.log(`[ROUTING] Groq hit a cutoff for ${message.author.username}. Switching to Gemini 3.6 Flash...`);
+      await message.channel.sendTyping();
+
+      // Translate Groq's memory array format into Gemini's format
+      const geminiHistory = history.messages.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user', // Gemini uses "model" instead of "assistant"
+        parts: [{ text: msg.content }]
+      }));
+
+      const geminiPayload = {
+        model: 'gemini-3.6-flash',
+        system_instruction: {
+          parts: [{ text: systemPrompt + " You are taking over this conversation because the previous AI hit a 2025/2026 knowledge cutoff. Answer seamlessly." }]
+        },
+        contents: geminiHistory,
+        generationConfig: {
+          maxOutputTokens: wantsDetailed ? 500 : 120
+        }
+      };
+
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geminiPayload)
+      });
+
+      const geminiData = await geminiRes.json();
+      
+      if (geminiData.candidates && geminiData.candidates.length > 0) {
+        finalAnswer = geminiData.candidates[0].content.parts[0].text;
+      } else {
+        finalAnswer = "⚠️ Gemini took over but couldn't generate an up-to-date response.";
+      }
+    }
+
+    // =========================
+    // 💾 4. SAVE & SEND
+    // =========================
+    // Save whichever AI answered back into the Groq memory format
     history.messages.push({
       role: 'assistant',
-      content: answer
+      content: finalAnswer
     });
 
     history.lastUsed = Date.now();
@@ -2032,11 +2082,11 @@ if (message.content.toLowerCase() === '!batbattle') {
 
     messagesAnswered++;
 
-    await message.reply(answer);
+    return message.reply(finalAnswer);
 
   } catch (error) {
-    console.error(error);
-    await message.reply('⚠️ Sorry, I could not answer that.');
+    console.error('Chat Error:', error);
+    await message.reply('⚠️ Sorry, DoraBot ran into a glitch.');
   }
 });
 
