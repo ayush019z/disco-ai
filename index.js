@@ -318,7 +318,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
 
 
-      // --- /IMAGE (POWERED BY GEMINI NATIVE INTERACTIONS API) ---
+          // --- /IMAGE (POWERED BY GEMINI 3.1 FLASH LITE IMAGE) ---
     if (interaction.commandName === 'image') {
       const prompt = interaction.options.getString('prompt');
       const userId = interaction.user.id;
@@ -366,7 +366,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
       try {
         const payload = {
-          model: 'gemini-3.1-flash-image',
+          model: 'gemini-3.1-flash-lite-image',
           input: prompt,
           response_format: {
             type: 'image',
@@ -386,12 +386,12 @@ client.on(Events.InteractionCreate, async interaction => {
 
         if (!res.ok) {
           const errText = await res.text();
-          throw new Error(`Gemini Image API Error ${res.status}: ${errText}`);
+          throw new Error(`Gemini Flash Lite API Error ${res.status}: ${errText}`);
         }
 
         const data = await res.json();
 
-        // Extract base64 image from the model output steps
+        // Extract base64 image from the Interactions API steps
         let base64Data = null;
         if (data.steps && Array.isArray(data.steps)) {
           for (const step of data.steps) {
@@ -414,8 +414,8 @@ client.on(Events.InteractionCreate, async interaction => {
         const attachment = new AttachmentBuilder(imageBuffer, { name: 'generated.jpg' });
 
         const embed = new EmbedBuilder()
-          .setColor('#00BFFF')
-          .setTitle('🎨 DoraBot Image')
+          .setColor('#00FF88')
+          .setTitle('🎨 DoraBot Image (Flash Lite)')
           .setDescription(`**Prompt:** ${prompt}`)
           .setImage('attachment://generated.jpg')
           .setFooter({
@@ -439,9 +439,10 @@ client.on(Events.InteractionCreate, async interaction => {
           dailyImageLimits.set(userId, userLimit);
         }
 
-        await interaction.editReply('⚠️ Failed to generate image with Gemini.');
+        await interaction.editReply('⚠️ Failed to generate image with Gemini Flash Lite.');
       }
     }
+  
   
   
 
