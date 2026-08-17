@@ -120,6 +120,14 @@ adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
 
 const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
 
+const botStatsSchema = new mongoose.Schema({
+  botId: { type: String, default: 'dorabot' },
+  totalMessages: { type: Number, default: 0 },
+  totalImages: { type: Number, default: 0 },
+  uniqueUsers: [{ type: String }] 
+});
+const BotStats = mongoose.model('BotStats', botStatsSchema);
+
 // Helper function to safely fetch or initialize user stats
 async function getPlayerStats(userId, username) {
   try {
@@ -484,64 +492,37 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
 
 
 
+    // --- /STATS COMMAND ---
   if (interaction.commandName === 'stats') {
-    const ping = client.ws.ping;
-    const uptimeMs = Date.now() - startTime;
-    const hours = Math.floor(uptimeMs / 3600000);
-    const minutes = Math.floor((uptimeMs % 3600000) / 60000);
+    // Fetch the permanent stats from MongoDB
+    const globalStats = await BotStats.findOne({ botId: 'dorabot' }) || { totalMessages: 0, totalImages: 0, uniqueUsers: [] };
 
-    let status = '🟢 Excellent';
-    if (ping > 80) status = '🟡 Good';
-    if (ping > 150) status = '🔴 Slow';
+    // Calculate live uptime
+    const totalSeconds = process.uptime();
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor(totalSeconds / 3600) % 24;
+    const minutes = Math.floor(totalSeconds / 60) % 60;
+    const uptimeStr = `${days}d ${hours}h ${minutes}m`;
 
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral, //
-      embeds: [{
-        title: '📊 DoraBot 🩵 Stats',
-        color: 0x00FFFF,
-        fields: [
-          {
-              name: '🌍 Servers',
-              value: String(client.guilds.cache.size),
-              inline: true
-            },
-          {
-            name: '💬 Messages',
-            value: String(messagesAnswered),
-            inline: true
-          },
-          {
-            name: '🖼️ Images',
-            value: String(imagesGenerated),
-            inline: true
-          },
-          {
-            name: '👥 Users',
-            value: String(uniqueUsers.size),
-            inline: true
-          },
-          {
-            name: '📶 Ping',
-            value: `${ping} ms`,
-            inline: true
-          },
-          {
-            name: '⚡ Status',
-            value: status,
-            inline: true
-          },
-          {
-            name: '⏱️ Uptime',
-            value: `${hours}h ${minutes}m`,
-            inline: true
-          }
-        ],
-        footer: {
-          text: 'Made by Ayush'
-        }
-      }]
-    });
+    const wsPing = client.ws.ping;
+    
+    const embed = new EmbedBuilder()
+      .setColor('#00FFAA')
+      .setTitle(`📊 DoraBot 🩵 Stats`)
+      .addFields(
+        { name: '🌍 Servers', value: `${client.guilds.cache.size}`, inline: false },
+        { name: '💬 Messages', value: `${globalStats.totalMessages}`, inline: false },
+        { name: '🖼️ Images', value: `${globalStats.totalImages}`, inline: false },
+        { name: '👥 Users', value: `${globalStats.uniqueUsers.length}`, inline: false },
+        { name: '📶 Ping', value: `${wsPing} ms`, inline: false },
+        { name: '⚡ Status', value: `🟡 Good`, inline: false },
+        { name: '⏱️ Uptime', value: uptimeStr, inline: false }
+      )
+      .setFooter({ text: 'Made by Ayush' });
+
+    return interaction.reply({ embeds: [embed] });
   }
+
 
 
 
@@ -616,7 +597,11 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         await interaction.editReply({
           embeds: [embed]
         });
-
+try {
+          await BotStats.findOneAndUpdate({ botId: 'dorabot' }, { $inc: { totalImages: 1 } }, { upsert: true });
+        } catch (dbErr) {
+          console.error('Error updating global image stats:', dbErr);
+}
       } catch (err) {
         console.error('Image Gen Error:', err);
 
@@ -1740,7 +1725,19 @@ CRITICAL RULES:
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-
+try {
+    await BotStats.findOneAndUpdate(
+      { botId: 'dorabot' },
+      { 
+        $inc: { totalMessages: 1 }, // Adds 1 to the message count
+        $addToSet: { uniqueUsers: message.author.id } // Only adds the user if they are new!
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error("Failed to save global stats:", err);
+}
+  
   // =========================
   // SUMMARY
   // =========================
