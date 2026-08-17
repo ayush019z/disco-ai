@@ -1025,6 +1025,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
             value: `**${stats.dorayaki || 0}** Dorayaki 🥞`,
             inline: false
           },
+{
             name: '🏏 Cricket Arena',
             value: 
               `**Super Over:** ${stats.superOver.wins}/${stats.superOver.matches} wins (${soWinRate}%)\n` +
