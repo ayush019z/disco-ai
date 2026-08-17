@@ -1908,7 +1908,8 @@ if (message.content.toLowerCase() === '!scramble') {
   
   const collector = message.channel.createMessageCollector({ filter, time: 20000, max: 1 });
 
-  collector.on('collect', (m) => {
+  collector.on('collect', async (m) => {
+
     // Stop the hint from sending if someone guessed it before 10 seconds!
     clearTimeout(hintTimer); 
     m.reply(`🎉 **${m.author.username}** got it! The word was **${chosenWord}**.`);
