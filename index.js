@@ -927,7 +927,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
   try {
     // 3. Fetch the starting story
     const response = await ai.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-70b-versatile',
       messages: [{ role: 'system', content: systemPrompt }],
       temperature: 0.9
     });
@@ -1022,7 +1022,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 
       // Generate next part
       const nextResponse = await ai.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama-3.1-70b-versatile',
         messages: session.history,
         temperature: 0.9
       });
@@ -1315,7 +1315,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
              }`;
 
         const res = await ai.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
+          model: 'llama-3.1-70b-versatile',
           messages: [
             { role: 'system', content: sysPrompt },
             { role: 'user', content: `Generate moves for ${c1} VS ${c2}` }
@@ -1775,7 +1775,7 @@ client.on('messageCreate', async (message) => {
       await message.channel.sendTyping();
 
       const response = await ai.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama-3.1-70b-versatile',
         messages: [
           {
             role: 'system',
@@ -2454,7 +2454,7 @@ if (message.content.toLowerCase() === '!batbattle') {
     ];
 
     const response = await ai.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-70b-versatile',
       messages: chatMessages,
       max_tokens: wantsDetailed ? 500 : 120
     });
