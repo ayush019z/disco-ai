@@ -459,17 +459,13 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     return interaction.reply({ embeds: [embed], components: [row] });
   }
 
-// --- /SHOP COMMAND ---
+ // --- /SHOP COMMAND ---
   if (interaction.commandName === 'shop') {
     const embed = new EmbedBuilder()
       .setColor('#FF9900')
       .setTitle(`🛒 Doraemon's Secret Gadget Shop`)
-      .setDescription(
-        `Welcome to the shop! Use your hard-earned Dorayaki to buy exclusive perks.\n\n` +
-        `🎲 **Mystery Box** — \`250 Dorayaki\` ${DORAYAKI_EMOJI}\n*Test your luck for a massive coin payout!*\n\n` +
-        `👑 **VIP Role** — \`1500 Dorayaki\` ${DORAYAKI_EMOJI}\n*Get the exclusive Server VIP role for 7 days!*`
-      )
-      .setFooter({ text: 'Select an item from the menu below to purchase!' });
+      .setDescription(`Welcome to the shop! Spend your hard-earned Dorayaki ${DORAYAKI_EMOJI} on exciting gambles, exclusive server perks, and permanent profile badges.\n\n👇 **Browse today's stock using the menu below!**`)
+      .setFooter({ text: 'No refunds!' });
 
     const row = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -477,20 +473,9 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         .setPlaceholder('Choose a gadget to buy...')
         .addOptions([
           { label: 'Mystery Box', description: 'Cost: 250 Dorayaki. Test your luck for a coin payout!', value: 'buy_box', emoji: '🎲' },
-          { label: 'VIP Role (7 Days)', description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.', value: 'buy_vip', emoji: '👑' },
-                  { 
-          label: 'Time TV Lottery Ticket', 
-          description: 'Cost: 50 Dorayaki. 10% chance to win 1000 Dorayaki!', 
-          value: 'buy_lottery', 
-          emoji: '🎟️' 
-        },
-                { 
-          label: 'Ultimate Profile Badge', 
-          description: 'Cost: 5000 Dorayaki. Unlocks a permanent flex badge on your profile!', 
-          value: 'buy_badge', 
-          emoji: '1538976662987735040' 
-        }
-          
+          { label: 'VIP Role (7 Days)', description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.', value: 'buy_vip', emoji: '1538990239832612914' },
+          { label: 'Time TV Lottery Ticket', description: 'Cost: 50 Dorayaki. 10% chance to win 1000 Dorayaki!', value: 'buy_lottery', emoji: '1538990835574509638' },
+          { label: 'Ultimate Profile Badge', description: 'Cost: 5000 Dorayaki. Unlocks a permanent flex badge!', value: 'buy_badge', emoji: '1538976662987735040' }
         ])
     );
 
