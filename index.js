@@ -243,7 +243,99 @@ client.once(Events.ClientReady, () => {
 // SLASH COMMANDS
 // =========================
 client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isChatInputCommand()) return;
+
+
+  // ==========================================
+  // ZONE 1: ALL DROPDOWN MENUS
+  // ==========================================
+  if (interaction.isStringSelectMenu()) {
+    
+    // --- 1. HELP MENU LOGIC ---
+    if (interaction.customId === 'help_menu') {
+      const selected = interaction.values[0];
+
+      if (selected === 'help_ai') {
+        const aiEmbed = new EmbedBuilder().setColor('#00BFFF').setTitle(`🤖 AI & Chat Commands`).setDescription(`• **/ask <question>** — Chat with DoraBot using Gemini\n• **@DoraBot <message>** — Quick AI reply\n• **@DoraBot forget everything i said** — Clear your memory\n• **!sum** — Summarize a replied message\n• **/stats** & **/info** — View bot ping, uptime, and info`);
+        return interaction.update({ embeds: [aiEmbed] });
+      }
+      if (selected === 'help_image') {
+        const imgEmbed = new EmbedBuilder().setColor('#FF33A1').setTitle(`🎨 Image & Fun Commands`).setDescription(`• **/image <prompt>** — Generate AI images (Flux)\n• **!image <prompt>** — Quick direct image generation\n• **/wanted <user>** — Create a Wanted poster\n• **!wanted @user** — Quick Wanted poster (*add 'gs' for grayscale*)`);
+        return interaction.update({ embeds: [imgEmbed] });
+      }
+      if (selected === 'help_games') {
+        const gameEmbed = new EmbedBuilder().setColor('#00FFAA').setTitle(`🎮 Games & RPG Commands`).setDescription(`• **/adventure** — Play a Doraemon interactive text RPG\n• **/battle <user> <character>** — Fiction PvP combat simulator\n• **/quiz** — Play an AI-generated trivia quiz\n• **!superover** — Solo cricket batting game\n• **!batbattle** — Multiplayer 6-ball cricket duel\n• **!scramble** — Multiplayer word scramble race`);
+        return interaction.update({ embeds: [gameEmbed] });
+      }
+      if (selected === 'help_economy') {
+        const econEmbed = new EmbedBuilder().setColor('#FF9900').setTitle(`💰 Economy Commands`).setDescription(`• **/daily** — Claim your daily 100 Dorayaki ${DORAYAKI_EMOJI}\n• **/profile** — View your wallet, win rates, and stats card\n• **/shop** — Spend Dorayaki on Mystery Boxes or VIP Roles`);
+        return interaction.update({ embeds: [econEmbed] });
+      }
+    }
+
+    // --- 2. SHOP MENU LOGIC ---
+    if (interaction.customId === 'shop_menu') {
+      const selectedValue = interaction.values[0];
+
+      // Mystery Box Gamble
+      if (selectedValue === 'buy_box') {
+        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+        
+        if (stats.dorayaki < 250) {
+          return interaction.reply({ content: `❌ You don't have enough Dorayaki! You need 250 ${DORAYAKI_EMOJI}.`, ephemeral: true });
+        }
+
+        stats.dorayaki -= 250;
+        
+        const prize = Math.random() < 0.7 ? 50 : 600;
+        stats.dorayaki += prize;
+        await stats.save();
+
+        const msg = prize === 600 
+          ? `🎉 **JACKPOT!** You opened a Mystery Box and found a massive **600 Dorayaki** ${DORAYAKI_EMOJI}!`
+          : `🎁 You opened a Mystery Box and found **50 Dorayaki** ${DORAYAKI_EMOJI}.`;
+
+        return interaction.reply({ content: `${msg}\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`, ephemeral: true });
+      }
+
+      // VIP Role Purchase
+      if (selectedValue === 'buy_vip') {
+        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+        
+        if (stats.dorayaki < 1500) {
+          return interaction.reply({ content: `❌ You don't have enough Dorayaki! You need 1500 ${DORAYAKI_EMOJI}.`, ephemeral: true });
+        }
+
+        const vipRoleId = '1538959643529973821';
+        const member = interaction.guild.members.cache.get(interaction.user.id);
+
+        try {
+          await member.roles.add(vipRoleId);
+          stats.dorayaki -= 1500;
+          await stats.save();
+
+          setTimeout(async () => {
+            try {
+              await member.roles.remove(vipRoleId);
+            } catch (e) {
+              console.error('Failed to auto-remove VIP role:', e);
+            }
+          }, 7 * 24 * 60 * 60 * 1000);
+
+          return interaction.reply({ content: `👑 **Success!** You purchased the **VIP Role** for 1500 ${DORAYAKI_EMOJI}! Enjoy your perks for the next 7 days.`, ephemeral: true });
+        } catch (err) {
+          console.error('Failed to assign VIP role:', err);
+          return interaction.reply({ content: `⚠️ Failed to assign the role. Please make sure the bot's role is higher in the server settings than the VIP role!`, ephemeral: true });
+        }
+      }
+    }
+
+    return; // <--- CRITICAL MAGIC LINE: Stops Discord from breaking!
+  }
+
+  // ==========================================
+  // ZONE 2: ALL SLASH COMMANDS
+  // ==========================================
+  if (!interaction.isChatInputCommand()) return; // Protects commands from buttons/menus
 
   if (interaction.commandName === 'info') {
     await interaction.reply({
@@ -285,77 +377,54 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   
-       if (interaction.commandName === 'help') {
-    await interaction.reply({
-      embeds: [
-        {
-          title: '🤖 DoraBot Help Center',
-          description:
-            'Welcome to **DoraBot** 🩵\nYour Doraemon-inspired AI companion for chatting, images, quizzes, games, and magical adventures.',
-          color: 0x00BFFF,
-          thumbnail: {
-            url: client.user.displayAvatarURL()
-          },
-          fields: [
-            {
-              name: '🧠 AI & Memory',
-              value:
-                '`/ask question:<text>` — Chat with DoraBot\n' +
-                '`@DoraBot <message>` — Quick AI reply\n' +
-                '`@DoraBot forget everything i said` — Clear memory',
-              inline: false
-            },
-            {
-              name: '🎨 Image Generation',
-              value:
-                '`/image prompt:<text>` — Generate an AI image\n' +
-                '`!image <text>` — Quick image command',
-              inline: false
-            },
-            {
-              name: '📄 Utilities',
-              value:
-                '`!sum` — Summarize a replied message\n' +
-                '`/stats` — Bot statistics\n' +
-                '`/info` — Bot information',
-              inline: false
-            },
-            {
-              name: '🎮 Games',
-              value:
-                '`!superover` — Solo cricket challenge\n' +
-                '`!batbattle` — Multiplayer batting battle\n' +
-                '`!scramble` — Word scramble race\n' +
-                '`/quiz` — Interactive Quiz with Topic\n' +
-                '`/battle` — Challenge a friend to an epic fiction battle!',
-              inline: false
-            },
-            {
-              name: '🚪 Doraemon Adventures',
-              value:
-                '`/adventure` — Play a Doraemon-style interactive adventure\n' +
-                'Use gadgets, travel through time, and explore magical stories with Doraemon!',
-              inline: false
-            },
-            {
-              name: '😂 Fun & Pranks',
-              value:
-                '`/wanted` — Create a funny wanted poster (Slash Command)\n' +
-                '`!wanted @user` — Quick wanted poster\n' +
-                '`!wanted gs @user` — Grayscale wanted poster',
-              inline: false
-            }
-          ],
-          footer: {
-            text: 'Made with 🩵 by Ayush • DoraBot'
-          },
-          timestamp: new Date().toISOString()
-        }
-      ]
-    });
+       // --- /HELP COMMAND ---
+  if (interaction.commandName === 'help') {
+    const embed = new EmbedBuilder()
+      .setColor('#00BFFF')
+      .setTitle(`🤖 DoraBot Help Center`)
+      .setDescription(`Welcome to **DoraBot** 🩵\nYour Doraemon-inspired AI companion. Use the menu below to explore my commands!`)
+      .setFooter({ text: 'Select a category from the dropdown menu below.' })
+      .setThumbnail(client.user.displayAvatarURL());
+
+    const row = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('help_menu')
+        .setPlaceholder('Choose a command category...')
+        .addOptions([
+          { label: 'AI & Chat', description: 'Chat, Memory, and Utilities', value: 'help_ai', emoji: '🤖' },
+          { label: 'Image & Fun', description: 'AI Images and Wanted Posters', value: 'help_image', emoji: '🎨' },
+          { label: 'Games & RPG', description: 'Cricket, Quiz, Scramble & Adventure', value: 'help_games', emoji: '🎮' },
+          { label: 'Economy & Profile', description: 'Daily, Shop, and Stats', value: 'help_economy', emoji: '${DORAYAKI_EMOJI}' }
+        ])
+    );
+
+    return interaction.reply({ embeds: [embed], components: [row] });
   }
 
+// --- /SHOP COMMAND ---
+  if (interaction.commandName === 'shop') {
+    const embed = new EmbedBuilder()
+      .setColor('#FF9900')
+      .setTitle(`🛒 Doraemon's Secret Gadget Shop`)
+      .setDescription(
+        `Welcome to the shop! Use your hard-earned Dorayaki to buy exclusive perks.\n\n` +
+        `🎲 **Mystery Box** — \`250 Dorayaki\` ${DORAYAKI_EMOJI}\n*Test your luck for a massive coin payout!*\n\n` +
+        `👑 **VIP Role** — \`1500 Dorayaki\` ${DORAYAKI_EMOJI}\n*Get the exclusive Server VIP role for 7 days!*`
+      )
+      .setFooter({ text: 'Select an item from the menu below to purchase!' });
 
+    const row = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('shop_menu')
+        .setPlaceholder('Choose a gadget to buy...')
+        .addOptions([
+          { label: 'Mystery Box', description: 'Cost: 250 Dorayaki. Test your luck for a coin payout!', value: 'buy_box', emoji: '🎲' },
+          { label: 'VIP Role (7 Days)', description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.', value: 'buy_vip', emoji: '👑' }
+        ])
+    );
+
+    return interaction.reply({ embeds: [embed], components: [row] });
+  }
 
 
 
@@ -648,102 +717,6 @@ if (interaction.commandName === 'admin') {
       await interaction.editReply('⚠️ Failed to contact the Gemini AI service.');
     }
   }
-
-// =========================
-// /SHOP (ECONOMY STORE) & MENU HANDLER
-// =========================
-if (interaction.commandName === 'shop') {
-  const embed = new EmbedBuilder()
-    .setColor('#FF9900')
-    .setTitle(`🛒 Doraemon's Secret Gadget Shop`)
-    .setDescription(
-      `Welcome to the shop! Use your hard-earned Dorayaki to buy exclusive perks.\n\n` +
-      `🎲 **Mystery Box** — \`250 Dorayaki\` ${DORAYAKI_EMOJI}\n*Test your luck for a massive coin payout!*\n\n` +
-      `👑 **VIP Role** — \`1500 Dorayaki\` ${DORAYAKI_EMOJI}\n*Get the exclusive Server VIP role for 7 days!*`
-    )
-    .setFooter({ text: 'Select an item from the menu below to purchase!' });
-
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('shop_menu')
-      .setPlaceholder('Choose a gadget to buy...')
-      .addOptions([
-        {
-          label: 'Mystery Box',
-          description: 'Cost: 250 Dorayaki. Test your luck for a coin payout!',
-          value: 'buy_box',
-          emoji: '🎲'
-        },
-        {
-          label: 'VIP Role (7 Days)',
-          description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.',
-          value: 'buy_vip',
-          emoji: '👑'
-        }
-      ])
-  );
-
-  return interaction.reply({ embeds: [embed], components: [row] });
-}
-
-// Directly underneath, handle when the user selects from that menu:
-if (interaction.isStringSelectMenu()) {
-  if (interaction.customId === 'shop_menu') {
-    const selectedValue = interaction.values[0];
-
-    // 1. Mystery Box Gamble
-    if (selectedValue === 'buy_box') {
-      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
-      
-      if (stats.dorayaki < 250) {
-        return interaction.reply({ content: `❌ You don't have enough Dorayaki! You need 250 ${DORAYAKI_EMOJI}.`, ephemeral: true });
-      }
-
-      stats.dorayaki -= 250;
-      
-      const prize = Math.random() < 0.7 ? 50 : 600;
-      stats.dorayaki += prize;
-      await stats.save();
-
-      const msg = prize === 600 
-        ? `🎉 **JACKPOT!** You opened a Mystery Box and found a massive **600 Dorayaki** ${DORAYAKI_EMOJI}!`
-        : `🎁 You opened a Mystery Box and found **50 Dorayaki** ${DORAYAKI_EMOJI}.`;
-
-      return interaction.reply({ content: `${msg}\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`, ephemeral: true });
-    }
-
-    // 2. VIP Role Purchase (1500 Dorayaki)
-    if (selectedValue === 'buy_vip') {
-      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
-      
-      if (stats.dorayaki < 1500) {
-        return interaction.reply({ content: `❌ You don't have enough Dorayaki! You need 1500 ${DORAYAKI_EMOJI}.`, ephemeral: true });
-      }
-
-      const vipRoleId = '1538959643529973821';
-      const member = interaction.guild.members.cache.get(interaction.user.id);
-
-      try {
-        await member.roles.add(vipRoleId);
-        stats.dorayaki -= 1500;
-        await stats.save();
-
-        setTimeout(async () => {
-          try {
-            await member.roles.remove(vipRoleId);
-          } catch (e) {
-            console.error('Failed to auto-remove VIP role:', e);
-          }
-        }, 7 * 24 * 60 * 60 * 1000);
-
-        return interaction.reply({ content: `👑 **Success!** You purchased the **VIP Role** for 1500 ${DORAYAKI_EMOJI}! Enjoy your perks for the next 7 days.`, ephemeral: true });
-      } catch (err) {
-        console.error('Failed to assign VIP role:', err);
-        return interaction.reply({ content: `⚠️ Failed to assign the role. Please make sure the bot's role is higher in the server settings than the VIP role!`, ephemeral: true });
-      }
-    }
-  }
-}
 
 
   
