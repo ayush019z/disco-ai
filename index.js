@@ -270,7 +270,20 @@ client.on(Events.InteractionCreate, async interaction => {
         return interaction.update({ embeds: [gameEmbed] });
       }
       if (selected === 'help_economy') {
-        const econEmbed = new EmbedBuilder().setColor('#FF9900').setTitle(`💰 Economy Commands`).setDescription(`• **/daily** — Claim your daily 100 Dorayaki ${DORAYAKI_EMOJI}\n• **/profile** — View your wallet, win rates, and stats card\n• **/shop** — Spend Dorayaki on Mystery Boxes or VIP Roles`);
+        const econEmbed = new EmbedBuilder()
+          .setColor('#FF9900')
+          .setTitle(`💰 Economy & Dorayaki Guide`)
+          .setDescription(`Manage your Dorayaki ${DORAYAKI_EMOJI} wallet and buy exclusive gadgets!`)
+          .addFields(
+            { 
+              name: '🏦 Economy Commands', 
+              value: `• **/daily** — Claim your daily reward\n• **/profile** — View your wallet and win rates\n• **/shop** — Spend Dorayaki on items and roles` 
+            },
+            { 
+              name: '💸 How to Earn', 
+              value: `• **Daily:** Claim your \`/daily\` (+100 ${DORAYAKI_EMOJI})\n• **RPG:** Finish an \`/adventure\` (+150 ${DORAYAKI_EMOJI})\n• **Trivia:** Get a \`/quiz\` answer right (+25 ${DORAYAKI_EMOJI})\n• **Cricket:** Win a \`!batbattle\` (+50 ${DORAYAKI_EMOJI})\n• **Gamble:** Win the lottery or mystery box in the \`/shop\`` 
+            }
+          );
         return interaction.update({ embeds: [econEmbed] });
       }
     }
