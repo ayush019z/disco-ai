@@ -76,12 +76,11 @@ const commands = [
     .addStringOption(option => 
       option.setName('character')
         .setDescription('The fictional character you will fight as')
-        .setRequired(true)) // <--- Required option first!
+        .setRequired(true))
     .addUserOption(option => 
       option.setName('target')
         .setDescription('The user you want to challenge (Leave blank for an open lobby!)')
-        .setRequired(false))), // <--- Optional option after!
-
+        .setRequired(false))),
 
   enableDMs(new SlashCommandBuilder()
     .setName('admin')
@@ -103,32 +102,34 @@ const commands = [
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
     )),
 
-const profileCommand = new SlashCommandBuilder()
-  .setName('profile')
-  .setDescription('View your or another user\'s mini-game stats')
-  .addUserOption(option =>
-    option
-      .setName('user')
-      .setDescription('The user whose profile you want to view')
-      .setRequired(false)
-  );
+  // --- FIXED PROFILE COMMAND ---
+  enableDMs(new SlashCommandBuilder()
+    .setName('profile')
+    .setDescription('View your or another user\'s mini-game stats')
+    .addUserOption(option =>
+      option
+        .setName('user')
+        .setDescription('The user whose profile you want to view')
+        .setRequired(false)
+    )),
 
+  // --- ASK COMMAND ---
   new SlashCommandBuilder()
-  .setName('ask')
-  .setDescription('Ask DoraBot anything')
-  .setDMPermission(true) // 👈 Enables command in Direct Messages
-  .addStringOption(option =>
-    option
-      .setName('question')
-      .setDescription('What do you want to ask❓')
-      .setRequired(true)
-  )
-  .addBooleanOption(option =>
-    option
-      .setName('ephemeral')
-      .setDescription('Make the answer visible only to you (default: false)')
-      .setRequired(false)
-  ),
+    .setName('ask')
+    .setDescription('Ask DoraBot anything')
+    .setDMPermission(true)
+    .addStringOption(option =>
+      option
+        .setName('question')
+        .setDescription('What do you want to ask❓')
+        .setRequired(true)
+    )
+    .addBooleanOption(option =>
+      option
+        .setName('ephemeral')
+        .setDescription('Make the answer visible only to you (default: false)')
+        .setRequired(false)
+    ),
 
   enableDMs(new SlashCommandBuilder()
     .setName('info')
@@ -147,7 +148,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   try {
     console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
-    // Global registration (Registers commands across servers and DMs where the bot is present)
+    // Global registration
     await rest.put(
       Routes.applicationCommands(process.env.CLIENT_ID),
       { body: commands }
