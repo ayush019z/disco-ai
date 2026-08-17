@@ -86,6 +86,10 @@ const playerStatsSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
   username: { type: String, required: true },
   
+// 💰 Economy
+  dorayaki: { type: Number, default: 0 },
+  lastDaily: { type: Date, default: null },
+
   // Cricket Games
   superOver: {
     matches: { type: Number, default: 0 },
@@ -875,6 +879,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           const stats = await getPlayerStats(i.user.id, i.user.username);
           if (stats) {
             stats.adventuresCompleted += 1;
+// 👇 ADD THE DORAYAKI REWARD RIGHT HERE
+            stats.dorayaki += 150; // 150 coins for finishing a story!
             await stats.save();
           }
         } catch (dbErr) {
@@ -982,6 +988,10 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         .setThumbnail(targetUser.displayAvatarURL())
         .addFields(
           {
+            name: '💰 Wallet',
+            value: `**${stats.dorayaki || 0}** Dorayaki 🥞`,
+            inline: false
+          },
             name: '🏏 Cricket Arena',
             value: 
               `**Super Over:** ${stats.superOver.wins}/${stats.superOver.matches} wins (${soWinRate}%)\n` +
@@ -1530,6 +1540,8 @@ CRITICAL RULES:
               const stats = await getPlayerStats(uid, playerData.user.username);
               if (stats) {
                 stats.quizWins += 1;
+// 👇 ADD THE DORAYAKI REWARD RIGHT HERE
+                stats.dorayaki += 25; // Give 25 coins for correct answer!
                 await stats.save();
               }
             } catch (dbErr) {
@@ -2068,6 +2080,12 @@ if (message.content.toLowerCase() === '!batbattle') {
           if (topPlayer.user.id === r.user.id && (r.runs > 0 || !r.isOut)) {
             stats.batBattle.wins += 1;
           }
+// 👇 ADD THE DORAYAKI REWARD RIGHT HERE
+          if (topPlayer.user.id === r.user.id && (r.runs > 0 || !r.isOut)) {
+            stats.batBattle.wins += 1;
+            stats.dorayaki += 50; // Give 50 coins for winning!
+          }
+
           await stats.save();
         }
       } catch (dbErr) {
