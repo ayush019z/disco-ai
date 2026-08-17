@@ -649,7 +649,104 @@ if (interaction.commandName === 'admin') {
     }
   }
 
+// =========================
+// /SHOP (ECONOMY STORE) & MENU HANDLER
+// =========================
+if (interaction.commandName === 'shop') {
+  const embed = new EmbedBuilder()
+    .setColor('#FF9900')
+    .setTitle(`🛒 Doraemon's Secret Gadget Shop`)
+    .setDescription(
+      `Welcome to the shop! Use your hard-earned Dorayaki to buy exclusive perks.\n\n` +
+      `🎲 **Mystery Box** — \`250 Dorayaki\` ${DORAYAKI_EMOJI}\n*Test your luck for a massive coin payout!*\n\n` +
+      `👑 **VIP Role** — \`1500 Dorayaki\` ${DORAYAKI_EMOJI}\n*Get the exclusive Server VIP role for 7 days!*`
+    )
+    .setFooter({ text: 'Select an item from the menu below to purchase!' });
 
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('shop_menu')
+      .setPlaceholder('Choose a gadget to buy...')
+      .addOptions([
+        {
+          label: 'Mystery Box',
+          description: 'Cost: 250 Dorayaki. Test your luck for a coin payout!',
+          value: 'buy_box',
+          emoji: '🎲'
+        },
+        {
+          label: 'VIP Role (7 Days)',
+          description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.',
+          value: 'buy_vip',
+          emoji: '👑'
+        }
+      ])
+  );
+
+  return interaction.reply({ embeds: [embed], components: [row] });
+}
+
+// Directly underneath, handle when the user selects from that menu:
+if (interaction.isStringSelectMenu()) {
+  if (interaction.customId === 'shop_menu') {
+    const selectedValue = interaction.values[0];
+
+    // 1. Mystery Box Gamble
+    if (selectedValue === 'buy_box') {
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+      
+      if (stats.dorayaki < 250) {
+        return interaction.reply({ content: `❌ You don't have enough Dorayaki! You need 250 ${DORAYAKI_EMOJI}.`, ephemeral: true });
+      }
+
+      stats.dorayaki -= 250;
+      
+      const prize = Math.random() < 0.7 ? 50 : 600;
+      stats.dorayaki += prize;
+      await stats.save();
+
+      const msg = prize === 600 
+        ? `🎉 **JACKPOT!** You opened a Mystery Box and found a massive **600 Dorayaki** ${DORAYAKI_EMOJI}!`
+        : `🎁 You opened a Mystery Box and found **50 Dorayaki** ${DORAYAKI_EMOJI}.`;
+
+      return interaction.reply({ content: `${msg}\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`, ephemeral: true });
+    }
+
+    // 2. VIP Role Purchase (1500 Dorayaki)
+    if (selectedValue === 'buy_vip') {
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+      
+      if (stats.dorayaki < 1500) {
+        return interaction.reply({ content: `❌ You don't have enough Dorayaki! You need 1500 ${DORAYAKI_EMOJI}.`, ephemeral: true });
+      }
+
+      const vipRoleId = '1538959643529973821';
+      const member = interaction.guild.members.cache.get(interaction.user.id);
+
+      try {
+        await member.roles.add(vipRoleId);
+        stats.dorayaki -= 1500;
+        await stats.save();
+
+        setTimeout(async () => {
+          try {
+            await member.roles.remove(vipRoleId);
+          } catch (e) {
+            console.error('Failed to auto-remove VIP role:', e);
+          }
+        }, 7 * 24 * 60 * 60 * 1000);
+
+        return interaction.reply({ content: `👑 **Success!** You purchased the **VIP Role** for 1500 ${DORAYAKI_EMOJI}! Enjoy your perks for the next 7 days.`, ephemeral: true });
+      } catch (err) {
+        console.error('Failed to assign VIP role:', err);
+        return interaction.reply({ content: `⚠️ Failed to assign the role. Please make sure the bot's role is higher in the server settings than the VIP role!`, ephemeral: true });
+      }
+    }
+  }
+}
+
+
+  
 
   // =========================
   // /DAILY (ECONOMY)
