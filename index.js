@@ -1723,7 +1723,7 @@ CRITICAL RULES:
         }
 
         let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}** (${quizData.answer}).\n\n`;
-        if (winners.length > 0) resultText += `🎉 **Correct:** ${winners.join(', ')} (+25 🪙)\n`;
+        if (winners.length > 0) resultText += `🎉 **Correct:** ${winners.join(', ')} (+25 ${DORAYAKI_EMOJI})\n`;
         else resultText += `❌ **Correct:** Nobody got it right!\n`;
 
         if (losers.length > 0) resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
