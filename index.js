@@ -1449,7 +1449,10 @@ CRITICAL RULES:
         }
       }
 
-      const quizData = JSON.parse(rawText);
+            // Clean any hidden markdown backticks Gemini might have added
+      const cleanText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const quizData = JSON.parse(cleanText);
+
 
       // Save to memory to prevent repeat questions
       askedQuestions.push(quizData.question);
@@ -1983,7 +1986,8 @@ if (message.content.toLowerCase() === '!batbattle') {
     m.react('🏏').catch(() => {});
   });
 
-  collector.on('end', () => {
+  // 👇 ADDED 'async' HERE!
+  collector.on('end', async () => {
     activeBatBattles.delete(message.channelId);
 
     // If no human played, cancel the game
@@ -2049,8 +2053,11 @@ if (message.content.toLowerCase() === '!batbattle') {
     // Sort players by highest runs
     results.sort((a, b) => b.runs - a.runs);
 
-// ==========================================
-    const topPlayer = results[0];
+    // ==========================================
+    // 💾 DB SAVING
+    // ==========================================
+    const topPlayer = results[0]; // Defined ONCE here!
+    
     for (const r of results) {
       if (r.user.id === client.user.id) continue; // Skip bot
 
@@ -2082,7 +2089,6 @@ if (message.content.toLowerCase() === '!batbattle') {
     });
 
     // Determine winner text
-    const topPlayer = results[0];
     let winnerText;
     
     if (topPlayer.runs === 0 && topPlayer.isOut) {
