@@ -66,6 +66,68 @@ const ai = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 });
 
+const mongoose = require('mongoose');
+
+// =========================
+// MONGODB CONNECTION
+// =========================
+if (process.env.MONGO_URI) {
+  mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('🍃 Connected to MongoDB successfully'))
+    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+} else {
+  console.warn('⚠️ MONGO_URI is missing in environment variables.');
+}
+
+// =========================
+// PLAYER STATS SCHEMA & MODEL
+// =========================
+const playerStatsSchema = new mongoose.Schema({
+  userId: { type: String, required: true, unique: true },
+  username: { type: String, required: true },
+  
+  // Cricket Games
+  superOver: {
+    matches: { type: Number, default: 0 },
+    wins: { type: Number, default: 0 }
+  },
+  batBattle: {
+    matches: { type: Number, default: 0 },
+    wins: { type: Number, default: 0 }
+  },
+
+  // Trivia & Text Games
+  scrambleWins: { type: Number, default: 0 },
+  quizWins: { type: Number, default: 0 },
+adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
+
+  // Fiction PvP Battle
+  battleWins: { type: Number, default: 0 },
+
+  // Creations
+  imagesGenerated: { type: Number, default: 0 }
+}, { timestamps: true });
+
+const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
+
+// Helper function to safely fetch or initialize user stats
+async function getPlayerStats(userId, username) {
+  try {
+    let stats = await PlayerStats.findOne({ userId });
+    if (!stats) {
+      stats = await PlayerStats.create({ userId, username: username || 'User' });
+    } else if (username && stats.username !== username) {
+      stats.username = username;
+      await stats.save();
+    }
+    return stats;
+  } catch (err) {
+    console.error('Error fetching player stats from MongoDB:', err);
+    return null;
+  }
+}
+
+
 
 // Prevent process crashes on Discord API timeouts (like Unknown interaction 10062)
 process.on('unhandledRejection', (reason, promise) => {
@@ -406,6 +468,18 @@ client.on(Events.InteractionCreate, async interaction => {
           });
 
         imagesGenerated++;
+
+// ==========================================
+        try {
+          const stats = await getPlayerStats(userId, interaction.user.username);
+          if (stats) {
+            stats.imagesGenerated += 1;
+            await stats.save();
+          }
+        } catch (dbErr) {
+          console.error('Failed to save image stats:', dbErr);
+        }
+        // ==========================================
 
         await interaction.editReply({
           embeds: [embed]
@@ -796,6 +870,18 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         !gameData.choices ||
         gameData.choices.length === 0
       ) {
+// ==========================================
+        try {
+          const stats = await getPlayerStats(i.user.id, i.user.username);
+          if (stats) {
+            stats.adventuresCompleted += 1;
+            await stats.save();
+          }
+        } catch (dbErr) {
+          console.error('Failed to save Adventure stats:', dbErr);
+        }
+        // ==========================================
+
         await i.editReply({
           embeds: [{
             title: '🏁 Doraemon Adventure Complete',
@@ -867,7 +953,68 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
   }
 }
 
-  
+    // =========================
+  // /PROFILE (FULL STATS CARD)
+  // =========================
+  if (interaction.commandName === 'profile') {
+    await interaction.deferReply();
+
+    const targetUser = interaction.options.getUser('user') || interaction.user;
+
+    try {
+      const stats = await getPlayerStats(targetUser.id, targetUser.username);
+
+      if (!stats) {
+        return interaction.editReply('⚠️ Could not load player stats from database.');
+      }
+
+      const bbWinRate = stats.batBattle.matches > 0 
+        ? ((stats.batBattle.wins / stats.batBattle.matches) * 100).toFixed(1) 
+        : '0.0';
+
+      const soWinRate = stats.superOver.matches > 0 
+        ? ((stats.superOver.wins / stats.superOver.matches) * 100).toFixed(1) 
+        : '0.0';
+
+      const embed = new EmbedBuilder()
+        .setColor('#00FFAA')
+        .setTitle(`🪪 Player Card — ${stats.username}`)
+        .setThumbnail(targetUser.displayAvatarURL())
+        .addFields(
+          {
+            name: '🏏 Cricket Arena',
+            value: 
+              `**Super Over:** ${stats.superOver.wins}/${stats.superOver.matches} wins (${soWinRate}%)\n` +
+              `**Bat Battle:** ${stats.batBattle.wins}/${stats.batBattle.matches} wins (${bbWinRate}%)`,
+            inline: false
+          },
+          {
+            name: '⚔️ PvP & Mini-Games',
+            value: 
+              `**Fiction Battles:** ${stats.battleWins} 🏆\n` +
+              `**Scramble Wins:** ${stats.scrambleWins} 🔠\n` +
+              `**Quiz Wins:** ${stats.quizWins} 🧠`,
+            inline: true
+          },
+          {
+            name: '🚪 RPG & Creations',
+            value: 
+              `**Adventures Done:** ${stats.adventuresCompleted} 🎒\n` +
+              `**Images Generated:** ${stats.imagesGenerated} 🖼️`,
+            inline: true
+          }
+        )
+        .setFooter({ text: 'DoraBot Profile • Powered by MongoDB' })
+        .setTimestamp();
+
+      return interaction.editReply({ embeds: [embed] });
+
+    } catch (err) {
+      console.error('Profile Command Error:', err);
+      return interaction.editReply('⚠️ An error occurred while generating the profile.');
+    }
+  }
+
   
   
           // --- /BATTLE (OPEN LOBBY OR DIRECT PVP WITH RICH DROPDOWN MENUS) ---
@@ -1187,6 +1334,21 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         winnerAnnouncement = `🏆 **WINNER: <@${player1.id}> (${character1.toUpperCase()})**`;
       }
 
+// ==========================================
+      // 👇 ADD THIS BLOCK HERE
+      // ==========================================
+      const winningUser = (winLower.includes(c2Lower) || c2Lower.includes(winLower)) ? player2 : player1;
+      try {
+        const stats = await getPlayerStats(winningUser.id, winningUser.username);
+        if (stats) {
+          stats.battleWins += 1;
+          await stats.save();
+        }
+      } catch (dbErr) {
+        console.error('Failed to save Battle win:', dbErr);
+      }
+      // ==========================================
+
       await activeChannel.send({
         content: `🏆 <@${player1.id}> ⚔️ <@${player2.id}>`,
         embeds: [{
@@ -1358,7 +1520,21 @@ CRITICAL RULES:
             losers.push(`<@${uid}> (Guessed ${playerData.guess})`);
           }
         });
-
+// ==========================================
+        for (const [uid, playerData] of players) {
+          if (playerData.guess === correctIndex) {
+            try {
+              const stats = await getPlayerStats(uid, playerData.user.username);
+              if (stats) {
+                stats.quizWins += 1;
+                await stats.save();
+              }
+            } catch (dbErr) {
+              console.error('Failed to save Quiz win:', dbErr);
+            }
+          }
+        }
+        // ==========================================
         let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}** (${quizData.answer}).\n\n`;
         if (winners.length > 0) resultText += `🎉 **Correct:** ${winners.join(', ')}\n`;
         else resultText += `❌ **Correct:** Nobody got it right!\n`;
@@ -1614,6 +1790,19 @@ if (['defensive', 'drive', 'loft', 'scoop'].includes(message.content.toLowerCase
 
   const won = finalScore >= game.target;
 
+ // ==========================================
+  try {
+    const stats = await getPlayerStats(message.author.id, message.author.username);
+    if (stats) {
+      stats.superOver.matches += 1;
+      if (won) stats.superOver.wins += 1;
+      await stats.save();
+    }
+  } catch (dbErr) {
+    console.error('Failed to save SuperOver stats:', dbErr);
+  }
+  // ==========================================
+
   return message.reply({
     embeds: [{
       title: '🏏 Final Ball',
@@ -1723,6 +1912,19 @@ if (message.content.toLowerCase() === '!scramble') {
     // Stop the hint from sending if someone guessed it before 10 seconds!
     clearTimeout(hintTimer); 
     m.reply(`🎉 **${m.author.username}** got it! The word was **${chosenWord}**.`);
+ // ==========================================
+    // 👇 ADD THIS BLOCK HERE
+    // ==========================================
+    try {
+      const stats = await getPlayerStats(m.author.id, m.author.username);
+      if (stats) {
+        stats.scrambleWins += 1;
+        await stats.save();
+      }
+    } catch (dbErr) {
+      console.error('Failed to save Scramble win:', dbErr);
+    }
+    // ==========================================
   });
 
   collector.on('end', (collected) => {
@@ -1845,6 +2047,26 @@ if (message.content.toLowerCase() === '!batbattle') {
 
     // Sort players by highest runs
     results.sort((a, b) => b.runs - a.runs);
+
+// ==========================================
+    const topPlayer = results[0];
+    for (const r of results) {
+      if (r.user.id === client.user.id) continue; // Skip bot
+
+      try {
+        const stats = await getPlayerStats(r.user.id, r.user.username);
+        if (stats) {
+          stats.batBattle.matches += 1;
+          if (topPlayer.user.id === r.user.id && (r.runs > 0 || !r.isOut)) {
+            stats.batBattle.wins += 1;
+          }
+          await stats.save();
+        }
+      } catch (dbErr) {
+        console.error('Failed to save BatBattle stats:', dbErr);
+      }
+    }
+    // ==========================================
 
     // =========================
     // 📊 BUILD LEADERBOARD
