@@ -520,7 +520,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       )
       .setFooter({ text: 'Made by Ayush' });
 
-    return interaction.reply({ embeds: [embed] });
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 
 
