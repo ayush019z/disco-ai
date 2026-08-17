@@ -1536,12 +1536,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
     }
   }
 
-  
-
-  
-        
-      
-  // --- /QUIZ COMMAND WITH GROQ FALLBACK ---
+    // --- /QUIZ COMMAND (WITH GEMINI & GROQ FALLBACK) ---
   if (interaction.commandName === 'quiz') {
     await interaction.deferReply();
     
@@ -1623,7 +1618,7 @@ CRITICAL RULES:
     } catch (geminiErr) {
       console.warn('⚠️ Gemini quiz generation failed, falling back to Groq...', geminiErr);
 
-      // 2. FALLBACK TO GROQ (openai/gpt-oss-120b) IF GEMINI FAILS
+      // 2. FALLBACK TO GROQ IF GEMINI FAILS
       try {
         const fallbackPrompt = `Topic: ${topic || 'Random Trivia'}\nDifficulty Level: ${difficulty}\nGenerate a multiple-choice trivia question. Return ONLY a valid JSON object with this exact structure, no markdown formatting: {"question": "...", "options": ["...", "...", "...", "..."], "answer": "exact string matching one option"}`;
 
@@ -1641,106 +1636,109 @@ CRITICAL RULES:
       }
     }
 
-    // Save to memory to prevent repeat questions
-    askedQuestions.push(quizData.question);
-    if (askedQuestions.length > 20) {
-      askedQuestions.shift(); 
-    }
-
-    const optionsText = quizData.options.map((opt, i) => `**${i + 1}.** ${opt}`).join('\n\n');
-    const correctIndex = quizData.options.indexOf(quizData.answer) + 1;
-
-    const row = new ActionRowBuilder();
-    quizData.options.slice(0, 4).forEach((opt, index) => {
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`ans_${index + 1}`)
-          .setLabel(`${index + 1}`)
-          .setStyle(ButtonStyle.Primary)
-      );
-    });
-
-    const quizMessage = await interaction.editReply({
-      embeds: [{
-        title: `🧠 AI Quiz Time (${difficulty.toUpperCase()})`,
-        description: `**${quizData.question}**\n\n${optionsText}\n\n*Click a button below within 20 seconds!*`,
-        color: difficultyColors[difficulty.toLowerCase()] || 0x00FFAA,
-        footer: { text: `Topic: ${topic ? topic.toUpperCase() : 'RANDOM'} • Level: ${difficulty.toUpperCase()}` }
-      }],
-      components: [row]
-    });
-
-    const collector = quizMessage.createMessageComponentCollector({ time: 20000 });
-    const players = new Map(); 
-
-    collector.on('collect', async (i) => {
-      const guess = parseInt(i.customId.split('_')[1]);
-
-      if (players.has(i.user.id)) {
-        const previousGuess = players.get(i.user.id).guess;
-        if (previousGuess === guess) {
-          return i.reply({ content: `⚠️ You already locked in **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
-        } else {
-          players.set(i.user.id, { user: i.user, guess: guess });
-          return i.reply({ content: `🔄 You changed your guess to **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
-        }
+    try {
+      // Save to memory to prevent repeat questions
+      askedQuestions.push(quizData.question);
+      if (askedQuestions.length > 20) {
+        askedQuestions.shift(); 
       }
 
-      players.set(i.user.id, { user: i.user, guess: guess });
-      await i.reply({ content: `✅ Your guess (**Option ${guess}**) is locked in!`, flags: MessageFlags.Ephemeral });
-    });
+      const optionsText = quizData.options.map((opt, i) => `**${i + 1}.** ${opt}`).join('\n\n');
+      const correctIndex = quizData.options.indexOf(quizData.answer) + 1;
 
-    collector.on('end', async () => {
-      const disabledRow = new ActionRowBuilder().addComponents(
-        row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
-      );
-      interaction.editReply({ components: [disabledRow] }).catch(() => {});
-
-      if (players.size === 0) {
-        return interaction.followUp(`⏰ Time's up! Nobody clicked an answer. The answer was **${quizData.answer}**.`);
-      }
-
-      const winners = [];
-      const losers = [];
-
-      players.forEach((playerData, uid) => {
-        if (playerData.guess === correctIndex) {
-          winners.push(`<@${uid}>`);
-        } else {
-          losers.push(`<@${uid}> (Guessed ${playerData.guess})`);
-        }
+      const row = new ActionRowBuilder();
+      quizData.options.slice(0, 4).forEach((opt, index) => {
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`ans_${index + 1}`)
+            .setLabel(`${index + 1}`)
+            .setStyle(ButtonStyle.Primary)
+        );
       });
 
-      for (const [uid, playerData] of players) {
-        if (playerData.guess === correctIndex) {
-          try {
-            const stats = await getPlayerStats(uid, playerData.user.username);
-            if (stats) {
-              stats.quizWins += 1;
-              stats.dorayaki += 25; // Reward 25 Dorayaki for correct answer!
-              await stats.save();
-            }
-          } catch (dbErr) {
-            console.error('Failed to save Quiz win:', dbErr);
+      const quizMessage = await interaction.editReply({
+        embeds: [{
+          title: `🧠 AI Quiz Time (${difficulty.toUpperCase()})`,
+          description: `**${quizData.question}**\n\n${optionsText}\n\n*Click a button below within 20 seconds!*`,
+          color: difficultyColors[difficulty.toLowerCase()] || 0x00FFAA,
+          footer: { text: `Topic: ${topic ? topic.toUpperCase() : 'RANDOM'} • Level: ${difficulty.toUpperCase()}` }
+        }],
+        components: [row]
+      });
+
+      const collector = quizMessage.createMessageComponentCollector({ time: 20000 });
+      const players = new Map(); 
+
+      collector.on('collect', async (i) => {
+        const guess = parseInt(i.customId.split('_')[1]);
+
+        if (players.has(i.user.id)) {
+          const previousGuess = players.get(i.user.id).guess;
+          if (previousGuess === guess) {
+            return i.reply({ content: `⚠️ You already locked in **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
+          } else {
+            players.set(i.user.id, { user: i.user, guess: guess });
+            return i.reply({ content: `🔄 You changed your guess to **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
           }
         }
-      }
 
-      let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}** (${quizData.answer}).\n\n`;
-      if (winners.length > 0) resultText += `🎉 **Correct:** ${winners.join(', ')} (+25 🪙)\n`;
-      else resultText += `❌ **Correct:** Nobody got it right!\n`;
+        players.set(i.user.id, { user: i.user, guess: guess });
+        await i.reply({ content: `✅ Your guess (**Option ${guess}**) is locked in!`, flags: MessageFlags.Ephemeral });
+      });
 
-      if (losers.length > 0) resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
+      collector.on('end', async () => {
+        const disabledRow = new ActionRowBuilder().addComponents(
+          row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
+        );
+        interaction.editReply({ components: [disabledRow] }).catch(() => {});
 
-      interaction.followUp(resultText);
-    });
-  }
- catch (error) {
-        console.error('Quiz Error:', error);
-        return interaction.editReply('⚠️ Could not generate the quiz.');
-      }
+        if (players.size === 0) {
+          return interaction.followUp(`⏰ Time's up! Nobody clicked an answer. The answer was **${quizData.answer}**.`);
+        }
+
+        const winners = [];
+        const losers = [];
+
+        players.forEach((playerData, uid) => {
+          if (playerData.guess === correctIndex) {
+            winners.push(`<@${uid}>`);
+          } else {
+            losers.push(`<@${uid}> (Guessed ${playerData.guess})`);
+          }
+        });
+
+        for (const [uid, playerData] of players) {
+          if (playerData.guess === correctIndex) {
+            try {
+              const stats = await getPlayerStats(uid, playerData.user.username);
+              if (stats) {
+                stats.quizWins += 1;
+                stats.dorayaki += 25; // Reward 25 Dorayaki for correct answer!
+                await stats.save();
+              }
+            } catch (dbErr) {
+              console.error('Failed to save Quiz win:', dbErr);
+            }
+          }
+        }
+
+        let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}** (${quizData.answer}).\n\n`;
+        if (winners.length > 0) resultText += `🎉 **Correct:** ${winners.join(', ')} (+25 🪙)\n`;
+        else resultText += `❌ **Correct:** Nobody got it right!\n`;
+
+        if (losers.length > 0) resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
+
+        interaction.followUp(resultText);
+      });
+
+    } catch (error) {
+      console.error('Quiz Error:', error);
+      return interaction.editReply('⚠️ Could not process the quiz.');
     }
-});
+  }
+  
+
+
 
 
 // =========================
