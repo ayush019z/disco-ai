@@ -134,6 +134,11 @@ const commands = [
   enableDMs(new SlashCommandBuilder()
     .setName('daily')
     .setDescription('Claim your free daily Dorayaki!')),
+
+  enableDMs(new SlashCommandBuilder()
+    .setName('shop')
+    .setDescription('Open the gadget shop to gamble boxes or buy VIP roles!')),
+  
   
   enableDMs(new SlashCommandBuilder()
     .setName('info')
