@@ -130,7 +130,11 @@ const commands = [
         .setDescription('Make the answer visible only to you (default: false)')
         .setRequired(false)
     ),
-
+  
+  enableDMs(new SlashCommandBuilder()
+    .setName('daily')
+    .setDescription('Claim your free daily Dorayaki!')),
+  
   enableDMs(new SlashCommandBuilder()
     .setName('info')
     .setDescription('View bot information')),
