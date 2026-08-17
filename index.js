@@ -1538,7 +1538,10 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 
   
 
-  // --- /QUIZ (POWERED EXCLUSIVELY BY GEMINI) ---
+  
+        
+      
+  // --- /QUIZ COMMAND WITH GROQ FALLBACK ---
   if (interaction.commandName === 'quiz') {
     await interaction.deferReply();
     
@@ -1550,6 +1553,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       medium: 0xFFCC00,
       hard: 0xFF3344
     };
+
+    let quizData = null;
 
     try {
       const wildSeed = Math.floor(Math.random() * 9999999);
@@ -1565,6 +1570,7 @@ CRITICAL RULES:
 3. The "answer" field MUST be the exact matching string from the "options" array.
 4. Pick a completely unique, engaging fact or sub-topic.`;
 
+      // 1. TRY GEMINI FIRST
       const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
         method: 'POST',
         headers: {
@@ -1611,107 +1617,125 @@ CRITICAL RULES:
         }
       }
 
-            // Clean any hidden markdown backticks Gemini might have added
       const cleanText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-      const quizData = JSON.parse(cleanText);
+      quizData = JSON.parse(cleanText);
 
+    } catch (geminiErr) {
+      console.warn('⚠️ Gemini quiz generation failed, falling back to Groq...', geminiErr);
 
-      // Save to memory to prevent repeat questions
-      askedQuestions.push(quizData.question);
-      if (askedQuestions.length > 20) {
-        askedQuestions.shift(); 
+      // 2. FALLBACK TO GROQ (openai/gpt-oss-120b) IF GEMINI FAILS
+      try {
+        const fallbackPrompt = `Topic: ${topic || 'Random Trivia'}\nDifficulty Level: ${difficulty}\nGenerate a multiple-choice trivia question. Return ONLY a valid JSON object with this exact structure, no markdown formatting: {"question": "...", "options": ["...", "...", "...", "..."], "answer": "exact string matching one option"}`;
+
+        const groqResponse = await ai.chat.completions.create({
+          model: 'openai/gpt-oss-120b',
+          messages: [{ role: 'user', content: fallbackPrompt }],
+          temperature: 0.7
+        });
+
+        const groqText = groqResponse.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        quizData = JSON.parse(groqText);
+      } catch (groqErr) {
+        console.error('❌ Both Gemini and Groq failed to generate a quiz:', groqErr);
+        return interaction.editReply('⚠️ Could not generate the quiz. Both of my AI brains are resting right now!');
+      }
+    }
+
+    // Save to memory to prevent repeat questions
+    askedQuestions.push(quizData.question);
+    if (askedQuestions.length > 20) {
+      askedQuestions.shift(); 
+    }
+
+    const optionsText = quizData.options.map((opt, i) => `**${i + 1}.** ${opt}`).join('\n\n');
+    const correctIndex = quizData.options.indexOf(quizData.answer) + 1;
+
+    const row = new ActionRowBuilder();
+    quizData.options.slice(0, 4).forEach((opt, index) => {
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`ans_${index + 1}`)
+          .setLabel(`${index + 1}`)
+          .setStyle(ButtonStyle.Primary)
+      );
+    });
+
+    const quizMessage = await interaction.editReply({
+      embeds: [{
+        title: `🧠 AI Quiz Time (${difficulty.toUpperCase()})`,
+        description: `**${quizData.question}**\n\n${optionsText}\n\n*Click a button below within 20 seconds!*`,
+        color: difficultyColors[difficulty.toLowerCase()] || 0x00FFAA,
+        footer: { text: `Topic: ${topic ? topic.toUpperCase() : 'RANDOM'} • Level: ${difficulty.toUpperCase()}` }
+      }],
+      components: [row]
+    });
+
+    const collector = quizMessage.createMessageComponentCollector({ time: 20000 });
+    const players = new Map(); 
+
+    collector.on('collect', async (i) => {
+      const guess = parseInt(i.customId.split('_')[1]);
+
+      if (players.has(i.user.id)) {
+        const previousGuess = players.get(i.user.id).guess;
+        if (previousGuess === guess) {
+          return i.reply({ content: `⚠️ You already locked in **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
+        } else {
+          players.set(i.user.id, { user: i.user, guess: guess });
+          return i.reply({ content: `🔄 You changed your guess to **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
+        }
       }
 
-      const optionsText = quizData.options.map((opt, i) => `**${i + 1}.** ${opt}`).join('\n\n');
-      const correctIndex = quizData.options.indexOf(quizData.answer) + 1;
+      players.set(i.user.id, { user: i.user, guess: guess });
+      await i.reply({ content: `✅ Your guess (**Option ${guess}**) is locked in!`, flags: MessageFlags.Ephemeral });
+    });
 
-      const row = new ActionRowBuilder();
-      quizData.options.slice(0, 4).forEach((opt, index) => {
-        row.addComponents(
-          new ButtonBuilder()
-            .setCustomId(`ans_${index + 1}`)
-            .setLabel(`${index + 1}`)
-            .setStyle(ButtonStyle.Primary)
-        );
-      });
+    collector.on('end', async () => {
+      const disabledRow = new ActionRowBuilder().addComponents(
+        row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
+      );
+      interaction.editReply({ components: [disabledRow] }).catch(() => {});
 
-      const quizMessage = await interaction.editReply({
-        embeds: [{
-          title: `🧠 AI Quiz Time (${difficulty.toUpperCase()})`,
-          description: `**${quizData.question}**\n\n${optionsText}\n\n*Click a button below within 20 seconds!*`,
-          color: difficultyColors[difficulty.toLowerCase()] || 0x00FFAA,
-          footer: { text: `Topic: ${topic ? topic.toUpperCase() : 'RANDOM'} • Level: ${difficulty.toUpperCase()}` }
-        }],
-        components: [row]
-      });
+      if (players.size === 0) {
+        return interaction.followUp(`⏰ Time's up! Nobody clicked an answer. The answer was **${quizData.answer}**.`);
+      }
 
-      const collector = quizMessage.createMessageComponentCollector({ time: 20000 });
-      const players = new Map(); 
+      const winners = [];
+      const losers = [];
 
-      collector.on('collect', async (i) => {
-        const guess = parseInt(i.customId.split('_')[1]);
-
-        if (players.has(i.user.id)) {
-          const previousGuess = players.get(i.user.id).guess;
-          if (previousGuess === guess) {
-            return i.reply({ content: `⚠️ You already locked in **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
-          } else {
-            players.set(i.user.id, { user: i.user, guess: guess });
-            return i.reply({ content: `🔄 You changed your guess to **Option ${guess}**!`, flags: MessageFlags.Ephemeral });
-          }
+      players.forEach((playerData, uid) => {
+        if (playerData.guess === correctIndex) {
+          winners.push(`<@${uid}>`);
+        } else {
+          losers.push(`<@${uid}> (Guessed ${playerData.guess})`);
         }
-
-        players.set(i.user.id, { user: i.user, guess: guess });
-        await i.reply({ content: `✅ Your guess (**Option ${guess}**) is locked in!`, flags: MessageFlags.Ephemeral });
       });
 
-      collector.on('end', async () => {
-        const disabledRow = new ActionRowBuilder().addComponents(
-          row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
-        );
-        interaction.editReply({ components: [disabledRow] }).catch(() => {});
-
-        if (players.size === 0) {
-          return interaction.followUp(`⏰ Time's up! Nobody clicked an answer. The answer was **${quizData.answer}**.`);
-        }
-
-        const winners = [];
-        const losers = [];
-
-        players.forEach((playerData, uid) => {
-          if (playerData.guess === correctIndex) {
-            winners.push(`<@${uid}>`);
-          } else {
-            losers.push(`<@${uid}> (Guessed ${playerData.guess})`);
-          }
-        });
-// ==========================================
-        for (const [uid, playerData] of players) {
-          if (playerData.guess === correctIndex) {
-            try {
-              const stats = await getPlayerStats(uid, playerData.user.username);
-              if (stats) {
-                stats.quizWins += 1;
-// 👇 ADD THE DORAYAKI REWARD RIGHT HERE
-                stats.dorayaki += 25; // Give 25 coins for correct answer!
-                await stats.save();
-              }
-            } catch (dbErr) {
-              console.error('Failed to save Quiz win:', dbErr);
+      for (const [uid, playerData] of players) {
+        if (playerData.guess === correctIndex) {
+          try {
+            const stats = await getPlayerStats(uid, playerData.user.username);
+            if (stats) {
+              stats.quizWins += 1;
+              stats.dorayaki += 25; // Reward 25 Dorayaki for correct answer!
+              await stats.save();
             }
+          } catch (dbErr) {
+            console.error('Failed to save Quiz win:', dbErr);
           }
         }
-        // ==========================================
-        let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}** (${quizData.answer}).\n\n`;
-        if (winners.length > 0) resultText += `🎉 **Correct:** ${winners.join(', ')}\n`;
-        else resultText += `❌ **Correct:** Nobody got it right!\n`;
+      }
 
-        if (losers.length > 0) resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
+      let resultText = `⏰ **Time's up!** The correct answer was **Option ${correctIndex}** (${quizData.answer}).\n\n`;
+      if (winners.length > 0) resultText += `🎉 **Correct:** ${winners.join(', ')} (+25 🪙)\n`;
+      else resultText += `❌ **Correct:** Nobody got it right!\n`;
 
-        interaction.followUp(resultText);
-      });
+      if (losers.length > 0) resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
 
-          } catch (error) {
+      interaction.followUp(resultText);
+    });
+  }
+ catch (error) {
         console.error('Quiz Error:', error);
         return interaction.editReply('⚠️ Could not generate the quiz.');
       }
