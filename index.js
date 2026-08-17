@@ -927,7 +927,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
   try {
     // 3. Fetch the starting story
     const response = await ai.chat.completions.create({
-      model: 'llama-3.1-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       messages: [{ role: 'system', content: systemPrompt }],
       temperature: 0.9
     });
@@ -1022,7 +1022,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 
       // Generate next part
       const nextResponse = await ai.chat.completions.create({
-        model: 'llama-3.1-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         messages: session.history,
         temperature: 0.9
       });
@@ -1161,9 +1161,10 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         ? ((stats.superOver.wins / stats.superOver.matches) * 100).toFixed(1) 
         : '0.0';
 
-      const embed = new EmbedBuilder()
+            // Update the title line in your /profile command embed to look like this:
+            const embed = new EmbedBuilder()
         .setColor('#00FFAA')
-        .setTitle(`🪪 Player Card — ${stats.username}`)
+        .setTitle(`🪪 Player Card — ${stats.username} ${stats.hasBadge ? '<:nobi:1538976662987735040>' : ''}`)
         .setThumbnail(targetUser.displayAvatarURL())
         .addFields(
                     {
@@ -1315,7 +1316,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
              }`;
 
         const res = await ai.chat.completions.create({
-          model: 'llama-3.1-70b-versatile',
+          model: 'openai/gpt-oss-120b',
           messages: [
             { role: 'system', content: sysPrompt },
             { role: 'user', content: `Generate moves for ${c1} VS ${c2}` }
@@ -1775,7 +1776,7 @@ client.on('messageCreate', async (message) => {
       await message.channel.sendTyping();
 
       const response = await ai.chat.completions.create({
-        model: 'llama-3.1-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         messages: [
           {
             role: 'system',
@@ -2454,7 +2455,7 @@ if (message.content.toLowerCase() === '!batbattle') {
     ];
 
     const response = await ai.chat.completions.create({
-      model: 'llama-3.1-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       messages: chatMessages,
       max_tokens: wantsDetailed ? 500 : 120
     });
