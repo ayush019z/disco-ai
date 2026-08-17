@@ -79,6 +79,9 @@ if (process.env.MONGO_URI) {
   console.warn('⚠️ MONGO_URI is missing in environment variables.');
 }
 
+const DORAYAKI_EMOJI = '<:dorayaki:1538952213173379213>';
+
+
 // =========================
 // PLAYER STATS SCHEMA & MODEL
 // =========================
@@ -674,7 +677,8 @@ if (interaction.commandName === 'admin') {
       stats.lastDaily = now;
       await stats.save();
 
-      return interaction.editReply(`🥞 **Yum!** You claimed your daily reward of **100 Dorayaki**!\n💰 **New Balance:** ${stats.dorayaki} Dorayaki`);
+            // Replace the pancake emoji in your return statement
+      return interaction.editReply(`${DORAYAKI_EMOJI} **Yum!** You claimed your daily reward of **100 Dorayaki**!\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`);
 
     } catch (err) {
       console.error('Daily Command Error:', err);
@@ -921,15 +925,16 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         }
         // ==========================================
 
-        await i.editReply({
+                await i.editReply({
           embeds: [{
             title: '🏁 Doraemon Adventure Complete',
-            description: gameData.story,
+            description: `${gameData.story}\n\n🎉 **Reward:** 150 Dorayaki! ${DORAYAKI_EMOJI}`,
             color: 0xFF6B6B,
             footer: { text: `Final action: ${userChoice}` }
           }],
           components: []
         });
+
 
         activeAdventures.delete(i.user.id);
         return collector.stop();
@@ -1020,11 +1025,12 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         .setTitle(`🪪 Player Card — ${stats.username}`)
         .setThumbnail(targetUser.displayAvatarURL())
         .addFields(
-          {
+                    {
             name: '💰 Wallet',
-            value: `**${stats.dorayaki || 0}** Dorayaki 🥞`,
+            value: `**${stats.dorayaki || 0}** Dorayaki ${DORAYAKI_EMOJI}`,
             inline: false
           },
+
 {
             name: '🏏 Cricket Arena',
             value: 
