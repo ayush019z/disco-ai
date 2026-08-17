@@ -655,7 +655,7 @@ if (interaction.commandName === 'admin') {
   // /DAILY (ECONOMY)
   // =========================
   if (interaction.commandName === 'daily') {
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
 
     try {
       const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
