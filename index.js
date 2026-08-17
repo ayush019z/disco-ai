@@ -79,7 +79,7 @@ if (process.env.MONGO_URI) {
   console.warn('⚠️ MONGO_URI is missing in environment variables.');
 }
 
-const DORAYAKI_EMOJI = '<:dorayaki:1538952213173379213>';
+const DORAYAKI_EMOJI = '<:dorara:1538955587210182666>';
 
 
 // =========================
