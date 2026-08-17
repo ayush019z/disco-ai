@@ -1482,7 +1482,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           : `Evaluate this final clash: ${character1} uses ${p1Move} vs ${character2} uses ${p2Move}. Declare a definitive winner. You must output valid JSON. Format: {"is_stall": false, "narrative": "A fast-paced 2-3 sentence final showdown.", "winner": "Name"}`;
 
         const res = await ai.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
+          model: 'openai/gpt-oss-120b',
           messages: [{ role: 'system', content: evalPrompt }],
           temperature: 0.8,
           response_format: { type: 'json_object' } 
