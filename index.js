@@ -648,6 +648,39 @@ if (interaction.commandName === 'admin') {
 
 
 
+  // =========================
+  // /DAILY (ECONOMY)
+  // =========================
+  if (interaction.commandName === 'daily') {
+    await interaction.deferReply();
+
+    try {
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+      
+      const now = new Date();
+      const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+      // Check if they already claimed today
+      if (stats.lastDaily && (now - stats.lastDaily.getTime() < oneDay)) {
+        const timeLeft = oneDay - (now - stats.lastDaily.getTime());
+        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        
+        return interaction.editReply(`⏰ You already got your Dorayaki today! Come back in **${hours}h ${minutes}m**.`);
+      }
+
+      // Give them 100 Dorayaki
+      stats.dorayaki += 100;
+      stats.lastDaily = now;
+      await stats.save();
+
+      return interaction.editReply(`🥞 **Yum!** You claimed your daily reward of **100 Dorayaki**!\n💰 **New Balance:** ${stats.dorayaki} Dorayaki`);
+
+    } catch (err) {
+      console.error('Daily Command Error:', err);
+      return interaction.editReply('⚠️ Could not process your daily reward.');
+    }
+  }
 
 
 
