@@ -2247,7 +2247,18 @@ if (message.content.toLowerCase() === '!batbattle') {
       `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&nologo=true&model=flux`;
 
     imagesGenerated++;
-
+// ==========================================
+    try {
+      const stats = await getPlayerStats(message.author.id, message.author.username);
+      if (stats) {
+        stats.imagesGenerated += 1;
+        await stats.save();
+      }
+    } catch (dbErr) {
+      console.error('Failed to save image stats:', dbErr);
+    }
+    // ==========================================
+    
     return waitMsg.edit({
       content: null,
       embeds: [{
