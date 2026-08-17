@@ -394,7 +394,7 @@ client.on(Events.InteractionCreate, async interaction => {
           { label: 'AI & Chat', description: 'Chat, Memory, and Utilities', value: 'help_ai', emoji: '🤖' },
           { label: 'Image & Fun', description: 'AI Images and Wanted Posters', value: 'help_image', emoji: '🎨' },
           { label: 'Games & RPG', description: 'Cricket, Quiz, Scramble & Adventure', value: 'help_games', emoji: '🎮' },
-          { label: 'Economy & Profile', description: 'Daily, Shop, and Stats', value: 'help_economy', emoji: '${DORAYAKI_EMOJI}' }
+          { label: 'Economy & Profile', description: 'Daily, Shop, and Stats', value: 'help_economy', emoji: '1538955587210182666' }
         ])
     );
 
