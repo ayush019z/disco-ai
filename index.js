@@ -112,7 +112,10 @@ adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
   battleWins: { type: Number, default: 0 },
 
   // Creations
-  imagesGenerated: { type: Number, default: 0 }
+  imagesGenerated: { type: Number, default: 0 },
+
+  // Cosmetics (ADD THIS LINE!)
+  hasBadge: { type: Boolean, default: false }
 }, { timestamps: true });
 
 const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
@@ -321,11 +324,53 @@ client.on(Events.InteractionCreate, async interaction => {
             }
           }, 7 * 24 * 60 * 60 * 1000);
 
-          return interaction.reply({ content: `👑 **Success!** You purchased the **VIP Role** for 1500 ${DORAYAKI_EMOJI}! Enjoy your perks for the next 7 days.`, ephemeral: true });
-        } catch (err) {
+return interaction.reply({ content: `👑 **Success!** You purchased the **VIP Role** for 1500 ${DORAYAKI_EMOJI}! Enjoy your perks for the next 7 days.`, ephemeral: true });
+        }
+      catch (err) {
           console.error('Failed to assign VIP role:', err);
           return interaction.reply({ content: `⚠️ Failed to assign the role. Please make sure the bot's role is higher in the server settings than the VIP role!`, ephemeral: true });
+      }
+      }
+                // --- 3. LOTTERY TICKET ---
+      if (selectedValue === 'buy_lottery') {
+        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+        
+        if (stats.dorayaki < 50) {
+          return interaction.reply({ content: `❌ You don't have enough Dorayaki! You need 50 ${DORAYAKI_EMOJI}.`, ephemeral: true });
         }
+
+        stats.dorayaki -= 50;
+        
+        // 10% chance to win 1000
+        const won = Math.random() < 0.10; 
+        
+        if (won) {
+          stats.dorayaki += 1000;
+          await stats.save();
+          return interaction.reply({ content: `🎉 **JACKPOT!!!** You used the Time TV and picked the winning numbers! You won **1000 Dorayaki** ${DORAYAKI_EMOJI}!\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`, ephemeral: true });
+        } else {
+          await stats.save();
+          return interaction.reply({ content: `🎟️ You checked the Time TV, but your ticket lost. Better luck next time!\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`, ephemeral: true });
+        }
+      }
+
+      // --- 4. PROFILE BADGE ---
+      if (selectedValue === 'buy_badge') {
+        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+        
+        if (stats.hasBadge) {
+          return interaction.reply({ content: `⚠️ You already own the Ultimate Profile Badge!`, ephemeral: true });
+        }
+
+        if (stats.dorayaki < 5000) {
+          return interaction.reply({ content: `❌ You need 5000 ${DORAYAKI_EMOJI} to buy this ultimate flex item! Keep saving!`, ephemeral: true });
+        }
+
+        stats.dorayaki -= 5000;
+        stats.hasBadge = true; // Permanently save the badge!
+        await stats.save();
+
+                return interaction.reply({ content: `<:nobi:1538976662987735040> **WOW!** You purchased the Ultimate Profile Badge! Check your **/profile** to see it shining!`, ephemeral: false });
       }
     }
 
@@ -419,7 +464,20 @@ client.on(Events.InteractionCreate, async interaction => {
         .setPlaceholder('Choose a gadget to buy...')
         .addOptions([
           { label: 'Mystery Box', description: 'Cost: 250 Dorayaki. Test your luck for a coin payout!', value: 'buy_box', emoji: '🎲' },
-          { label: 'VIP Role (7 Days)', description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.', value: 'buy_vip', emoji: '👑' }
+          { label: 'VIP Role (7 Days)', description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.', value: 'buy_vip', emoji: '👑' },
+                  { 
+          label: 'Time TV Lottery Ticket', 
+          description: 'Cost: 50 Dorayaki. 10% chance to win 1000 Dorayaki!', 
+          value: 'buy_lottery', 
+          emoji: '🎟️' 
+        },
+                { 
+          label: 'Ultimate Profile Badge', 
+          description: 'Cost: 5000 Dorayaki. Unlocks a permanent flex badge on your profile!', 
+          value: 'buy_badge', 
+          emoji: '1538976662987735040' 
+        }
+          
         ])
     );
 
