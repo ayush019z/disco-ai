@@ -180,6 +180,11 @@ const commands = [
         .setMinValue(1)
     )),
 
+  // --- LEADERBOARD COMMAND ---
+  enableDMs(new SlashCommandBuilder()
+    .setName('leaderboard')
+    .setDescription('View the top 5 richest Dorayaki hoarders across the server!')),
+
 
   enableDMs(new SlashCommandBuilder()
     .setName('info')
