@@ -162,6 +162,24 @@ const commands = [
         .setRequired(false)
     )),
 
+  // --- PAY / TRANSFER COMMAND ---
+  enableDMs(new SlashCommandBuilder()
+    .setName('pay')
+    .setDescription('Transfer Dorayaki to another user')
+    .addUserOption(option =>
+      option
+        .setName('user')
+        .setDescription('The user you want to pay')
+        .setRequired(true)
+    )
+    .addIntegerOption(option =>
+      option
+        .setName('amount')
+        .setDescription('The amount of Dorayaki to send')
+        .setRequired(true)
+        .setMinValue(1)
+    )),
+
 
   enableDMs(new SlashCommandBuilder()
     .setName('info')
