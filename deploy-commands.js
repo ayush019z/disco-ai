@@ -69,7 +69,7 @@ const commands = [
         .setRequired(true)
     )),
 
-    // --- BATTLE (REQUIRED OPTIONS FIRST) ---
+  // --- BATTLE (REQUIRED OPTIONS FIRST) ---
   enableDMs(new SlashCommandBuilder()
     .setName('battle')
     .setDescription('Challenge another user or open a public lobby for an epic fiction battle!')
@@ -102,7 +102,7 @@ const commands = [
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
     )),
 
-  // --- FIXED PROFILE COMMAND ---
+  // --- PROFILE COMMAND ---
   enableDMs(new SlashCommandBuilder()
     .setName('profile')
     .setDescription('View your or another user\'s mini-game stats')
@@ -114,10 +114,9 @@ const commands = [
     )),
 
   // --- ASK COMMAND ---
-  new SlashCommandBuilder()
+  enableDMs(new SlashCommandBuilder()
     .setName('ask')
     .setDescription('Ask DoraBot anything')
-    .setDMPermission(true)
     .addStringOption(option =>
       option
         .setName('question')
@@ -129,7 +128,7 @@ const commands = [
         .setName('ephemeral')
         .setDescription('Make the answer visible only to you (default: false)')
         .setRequired(false)
-    ),
+    )),
   
   enableDMs(new SlashCommandBuilder()
     .setName('daily')
@@ -139,7 +138,7 @@ const commands = [
     .setName('shop')
     .setDescription('Open the gadget shop to gamble boxes or buy VIP roles!')),
   
-   // --- GIVEAWAY COMMAND ---
+  // --- GIVEAWAY COMMAND (WITH DURATION TIMER) ---
   enableDMs(new SlashCommandBuilder()
     .setName('giveaway')
     .setDescription('Start a Dorayaki giveaway (Bot Owner Only)')
@@ -159,6 +158,12 @@ const commands = [
       option
         .setName('description')
         .setDescription('Custom description or rules for the giveaway')
+        .setRequired(false)
+    )
+    .addStringOption(option =>
+      option
+        .setName('duration')
+        .setDescription('Giveaway length (e.g., 30m, 2h, 1d). Defaults to 24h.')
         .setRequired(false)
     )),
 
@@ -180,11 +185,10 @@ const commands = [
         .setMinValue(1)
     )),
 
-  // --- LEADERBOARD COMMAND ---
+  // --- LEADERBOARD COMMAND (TOP 5) ---
   enableDMs(new SlashCommandBuilder()
     .setName('leaderboard')
     .setDescription('View the top 5 richest Dorayaki hoarders across the server!')),
-
 
   enableDMs(new SlashCommandBuilder()
     .setName('info')
