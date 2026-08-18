@@ -56,6 +56,21 @@ const client = new Client({
 ==========================================================
 */
 
+// =========================
+// HELPER: PARSE DURATION
+// =========================
+function parseDuration(durationStr) {
+  const match = durationStr.toLowerCase().match(/^(\d+)(s|m|h|d)$/);
+  if (!match) return null;
+  const val = parseInt(match[1], 10);
+  const unit = match[2];
+  
+  if (unit === 's') return val * 1000;
+  if (unit === 'm') return val * 60 * 1000;
+  if (unit === 'h') return val * 60 * 60 * 1000;
+  if (unit === 'd') return val * 24 * 60 * 60 * 1000;
+  return null;
+}
 
 
 // =========================
@@ -588,7 +603,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
   }
 
 
-  // --- /GIVEAWAY COMMAND (OWNER ONLY) ---
+    // --- /GIVEAWAY COMMAND (OWNER ONLY) ---
   if (interaction.commandName === 'giveaway') {
     if (interaction.user.id !== '773574818121383958') {
       return interaction.reply({
@@ -600,9 +615,21 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     const prize = interaction.options.getInteger('prize');
     const channel = interaction.options.getChannel('channel') || interaction.channel;
     const description = interaction.options.getString('description') || `Click the ${DORAYAKI_EMOJI} reaction below to enter!`;
+    
+    // Grab the new duration option, default to '24h' if left blank
+    const durationInput = interaction.options.getString('duration') || '24h';
 
-    // 24 hours in milliseconds
-    const durationMs = 24 * 60 * 60 * 1000;
+    // Parse it using our new helper function
+    const durationMs = parseDuration(durationInput);
+    
+    if (!durationMs) {
+      return interaction.reply({
+        content: '❌ Invalid duration format! Please use formats like `30m` (minutes), `2h` (hours), or `1d` (days).',
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    // Calculate the custom end time
     const endTime = Date.now() + durationMs;
     const unixTimestamp = Math.floor(endTime / 1000);
 
@@ -628,10 +655,11 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     });
 
     return interaction.reply({
-      content: `✅ Giveaway successfully started in <#${channel.id}> for **${prize} ${DORAYAKI_EMOJI}**!`,
+      content: `✅ Giveaway successfully started in <#${channel.id}> for **${prize} ${DORAYAKI_EMOJI}**! It will end in **${durationInput}**.`,
       flags: MessageFlags.Ephemeral
     });
   }
+
 
   // =========================
   // /PAY (TRADE & TRANSFER)
