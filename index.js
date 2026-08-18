@@ -660,6 +660,44 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     });
   }
 
+  // =========================
+  // /LEADERBOARD (TOP 5)
+  // =========================
+  if (interaction.commandName === 'leaderboard') {
+    await interaction.deferReply();
+
+    try {
+      const topPlayers = await PlayerStats.find({ dorayaki: { $gt: 0 } })
+        .sort({ dorayaki: -1 })
+        .limit(5); // 👈 Exactly Top 5
+
+      if (!topPlayers || topPlayers.length === 0) {
+        return interaction.editReply('🪙 No players have earned Dorayaki yet! Claim `/daily` to get on the board.');
+      }
+
+      const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+      let leaderboardText = '';
+
+      topPlayers.forEach((player, index) => {
+        const badge = player.hasBadge ? '<:nobi:1538976662987735040> ' : '';
+        leaderboardText += `${medals[index]} **${player.username}** ${badge}— **${player.dorayaki.toLocaleString()}** ${DORAYAKI_EMOJI}\n`;
+      });
+
+      const embed = new EmbedBuilder()
+        .setColor('#FFD700')
+        .setTitle('🏆 Top 5 Dorayaki Leaderboard')
+        .setDescription(leaderboardText)
+        .setFooter({ text: 'DoraBot Economy' })
+        .setTimestamp();
+
+      return interaction.editReply({ embeds: [embed] });
+    } catch (err) {
+      console.error('Leaderboard Error:', err);
+      return interaction.editReply('⚠️ Could not load the leaderboard.');
+    }
+  }
+
+
 
   // =========================
   // /PAY (TRADE & TRANSFER)
