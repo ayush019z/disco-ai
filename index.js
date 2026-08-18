@@ -128,6 +128,16 @@ const botStatsSchema = new mongoose.Schema({
 });
 const BotStats = mongoose.model('BotStats', botStatsSchema);
 
+// --- GIVEAWAY SCHEMA ---
+const giveawaySchema = new mongoose.Schema({
+  messageId: { type: String, required: true },
+  channelId: { type: String, required: true },
+  prize: { type: Number, required: true },
+  endTime: { type: Number, required: true },
+  ended: { type: Boolean, default: false }
+});
+const Giveaway = mongoose.model('Giveaway', giveawaySchema);
+
 // Helper function to safely fetch or initialize user stats
 async function getPlayerStats(userId, username) {
   try {
@@ -248,6 +258,53 @@ client.once(Events.ClientReady, () => {
 
   // 2. Post every 30 minutes (30 minutes * 60 seconds * 1000 milliseconds)
   setInterval(postBotStats, 30 * 60 * 1000);
+
+
+// ==========================================
+  // 👇 PASTE THE GIVEAWAY STARTUP CHECKER HERE 👇
+  // ==========================================
+  setInterval(async () => {
+    try {
+      const now = Date.now();
+      const activeGiveaways = await Giveaway.find({ ended: false, endTime: { $lte: now } });
+
+      for (const giveaway of activeGiveaways) {
+        giveaway.ended = true;
+        await giveaway.save();
+
+        const channel = await client.channels.fetch(giveaway.channelId).catch(() => null);
+        if (!channel) continue;
+
+        const message = await channel.messages.fetch(giveaway.messageId).catch(() => null);
+        if (!message) continue;
+
+        const reaction = message.reactions.cache.get('1538955587210182666');
+        let users = [];
+        if (reaction) {
+          const fetchedUsers = await reaction.users.fetch();
+          users = fetchedUsers.filter(u => !u.bot).map(u => u);
+        }
+
+        if (users.length === 0) {
+          await channel.send(`🎉 **GIVEAWAY ENDED**\nNo valid entries! Nobody won the **${giveaway.prize} ${DORAYAKI_EMOJI}** giveaway.`);
+        } else {
+          const winner = users[Math.floor(Math.random() * users.length)];
+
+          const stats = await getPlayerStats(winner.id, winner.username);
+          if (stats) {
+            stats.dorayaki += giveaway.prize;
+            await stats.save();
+          }
+
+          await channel.send(`🎉 **GIVEAWAY WINNER!**\nCongratulations <@${winner.id}>! You won **${giveaway.prize} ${DORAYAKI_EMOJI}**! 🎁`);
+        }
+      }
+    } catch (err) {
+      console.error('Giveaway interval error:', err);
+    }
+  }, 10000);
+  // 👆 -------------------------------------- 👆
+
 });
 
 // =========================
@@ -523,6 +580,51 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 
+
+  // --- /GIVEAWAY COMMAND (OWNER ONLY) ---
+  if (interaction.commandName === 'giveaway') {
+    if (interaction.user.id !== '773574818121383958') {
+      return interaction.reply({
+        content: '🚫 Only Ayush is allowed to start giveaways!',
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    const prize = interaction.options.getInteger('prize');
+    const channel = interaction.options.getChannel('channel') || interaction.channel;
+    const description = interaction.options.getString('description') || `Click the ${DORAYAKI_EMOJI} reaction below to enter!`;
+
+    // 24 hours in milliseconds
+    const durationMs = 24 * 60 * 60 * 1000;
+    const endTime = Date.now() + durationMs;
+    const unixTimestamp = Math.floor(endTime / 1000);
+
+    const embed = new EmbedBuilder()
+      .setColor('#FF3366')
+      .setTitle(`🎉 DORAYAKI GIVEAWAY 🎉`)
+      .setDescription(`${description}\n\n🎁 **Prize:** **${prize}** ${DORAYAKI_EMOJI}\n⏰ **Ends:** <t:${unixTimestamp}:R> (<t:${unixTimestamp}:f>)\n\nReact with ${DORAYAKI_EMOJI} to enter!`)
+      .setFooter({ text: `Hosted by ${interaction.user.username}` })
+      .setTimestamp();
+
+    const giveawayMsg = await channel.send({ embeds: [embed] });
+    
+    // React using the raw custom emoji ID!
+    await giveawayMsg.react('1538955587210182666');
+
+    // Save to database
+    await Giveaway.create({
+      messageId: giveawayMsg.id,
+      channelId: channel.id,
+      prize: prize,
+      endTime: endTime,
+      ended: false
+    });
+
+    return interaction.reply({
+      content: `✅ Giveaway successfully started in <#${channel.id}> for **${prize} ${DORAYAKI_EMOJI}**!`,
+      flags: MessageFlags.Ephemeral
+    });
+  }
 
 
 
