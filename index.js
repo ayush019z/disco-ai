@@ -357,11 +357,12 @@ client.on(Events.InteractionCreate, async interaction => {
     if (interaction.customId === 'shop_menu') {
       const selectedValue = interaction.values[0];
 
-      // 1. 🔄 INSTANTLY RESET THE MENU: This edits the original shop message 
-      // with its own components, which forces Discord to clear the user's selection!
-      await interaction.update({ components: interaction.message.components });
+      // 1. 🔄 SILENTLY RESET THE MENU: 
+      // This edits the original message in the background without stealing the interaction response!
+      interaction.message.edit({ components: interaction.message.components }).catch(() => {});
 
-      // 2. PROCESS PURCHASES: (Notice we use interaction.followUp now instead of reply)
+      // 2. PROCESS PURCHASES (Using guaranteed .reply() for the ephemeral popups)
+      
       
       // Mystery Box Gamble
       if (selectedValue === 'buy_box') {
