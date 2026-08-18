@@ -1371,17 +1371,40 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       });
 
                   // --- 🛡️ HELPER FUNCTION: ENHANCED MOVE GENERATOR ---
-            const generateMoves = async (c1, c2, forceOffensive = false) => {
+                  const generateMoves = async (c1, c2, forceOffensive = false) => {
         const sysPrompt = forceOffensive 
-          ? `You are a combat AI. Return ONLY a raw JSON object. Invent CREATIVE, thematic names for the ultimate moves! Format MUST match exactly: {"desc1":"Intro","moves1":[{"n":"Ultimate Attack Name","d":"Desc"}],"desc2":"Intro","moves2":[{"n":"Ultimate Attack Name","d":"Desc"}]}`
-          : `You are a combat AI. Return ONLY a raw JSON object. Create exactly 3 moves for ${c1} and 3 for ${c2}. Invent CREATIVE, thematic names for all moves! Do NOT use generic names like 'Attack 1'. Format MUST match exactly: {"desc1": "...", "moves1": [{"n": "Cool Attack Name", "d": "..."}], "desc2": "...", "moves2": [{"n": "Cool Attack Name", "d": "..."}]}`;
+          ? `You are a combat AI. Return ONLY a raw JSON object. Do not include markdown formatting or extra text. Invent CREATIVE, thematic names for the ultimate moves!
+             Format MUST match exactly:
+             {"desc1":"Intro","moves1":[{"n":"Ultimate Attack Name","d":"Desc"}],"desc2":"Intro","moves2":[{"n":"Ultimate Attack Name","d":"Desc"}]}`
+          : `You are a combat AI. Return ONLY a raw JSON object. Do not include markdown formatting or extra text.
+             Create exactly 3 moves for ${c1} (2 attacks, 1 defense) and 3 for ${c2} (2 attacks, 1 defense).
+             Invent CREATIVE, thematic names for all moves! Do NOT use generic names like 'Attack 1' or 'Block'.
+             Format MUST match exactly:
+             {
+               "desc1": "1-sentence atmospheric lore for ${c1}",
+               "moves1": [
+                 {"n": "Cool Thematic Attack", "d": "Description"},
+                 {"n": "Another Cool Attack", "d": "Description"},
+                 {"n": "Creative Dodge/Block Name", "d": "Description"}
+               ],
+               "desc2": "1-sentence atmospheric lore for ${c2}",
+               "moves2": [
+                 {"n": "Cool Thematic Attack", "d": "Description"},
+                 {"n": "Another Cool Attack", "d": "Description"},
+                 {"n": "Creative Dodge/Block Name", "d": "Description"}
+               ]
+             }`;
 
         const res = await ai.chat.completions.create({
           model: 'openai/gpt-oss-120b',
-          messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: `Generate moves for ${c1} VS ${c2}` }],
-          temperature: 0.8, // Bumped slightly to 0.8 to encourage more creative move names
+          messages: [
+            { role: 'system', content: sysPrompt },
+            { role: 'user', content: `Generate moves for ${c1} VS ${c2}` }
+          ],
+          temperature: 0.8, // Bumped to 0.8 so the AI uses its imagination for names!
           response_format: { type: 'json_object' }
         });
+
               
         
         let rawContent = res.choices[0].message.content;
