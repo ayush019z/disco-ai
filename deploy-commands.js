@@ -139,7 +139,30 @@ const commands = [
     .setName('shop')
     .setDescription('Open the gadget shop to gamble boxes or buy VIP roles!')),
   
-  
+   // --- GIVEAWAY COMMAND ---
+  enableDMs(new SlashCommandBuilder()
+    .setName('giveaway')
+    .setDescription('Start a Dorayaki giveaway (Bot Owner Only)')
+    .addIntegerOption(option =>
+      option
+        .setName('prize')
+        .setDescription('Amount of Dorayaki to give away')
+        .setRequired(true)
+    )
+    .addChannelOption(option =>
+      option
+        .setName('channel')
+        .setDescription('The channel to post the giveaway in')
+        .setRequired(false)
+    )
+    .addStringOption(option =>
+      option
+        .setName('description')
+        .setDescription('Custom description or rules for the giveaway')
+        .setRequired(false)
+    )),
+
+
   enableDMs(new SlashCommandBuilder()
     .setName('info')
     .setDescription('View bot information')),
