@@ -2461,7 +2461,7 @@ if (message.content.toLowerCase() === '!batbattle') {
     const response = await ai.chat.completions.create({
       model: 'openai/gpt-oss-120b',
       messages: chatMessages,
-      max_tokens: wantsDetailed ? 500 : 120
+      max_tokens: wantsDetailed ? 1000 : 120
     });
 
     const answer = response.choices[0].message.content;
