@@ -633,6 +633,83 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     });
   }
 
+  // =========================
+  // /PAY (TRADE & TRANSFER)
+  // =========================
+  if (interaction.commandName === 'pay') {
+    const targetUser = interaction.options.getUser('user');
+    const amount = interaction.options.getInteger('amount');
+    const senderId = interaction.user.id;
+
+    // 1. Safety Validations
+    if (targetUser.bot) {
+      return interaction.reply({
+        content: "🤖 You can't send Dorayaki to bots! They only eat electricity.",
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    if (targetUser.id === senderId) {
+      return interaction.reply({
+        content: "❌ You can't pay yourself!",
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    if (amount <= 0) {
+      return interaction.reply({
+        content: "❌ Amount must be at least 1 Dorayaki.",
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    // 2. Sender Balance Check
+    const senderStats = await getPlayerStats(senderId, interaction.user.username);
+    if (!senderStats || senderStats.dorayaki < amount) {
+      return interaction.reply({
+        content: `❌ You don't have enough Dorayaki! You currently have **${senderStats ? senderStats.dorayaki : 0}** ${DORAYAKI_EMOJI}.`,
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    // 3. Fetch Target Stats
+    const recipientStats = await getPlayerStats(targetUser.id, targetUser.username);
+    if (!recipientStats) {
+      return interaction.reply({
+        content: "⚠️ Could not retrieve the recipient's wallet from the database.",
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    // 4. Execute Transaction
+    senderStats.dorayaki -= amount;
+    recipientStats.dorayaki += amount;
+
+    await senderStats.save();
+    await recipientStats.save();
+
+    // 5. Send Public Receipt Embed
+    const embed = new EmbedBuilder()
+      .setColor('#00FFAA')
+      .setTitle(`💸 Dorayaki Transfer Successful!`)
+      .setDescription(`<@${senderId}> sent **${amount}** ${DORAYAKI_EMOJI} to <@${targetUser.id}>!`)
+      .addFields(
+        { 
+          name: `${interaction.user.username}'s Balance`, 
+          value: `**${senderStats.dorayaki}** ${DORAYAKI_EMOJI}`, 
+          inline: true 
+        },
+        { 
+          name: `${targetUser.username}'s Balance`, 
+          value: `**${recipientStats.dorayaki}** ${DORAYAKI_EMOJI}`, 
+          inline: true 
+        }
+      )
+      .setFooter({ text: 'DoraBot Economy' })
+      .setTimestamp();
+
+    return interaction.reply({ embeds: [embed] });
+  }
 
 
           
