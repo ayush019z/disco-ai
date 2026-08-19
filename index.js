@@ -173,11 +173,14 @@ const BotStats = mongoose.model('BotStats', botStatsSchema);
 const giveawaySchema = new mongoose.Schema({
   messageId: { type: String, required: true },
   channelId: { type: String, required: true },
-  prize: { type: Number, required: true },
+  prize: { type: String, required: true }, // 👈 Now accepts text!
+  minDorayaki: { type: Number, default: 0 }, // 👈 The new requirement!
   endTime: { type: Number, required: true },
-  ended: { type: Boolean, default: false }
+  ended: { type: Boolean, default: false },
+  participants: [{ type: String }] // 👈 Tracks who clicked the button!
 });
 const Giveaway = mongoose.model('Giveaway', giveawaySchema);
+
 
 // --- BETTING POOL SCHEMA ---
 const betSchema = new mongoose.Schema({
@@ -336,8 +339,8 @@ client.once(Events.ClientReady, () => {
   setInterval(postBotStats, 30 * 60 * 1000);
 
 
-// ==========================================
-  // 👇 PASTE THE GIVEAWAY STARTUP CHECKER HERE 👇
+  // ==========================================
+  // GIVEAWAY STARTUP CHECKER (BUTTONS)
   // ==========================================
   setInterval(async () => {
     try {
@@ -352,27 +355,33 @@ client.once(Events.ClientReady, () => {
         if (!channel) continue;
 
         const message = await channel.messages.fetch(giveaway.messageId).catch(() => null);
-        if (!message) continue;
-
-        const reaction = message.reactions.cache.get('1538955587210182666');
-        let users = [];
-        if (reaction) {
-          const fetchedUsers = await reaction.users.fetch();
-          users = fetchedUsers.filter(u => !u.bot).map(u => u);
+        
+        // Disable the button so people can't click it after it ends!
+        if (message && message.components.length > 0) {
+          const disabledRow = new ActionRowBuilder().addComponents(
+            ButtonBuilder.from(message.components[0].components[0]).setDisabled(true).setLabel('Giveaway Ended')
+          );
+          await message.edit({ components: [disabledRow] }).catch(() => {});
         }
 
-        if (users.length === 0) {
-          await channel.send(`🎉 **GIVEAWAY ENDED**\nNo valid entries! Nobody won the **${giveaway.prize} ${DORAYAKI_EMOJI}** giveaway.`);
-        } else {
-          const winner = users[Math.floor(Math.random() * users.length)];
+        const users = giveaway.participants;
 
-          const stats = await getPlayerStats(winner.id, winner.username);
-          if (stats) {
-            stats.dorayaki += giveaway.prize;
-            await stats.save();
+        if (users.length === 0) {
+          await channel.send(`🎉 **GIVEAWAY ENDED**\nNobody entered! The **${giveaway.prize}** goes unclaimed.`);
+        } else {
+          const winnerId = users[Math.floor(Math.random() * users.length)];
+
+          // Optional Auto-Payout: If the prize typed was purely a number (like "500"), auto-add Dorayaki!
+          const numericPrize = parseInt(giveaway.prize);
+          if (!isNaN(numericPrize) && numericPrize.toString() === giveaway.prize.trim()) {
+            const stats = await getPlayerStats(winnerId, "Unknown");
+            if (stats) {
+              stats.dorayaki += numericPrize;
+              await stats.save();
+            }
           }
 
-          await channel.send(`🎉 **GIVEAWAY WINNER!**\nCongratulations <@${winner.id}>! You won **${giveaway.prize} ${DORAYAKI_EMOJI}**! 🎁`);
+          await channel.send(`🎉 **GIVEAWAY WINNER!**\nCongratulations <@${winnerId}>! You won **${giveaway.prize}**! 🎁`);
         }
       }
     } catch (err) {
@@ -747,6 +756,39 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to Gian!\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
         flags: MessageFlags.Ephemeral 
       });
+    }
+
+    // --- GIVEAWAY ENTER BUTTON ---
+    if (interaction.customId === 'enter_giveaway') {
+      const giveaway = await Giveaway.findOne({ messageId: interaction.message.id, ended: false });
+      if (!giveaway) {
+        return interaction.reply({ content: '❌ This giveaway has already ended or does not exist.', flags: MessageFlags.Ephemeral });
+      }
+
+      // Check if they already entered
+      if (giveaway.participants.includes(interaction.user.id)) {
+        return interaction.reply({ content: '⚠️ You have already entered this giveaway!', flags: MessageFlags.Ephemeral });
+      }
+
+      // Check minimum Dorayaki requirement
+      if (giveaway.minDorayaki > 0) {
+        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+        if (!stats || stats.dorayaki < giveaway.minDorayaki) {
+          return interaction.reply({ content: `❌ You need at least **${giveaway.minDorayaki}** ${DORAYAKI_EMOJI} to enter! (You have ${stats ? stats.dorayaki : 0})`, flags: MessageFlags.Ephemeral });
+        }
+      }
+
+      // Register the user
+      giveaway.participants.push(interaction.user.id);
+      await giveaway.save();
+
+      // Update the footer to show live entry counts!
+      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+        .setFooter({ text: `Hosted by Ayush • ${giveaway.participants.length} Entries` });
+      
+      await interaction.message.edit({ embeds: [updatedEmbed] }).catch(() => {});
+
+      return interaction.reply({ content: '✅ You have successfully entered the giveaway! Good luck!', flags: MessageFlags.Ephemeral });
     }
 
 
