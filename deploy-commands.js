@@ -190,6 +190,25 @@ const commands = [
         .setMinValue(1)
     )),
 
+// --- BETTING POOL COMMAND ---
+  enableDMs(new SlashCommandBuilder()
+    .setName('bet')
+    .setDescription('Live event betting pools')
+    .addSubcommand(sub => 
+      sub.setName('create').setDescription('Create a new bet (Owner only)')
+        .addStringOption(o => o.setName('question').setDescription('What are we betting on?').setRequired(true))
+        .addStringOption(o => o.setName('opt1').setDescription('Option 1').setRequired(true))
+        .addStringOption(o => o.setName('opt2').setDescription('Option 2').setRequired(true)))
+    .addSubcommand(sub =>
+      sub.setName('place').setDescription('Place Dorayaki on the active bet')
+        .addStringOption(o => o.setName('option').setDescription('Which option?').setRequired(true).addChoices({name:'Option 1', value:'1'}, {name:'Option 2', value:'2'}))
+        .addIntegerOption(o => o.setName('amount').setDescription('Amount to bet').setRequired(true).setMinValue(1)))
+    .addSubcommand(sub =>
+      sub.setName('resolve').setDescription('Close and pay out the bet (Owner only)')
+        .addStringOption(o => o.setName('winner').setDescription('Winning option').setRequired(true).addChoices({name:'Option 1', value:'1'}, {name:'Option 2', value:'2'})))
+    .addSubcommand(sub =>
+      sub.setName('view').setDescription('View the current active bet'))),
+  
   // --- LEADERBOARD COMMAND (TOP 5) ---
   enableDMs(new SlashCommandBuilder()
     .setName('leaderboard')
