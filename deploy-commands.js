@@ -159,6 +159,11 @@ const commands = [
         .setDescription('The channel to post the giveaway in')
         .setRequired(false)
     )
+            .addIntegerOption(option => 
+      option.setName('requirement')
+        .setDescription('Minimum Dorayaki needed to enter this giveaway')
+        .setRequired(false)
+    )
     .addStringOption(option =>
       option
         .setName('description')
