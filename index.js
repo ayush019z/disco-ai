@@ -203,6 +203,9 @@ const bossRaidSchema = new mongoose.Schema({
   currentHp: { type: Number, default: 1500 },
   phase: { type: Number, default: 1 },
   isActive: { type: Boolean, default: false },
+  rewarded: { type: Boolean, default: false }, // 👈 ADDED
+  channelId: { type: String },                 // 👈 ADDED
+  messageId: { type: String },                 // 👈 ADDED
   recentAttacks: [{
     username: String,
     damage: Number,
@@ -342,6 +345,65 @@ client.once(Events.ClientReady, () => {
   // 2. Post every 30 minutes (30 minutes * 60 seconds * 1000 milliseconds)
   setInterval(postBotStats, 30 * 60 * 1000);
 
+  // ==========================================
+  // 🛡️ GIAN RAID RECOVERY & PAYOUT INTERVAL
+  // ==========================================
+  setInterval(async () => {
+    try {
+      const deadBoss = await BossRaid.findOne({ currentHp: { $lte: 0 }, rewarded: false });
+      if (!deadBoss) return;
+
+      deadBoss.rewarded = true;
+      deadBoss.isActive = false;
+      await deadBoss.save();
+
+      deadBoss.damageLeaderboard.sort((a, b) => b.damage - a.damage);
+      let rewardsText = '';
+
+      for (let i = 0; i < deadBoss.damageLeaderboard.length; i++) {
+        const p = deadBoss.damageLeaderboard[i];
+        const coinsEarned = Math.floor(p.damage / 2); 
+        
+        try {
+          const stats = await getPlayerStats(p.userId, p.username);
+          if (stats) {
+            stats.dorayaki += coinsEarned;
+            await stats.save();
+          }
+        } catch (e) {
+          console.error('Background recovery failed to reward player:', e);
+        }
+
+        if (i < 5) {
+          rewardsText += `**${i + 1}. ${p.username}** — ${p.damage} DMG (+${coinsEarned} ${DORAYAKI_EMOJI})\n`;
+        }
+      }
+
+      // Post victory message to the channel
+      if (deadBoss.channelId) {
+        const channel = await client.channels.fetch(deadBoss.channelId).catch(() => null);
+        if (channel) {
+          if (deadBoss.messageId) {
+            const oldMsg = await channel.messages.fetch(deadBoss.messageId).catch(() => null);
+            if (oldMsg) {
+              await oldMsg.edit({ components: [] }).catch(() => {});
+            }
+          }
+
+          const deadEmbed = new EmbedBuilder()
+            .setColor('#00FF00')
+            .setTitle(`🎉 GIAN DEFEATED!`)
+            .setDescription(`**${deadBoss.bossName}**'s terrible concert was stopped!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`);
+
+          await channel.send({ embeds: [deadEmbed] });
+        }
+      }
+    } catch (err) {
+      console.error('Gian Raid recovery interval error:', err);
+    }
+  }, 10000);
+
+  // 👆 NEW RECOVERY LOOP ENDS HERE 👆
 
   // ==========================================
   // GIVEAWAY STARTUP CHECKER (BUTTONS)
@@ -1066,7 +1128,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     }
   }
 
-  // =========================
+    // =========================
   // /GIANRAID SPAWN (OWNER ONLY)
   // =========================
   if (interaction.commandName === 'gianraid') {
@@ -1079,35 +1141,40 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
 
     await BossRaid.updateMany({}, { isActive: false }); // End old raids
 
-    let boss = await BossRaid.create({
-      bossName: 'Mai hu Gian',
-      maxHp: 1500,
-      currentHp: 1500,
-      phase: 1,
-      isActive: true,
-      recentAttacks: [],
-      playerCooldowns: [],
-      damageLeaderboard: [] 
-    });
-
-    const percentage = Math.max(0, (boss.currentHp / boss.maxHp) * 100);
-    const filledBlocks = Math.round((percentage / 100) * 10);
-    const healthBar = '█'.repeat(filledBlocks) + '░'.repeat(10 - filledBlocks);
+    // 1. Build the Embed FIRST
+    const percentage = 100;
+    const healthBar = '██████████';
 
     const embed = new EmbedBuilder()
       .setColor('#FF6600')
-      .setTitle(`🎤 Mythic Boss Raid Active — Phase ${boss.phase} of 3`)
-      .setDescription(`**Boss:** ${boss.bossName}\n**Remaining HP:** ${boss.currentHp.toLocaleString()} / ${boss.maxHp.toLocaleString()} HP\n\n\`${healthBar}\` **${percentage.toFixed(1)}%**\n\nGian has started singing! Use your gadgets to attack him and save everyone's ears!`)
+      .setTitle(`🎤 Mythic Boss Raid Active — Phase 1 of 3`)
+      .setDescription(`**Boss:** Gian (Recital of Doom)\n**Remaining HP:** 1,500 / 1,500 HP\n\n\`${healthBar}\` **100.0%**\n\nGian has started singing! Use your gadgets to attack him and save everyone's ears!`)
       .setImage(imageUrl);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('raid_attack').setLabel('Attack Gian').setStyle(ButtonStyle.Danger).setEmoji('⚔️')
     );
 
-    await interaction.channel.send({ embeds: [embed], components: [row] });
+    // 2. Send the message so we can grab its ID!
+    const bossMessage = await interaction.channel.send({ embeds: [embed], components: [row] });
+
+    // 3. Save to database WITH the channel and message IDs
+    await BossRaid.create({
+      bossName: 'Gian (Recital of Doom)',
+      maxHp: 1500,
+      currentHp: 1500,
+      phase: 1,
+      isActive: true,
+      channelId: interaction.channel.id, // 👈 Saved here!
+      messageId: bossMessage.id,         // 👈 Saved here!
+      recentAttacks: [],
+      playerCooldowns: [],
+      damageLeaderboard: [] 
+    });
+
     return interaction.reply({ content: '✅ Gian Raid successfully spawned with 1500 HP!', flags: MessageFlags.Ephemeral });
   }
-
+  
 
   // =========================
   // /PAY (TRADE & TRANSFER)
