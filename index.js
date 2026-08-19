@@ -842,12 +842,13 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     // 4. Execute Transaction
     senderStats.dorayaki -= amount;
     recipientStats.dorayaki += amount;
-
+// Check quest BEFORE saving!
+    if (senderStats.activeQuests?.includes('pay') && !senderStats.completedQuests?.includes('pay')) { 
+      senderStats.completedQuests.push('pay'); 
+    }
+    
     await senderStats.save();
     await recipientStats.save();
-
-if (stats.activeQuests.includes('pay') && !stats.completedQuests.includes('pay')) { stats.completedQuests.push('pay'); }
-    
     
     // 5. Send Public Receipt Embed
     const embed = new EmbedBuilder()
@@ -1247,8 +1248,16 @@ if (interaction.commandName === 'admin') {
       if (data.id) {
         askHistory.set(userId, data.id);
       }
-if (stats.activeQuests.includes('ask') && !stats.completedQuests.includes('ask')) { stats.completedQuests.push('ask'); }
-      
+// Fetch and update stats for the quest
+      try {
+        const stats = await getPlayerStats(userId, interaction.user.username);
+        if (stats && stats.activeQuests?.includes('ask') && !stats.completedQuests?.includes('ask')) {
+          stats.completedQuests.push('ask');
+          await stats.save();
+        }
+      } catch (dbErr) {
+        console.error('Failed to save Ask quest stats:', dbErr);
+      }
       await interaction.editReply(answer.slice(0, 2000));
 
     } catch (err) {
@@ -2012,8 +2021,6 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         winnerAnnouncement = `🏆 **WINNER: <@${player1.id}> (${character1.toUpperCase()})**`;
       }
       
-if (stats.activeQuests.includes('battle') && !stats.completedQuests.includes('battle')) { stats.completedQuests.push('battle'); }
-      
 // ==========================================
       // 👇 ADD THIS BLOCK HERE
       // ==========================================
@@ -2022,6 +2029,10 @@ if (stats.activeQuests.includes('battle') && !stats.completedQuests.includes('ba
         const stats = await getPlayerStats(winningUser.id, winningUser.username);
         if (stats) {
           stats.battleWins += 1;
+          // 👈 Quest trigger sits safely inside here
+          if (stats.activeQuests?.includes('battle') && !stats.completedQuests?.includes('battle')) {
+            stats.completedQuests.push('battle');
+          }
           await stats.save();
         }
       } catch (dbErr) {
