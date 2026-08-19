@@ -129,11 +129,37 @@ adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
   // Creations
   imagesGenerated: { type: Number, default: 0 },
 
+  // Quest Tracking (Add this inside playerStatsSchema)
+  questReset: { type: Number, default: 0 },
+  activeQuests: { type: [String], default: [] },
+  completedQuests: { type: [String], default: [] },
+  claimedQuests: { type: [String], default: [] },
+  
+  
   // Cosmetics (ADD THIS LINE!)
   hasBadge: { type: Boolean, default: false }
 }, { timestamps: true });
 
 const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
+
+// =========================
+// QUEST POOL & HELPER
+// =========================
+const QUEST_POOL = {
+  'daily': 'Claim your `/daily` coins',
+  'quiz': 'Win a round of `/quiz`',
+  'image': 'Generate an `/image`',
+  'battle': 'Play a `/battle` match',
+  'pay': 'Transfer coins using `/pay`',
+  'ask': 'Ask DoraBot something using `/ask`',
+  'adventure': 'Play the `/adventure` mini-game'
+};
+
+function getRandomQuests(num) {
+  const keys = Object.keys(QUEST_POOL);
+  return keys.sort(() => 0.5 - Math.random()).slice(0, num);
+}
+
 
 const botStatsSchema = new mongoose.Schema({
   botId: { type: String, default: 'dorabot' },
@@ -569,7 +595,61 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     return interaction.reply({ embeds: [embed], components: [row] });
   }
 
+  // =========================
+  // /QUESTS (RANDOMIZED DAILY TASKS)
+  // =========================
+  if (interaction.commandName === 'quests') {
+    await interaction.deferReply();
+    const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+    
+    // ⏰ CALCULATE NEXT MIDNIGHT IN IST (UTC+5:30)
+    const now = Date.now();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const currentIST = now + istOffset;
+    const nextMidnightIST = currentIST - (currentIST % (24 * 60 * 60 * 1000)) + (24 * 60 * 60 * 1000);
+    const nextMidnightGlobal = nextMidnightIST - istOffset;
 
+    // Reset if a new day has started OR if they have no active quests
+    if (now > stats.questReset || !stats.activeQuests || stats.activeQuests.length === 0) {
+      stats.activeQuests = getRandomQuests(3); // Pick 3 random tasks!
+      stats.completedQuests = [];
+      stats.claimedQuests = [];
+      stats.questReset = nextMidnightGlobal;
+      await stats.save();
+    }
+
+    let description = `*Quests reset <t:${Math.floor(stats.questReset / 1000)}:R>*\n\n`;
+    let hasUnclaimed = false;
+
+    // Loop through their 3 random quests and build the list
+    stats.activeQuests.forEach(questId => {
+      const isDone = stats.completedQuests.includes(questId);
+      const isClaimed = stats.claimedQuests.includes(questId);
+      
+      if (isDone && !isClaimed) hasUnclaimed = true;
+
+      const status = isClaimed ? '📦 *Claimed*' : isDone ? '✅ **Ready to Claim**' : '❌ *Incomplete*';
+      description += `${status} — ${QUEST_POOL[questId]} **(+30 ${DORAYAKI_EMOJI})**\n\n`;
+    });
+
+    const embed = new EmbedBuilder()
+      .setColor('#FFAA00')
+      .setTitle(`📜 ${interaction.user.username}'s Daily Quests`)
+      .setDescription(description)
+      .setThumbnail(interaction.user.displayAvatarURL());
+
+    // Create the Claim Button
+    const claimButton = new ButtonBuilder()
+      .setCustomId('claim_quests')
+      .setLabel('Claim Rewards')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(!hasUnclaimed);
+
+    const row = new ActionRowBuilder().addComponents(claimButton);
+
+    return interaction.editReply({ embeds: [embed], components: [row] });
+  }
+  
 
     // --- /STATS COMMAND ---
   if (interaction.commandName === 'stats') {
@@ -754,6 +834,9 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     await senderStats.save();
     await recipientStats.save();
 
+if (stats.activeQuests.includes('pay') && !stats.completedQuests.includes('pay')) { stats.completedQuests.push('pay'); }
+    
+    
     // 5. Send Public Receipt Embed
     const embed = new EmbedBuilder()
       .setColor('#00FFAA')
@@ -833,7 +916,8 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
           });
 
         imagesGenerated++;
-
+if (stats.activeQuests.includes('image') && !stats.completedQuests.includes('image')) { stats.completedQuests.push('image'); }
+        
 // ==========================================
         try {
           const stats = await getPlayerStats(userId, interaction.user.username);
@@ -1001,7 +1085,8 @@ if (interaction.commandName === 'admin') {
       if (data.id) {
         askHistory.set(userId, data.id);
       }
-
+if (stats.activeQuests.includes('ask') && !stats.completedQuests.includes('ask')) { stats.completedQuests.push('ask'); }
+      
       await interaction.editReply(answer.slice(0, 2000));
 
     } catch (err) {
@@ -1040,6 +1125,9 @@ if (interaction.commandName === 'admin') {
       stats.lastDaily = now;
       await stats.save();
 
+if (stats.activeQuests.includes('daily') && !stats.completedQuests.includes('daily')) { stats.completedQuests.push('daily'); }
+      
+      
             // Replace the pancake emoji in your return statement
       return interaction.editReply(`${DORAYAKI_EMOJI} **Yum!** You claimed your daily reward of **100 Dorayaki**!\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`);
 
@@ -1761,7 +1849,9 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         // Fallback default to Player 1 if AI output string doesn't cleanly match either name
         winnerAnnouncement = `🏆 **WINNER: <@${player1.id}> (${character1.toUpperCase()})**`;
       }
-
+      
+if (stats.activeQuests.includes('battle') && !stats.completedQuests.includes('battle')) { stats.completedQuests.push('battle'); }
+      
 // ==========================================
       // 👇 ADD THIS BLOCK HERE
       // ==========================================
@@ -2005,6 +2095,71 @@ CRITICAL RULES:
   
 
 });
+
+
+  // =========================
+  // GLOBAL BUTTON LISTENER
+  // =========================
+  if (interaction.isButton()) {
+    
+    // --- QUEST CLAIM BUTTON ---
+    if (interaction.customId === 'claim_quests') {
+      try {
+        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+        let totalClaimed = 0;
+
+        // Failsafe: Ensure they actually have quests
+        if (!stats.activeQuests || stats.activeQuests.length === 0) {
+          return interaction.reply({ 
+            content: "⚠️ You don't have any active quests to claim right now!", 
+            flags: MessageFlags.Ephemeral 
+          });
+        }
+
+        // Loop through active quests and pay out for any completed ones
+        stats.activeQuests.forEach(questId => {
+          if (stats.completedQuests.includes(questId) && !stats.claimedQuests.includes(questId)) {
+            stats.claimedQuests.push(questId);
+            totalClaimed += 30; // 30 Dorayaki per quest
+          }
+        });
+
+        if (totalClaimed === 0) {
+          return interaction.reply({ 
+            content: "⚠️ You don't have any newly completed quests to claim right now!", 
+            flags: MessageFlags.Ephemeral 
+          });
+        }
+
+        // Add the coins and save!
+        stats.dorayaki += totalClaimed;
+        await stats.save();
+
+        // Disable the button on the original message so they can't click it twice
+        const disabledRow = new ActionRowBuilder().addComponents(
+          ButtonBuilder.from(interaction.message.components[0].components[0]).setDisabled(true)
+        );
+        await interaction.message.edit({ components: [disabledRow] }).catch(console.error);
+
+        // Send success pop-up
+        return interaction.reply({ 
+          content: `🎉 **Success!** You claimed **${totalClaimed}** ${DORAYAKI_EMOJI} from your completed quests!`, 
+          flags: MessageFlags.Ephemeral 
+        });
+
+      } catch (error) {
+        console.error("Quest Claim Error:", error);
+        return interaction.reply({ 
+          content: "⚠️ An error occurred while claiming your rewards. Try again later!", 
+          flags: MessageFlags.Ephemeral 
+        });
+      }
+    }
+
+    // --- OTHER GLOBAL BUTTONS CAN GO HERE ---
+    // If you have a giveaway button from earlier, or future games, they sit right here
+
+  }
 
 
 // =========================
