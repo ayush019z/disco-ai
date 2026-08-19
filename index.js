@@ -948,6 +948,28 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       });
     }
 
+    // --- SHOWCARD DROPDOWN HANDLER ---
+    if (interaction.customId === 'select_card_flex') {
+      const cardId = interaction.values[0].replace('show_', '');
+      const targetCard = CARD_POOL.find(c => c.id === cardId);
+
+      if (!targetCard) {
+        return interaction.reply({ content: `❌ Card not found.`, flags: MessageFlags.Ephemeral });
+      }
+
+      // Hide the menu and post the card publicly for everyone to see!
+      await interaction.message.delete().catch(() => {});
+
+      const embed = new EmbedBuilder()
+        .setColor(targetCard.color)
+        .setTitle(`🎴 ${interaction.user.username} is flexing a card!`)
+        .setDescription(`**${targetCard.name}** [${targetCard.rarity}]`)
+        .setImage(targetCard.url);
+
+      return interaction.channel.send({ embeds: [embed] });
+    }
+    
+    
     // --- GIVEAWAY ENTER BUTTON ---
     if (interaction.customId === 'enter_giveaway') {
       const giveaway = await Giveaway.findOne({ messageId: interaction.message.id, ended: false });
@@ -1298,6 +1320,45 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     });
 
     return interaction.reply({ content: '✅ Gian Raid successfully spawned with 1500 HP!', flags: MessageFlags.Ephemeral });
+  }
+
+    // =========================
+  // /FLEX (INTERACTIVE BINDER FLEX)
+  // =========================
+  if (interaction.commandName === 'flex') {
+    await interaction.deferReply();
+    const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+
+    const inventoryIds = stats.inventory || [];
+    if (inventoryIds.length === 0) {
+      return interaction.editReply(`❌ Your binder is completely empty! Open some packs using your \`/pocket\` first.`);
+    }
+
+    // Get unique owned cards so dropdown options aren't repetitive
+    const uniqueOwnedIds = [...new Set(inventoryIds)];
+    const ownedCards = CARD_POOL.filter(c => uniqueOwnedIds.includes(c.id));
+
+    // Build dropdown options (Discord limits to 25 max)
+    const options = ownedCards.slice(0, 25).map(card => {
+      const count = inventoryIds.filter(id => id === card.id).length;
+      return {
+        label: `${card.name}`,
+        description: `Rarity: ${card.rarity} | Owned: x${count}`,
+        value: `show_${card.id}`
+      };
+    });
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId('select_card_flex')
+      .setPlaceholder('Choose a card from your binder to show off...')
+      .addOptions(options);
+
+    const row = new ActionRowBuilder().addComponents(menu);
+
+    return interaction.editReply({
+      content: `🎴 **Select a card below to flex it to the chat!**`,
+      components: [row]
+    });
   }
   
 
