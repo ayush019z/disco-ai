@@ -499,6 +499,38 @@ client.on(Events.InteractionCreate, async interaction => {
   // ZONE 1: ALL DROPDOWN MENUS
   // ==========================================
   if (interaction.isStringSelectMenu()) {
+
+// --- FLEX CARD MENU ---
+  if (interaction.customId === 'flex_card_menu') {
+    const cardId = interaction.values[0].replace('flex_', '');
+    const targetCard = CARD_POOL.find(c => c.id === cardId);
+
+    if (!targetCard) {
+      return interaction.update({
+        content: '❌ That card could not be found.',
+        components: []
+      });
+    }
+
+    // Acknowledge dropdown immediately
+    await interaction.update({
+      content: `✅ **${targetCard.name}** flexed successfully!`,
+      components: []
+    });
+
+    // Post card publicly
+    const embed = new EmbedBuilder()
+      .setColor(targetCard.color)
+      .setTitle(`🎴 ${interaction.user.username} is flexing a card!`)
+      .setDescription(`**${targetCard.name}** [${targetCard.rarity}]`)
+      .setImage(targetCard.url);
+
+    await interaction.channel.send({
+      embeds: [embed]
+    });
+
+    return;
+  }
     
     // --- 1. HELP MENU LOGIC ---
     if (interaction.customId === 'help_menu') {
@@ -768,28 +800,6 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       );
 
       return interaction.reply({ embeds: [embed], components: [row], ephemeral: false });
-    }
-
-         // --- FLEX DROPDOWN HANDLER ---
-    if (interaction.isStringSelectMenu() && interaction.customId === 'flex_card_menu') {
-      // 1. Instantly acknowledge the click to prevent timeout
-      await interaction.update({ content: `✅ Card flexed successfully!`, components: [] }).catch(() => {});
-
-      const cardId = interaction.values[0].replace('flex_', '');
-      const targetCard = CARD_POOL.find(c => c.id === cardId);
-
-      if (!targetCard) return;
-
-      // 2. Build the public embed
-      const embed = new EmbedBuilder()
-        .setColor(targetCard.color)
-        .setTitle(`🎴 ${interaction.user.username} is flexing a card!`)
-        .setDescription(`**${targetCard.name}** [${targetCard.rarity}]`)
-        .setImage(targetCard.url);
-
-      // 3. Post it publicly to the channel where they ran the command
-      await interaction.channel.send({ embeds: [embed] });
-      return;
     }
     
     // --- MINI-DORA BUTTONS ---
