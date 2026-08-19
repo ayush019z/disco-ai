@@ -948,26 +948,31 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       });
     }
 
+    
     // --- SHOWCARD DROPDOWN HANDLER ---
-    if (interaction.customId === 'select_card_flex') {
+    if (interaction.isStringSelectMenu() && interaction.customId === 'select_card_flex') {
+      // 1. Immediately defer or reply so Discord doesn't throw "Interaction Failed"
+      await interaction.deferUpdate(); 
+
       const cardId = interaction.values[0].replace('show_', '');
       const targetCard = CARD_POOL.find(c => c.id === cardId);
 
       if (!targetCard) {
-        return interaction.reply({ content: `❌ Card not found.`, flags: MessageFlags.Ephemeral });
+        return interaction.followUp({ content: `❌ Card not found.`, ephemeral: true });
       }
 
-      // Hide the menu and post the card publicly for everyone to see!
-      await interaction.message.delete().catch(() => {});
-
+      // 2. Build the public flex embed
       const embed = new EmbedBuilder()
         .setColor(targetCard.color)
         .setTitle(`🎴 ${interaction.user.username} is flexing a card!`)
         .setDescription(`**${targetCard.name}** [${targetCard.rarity}]`)
         .setImage(targetCard.url);
 
-      return interaction.channel.send({ embeds: [embed] });
+      // 3. Send it publicly to the channel and clean up the original selection menu
+      await interaction.channel.send({ embeds: [embed] });
+      return interaction.deleteReply().catch(() => {});
     }
+    
     
     
     // --- GIVEAWAY ENTER BUTTON ---
