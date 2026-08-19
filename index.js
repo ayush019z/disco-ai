@@ -980,61 +980,53 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
   }
 
 
-    // --- /GIVEAWAY COMMAND (OWNER ONLY) ---
+      // --- /GIVEAWAY COMMAND (OWNER ONLY) ---
   if (interaction.commandName === 'giveaway') {
     if (interaction.user.id !== '773574818121383958') {
-      return interaction.reply({
-        content: '🚫 Only Ayush is allowed to start giveaways!',
-        flags: MessageFlags.Ephemeral
-      });
+      return interaction.reply({ content: '🚫 Only Ayush is allowed to start giveaways!', flags: MessageFlags.Ephemeral });
     }
 
-    const prize = interaction.options.getInteger('prize');
+    const prize = interaction.options.getString('prize');
+    const minDorayaki = interaction.options.getInteger('requirement') || 0;
     const channel = interaction.options.getChannel('channel') || interaction.channel;
-    const description = interaction.options.getString('description') || `Click the ${DORAYAKI_EMOJI} reaction below to enter!`;
-    
-    // Grab the new duration option, default to '24h' if left blank
+    const description = interaction.options.getString('description') || `Click the button below to enter!`;
     const durationInput = interaction.options.getString('duration') || '24h';
 
-    // Parse it using our new helper function
     const durationMs = parseDuration(durationInput);
-    
     if (!durationMs) {
-      return interaction.reply({
-        content: '❌ Invalid duration format! Please use formats like `30m` (minutes), `2h` (hours), or `1d` (days).',
-        flags: MessageFlags.Ephemeral
-      });
+      return interaction.reply({ content: '❌ Invalid duration format! Use formats like `30m`, `2h`, or `1d`.', flags: MessageFlags.Ephemeral });
     }
 
-    // Calculate the custom end time
     const endTime = Date.now() + durationMs;
     const unixTimestamp = Math.floor(endTime / 1000);
 
+    let reqText = minDorayaki > 0 ? `\n\n⚠️ **Requirement:** You must have at least **${minDorayaki}** ${DORAYAKI_EMOJI} in your wallet to enter.` : '';
+
     const embed = new EmbedBuilder()
       .setColor('#FF3366')
-      .setTitle(`🎉 DORAYAKI GIVEAWAY 🎉`)
-      .setDescription(`${description}\n\n🎁 **Prize:** **${prize}** ${DORAYAKI_EMOJI}\n⏰ **Ends:** <t:${unixTimestamp}:R> (<t:${unixTimestamp}:f>)\n\nReact with ${DORAYAKI_EMOJI} to enter!`)
-      .setFooter({ text: `Hosted by ${interaction.user.username}` })
+      .setTitle(`🎉 NEW GIVEAWAY 🎉`)
+      .setDescription(`${description}\n\n🎁 **Prize:** **${prize}**\n⏰ **Ends:** <t:${unixTimestamp}:R> (<t:${unixTimestamp}:f>)${reqText}`)
+      .setFooter({ text: `Hosted by ${interaction.user.username} • 0 Entries` })
       .setTimestamp();
 
-    const giveawayMsg = await channel.send({ embeds: [embed] });
-    
-    // React using the raw custom emoji ID!
-    await giveawayMsg.react('1538955587210182666');
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('enter_giveaway').setLabel('🎉 Enter Giveaway').setStyle(ButtonStyle.Success)
+    );
 
+    const giveawayMsg = await channel.send({ embeds: [embed], components: [row] });
+    
     // Save to database
     await Giveaway.create({
       messageId: giveawayMsg.id,
       channelId: channel.id,
       prize: prize,
+      minDorayaki: minDorayaki,
       endTime: endTime,
-      ended: false
+      ended: false,
+      participants: []
     });
 
-    return interaction.reply({
-      content: `✅ Giveaway successfully started in <#${channel.id}> for **${prize} ${DORAYAKI_EMOJI}**! It will end in **${durationInput}**.`,
-      flags: MessageFlags.Ephemeral
-    });
+    return interaction.reply({ content: `✅ Giveaway successfully started in <#${channel.id}>! It will end in **${durationInput}**.`, flags: MessageFlags.Ephemeral });
   }
 
   // =========================
