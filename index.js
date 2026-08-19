@@ -720,6 +720,9 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         return interaction.reply({ content: `⏳ You are recovering from the terrible singing! You can attack Gian again **<t:${unixTimer}:R>**`, flags: MessageFlags.Ephemeral });
       }
 
+            // 1.5 FETCH STATS FOR BUFFS BEFORE ROLLING
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+
       // 2. GADGET "CARD" POOL SYSTEM (Balanced for 1500 HP)
       const gadgets = [
         { name: '🔫 Air Pistol', min: 10, max: 25, rarity: 'Common' },
@@ -729,7 +732,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         { name: '💨 Air Cannon', min: 70, max: 120, rarity: 'Epic' },
         { name: '🥊 Champion Gloves', min: 70, max: 120, rarity: 'Epic' },
         { name: '⚡ Electrical Sword', min: 70, max: 120, rarity: 'Epic' },
-        { name: '🚨 Emergency Button', min: 180, max: 300, rarity: '🌟 MYTHIC 🌟' },
+        { name: '🚨 Emergency Button', min: 180, max: 280, rarity: '🌟 MYTHIC 🌟' },
         { name: '👩‍🦱 Gian\'s Mom', min: 250, max: 400, rarity: '🌟 MYTHIC 🌟' } 
       ];
 
@@ -740,8 +743,30 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       else if (roll > 0.45) selectedGadget = gadgets[3]; // 30% Rare
       else selectedGadget = gadgets[Math.floor(Math.random() * 3)]; // 45% Common
 
-      const damage = Math.floor(Math.random() * (selectedGadget.max - selectedGadget.min + 1)) + selectedGadget.min;
+      let baseDamage = Math.floor(Math.random() * (selectedGadget.max - selectedGadget.min + 1)) + selectedGadget.min;
+
+      // ----------------------------------------------------
+      // 🛡️ APPLY SHOP ITEM BUFFS
+      // ----------------------------------------------------
+      let multiplier = 1.0;
+      let buffMessage = '';
+
+      if (stats.hasBadge && stats.hasMiniDora) {
+        multiplier = 1.5; // +50% Damage
+        buffMessage = `\n🌟 **ULTIMATE COMBO!** Your Badge and Mini-Dora boosted your damage by 50%!`;
+      } else if (stats.hasBadge) {
+        multiplier = 1.3; // +30% Damage
+        buffMessage = `\n<:nobi:1538976662987735040> **Badge Power!** Your Ultimate Badge boosted your damage by 30%!`;
+      } else if (stats.hasMiniDora) {
+        multiplier = 1.2; // +20% Damage
+        buffMessage = `\n<:dora:1539615957562163261> **Mini-Dora Assist!** Mini-Dora helped you deal 20% more damage!`;
+      }
+
+      // Calculate final boosted damage
+      const damage = Math.floor(baseDamage * multiplier);
       boss.currentHp = Math.max(0, boss.currentHp - damage);
+      
+      
 
       // 3. ADD DAMAGE TO LEADERBOARD
       let playerRecord = boss.damageLeaderboard.find(p => p.userId === interaction.user.id);
@@ -817,9 +842,9 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         .setTitle(`🎤 Mythic Boss Raid Active — Phase ${boss.phase} of 3`)
         .setDescription(`**Boss:** ${boss.bossName}\n**Remaining HP:** ${boss.currentHp.toLocaleString()} / ${boss.maxHp.toLocaleString()} HP\n\n\`${healthBar}\` **${percentage.toFixed(1)}%**\n\nGian is singing! Click **Attack Gian** to stop him!\n\n📜 **Recent Attacks**\n${logsText}`);
 
-      await interaction.update({ embeds: [updatedEmbed], components: interaction.message.components });
+            await interaction.update({ embeds: [updatedEmbed], components: interaction.message.components });
       return interaction.followUp({ 
-        content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to Gian!\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
+        content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to Gian!${buffMessage}\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
         flags: MessageFlags.Ephemeral 
       });
     }
