@@ -769,7 +769,27 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
 
       return interaction.reply({ embeds: [embed], components: [row], ephemeral: false });
     }
-    
+
+     // --- FLEX DROPDOWN HANDLER (PASTE THIS HERE!) ---
+    if (interaction.customId === 'select_card_flex') {
+      await interaction.deferUpdate(); 
+
+      const cardId = interaction.values[0].replace('show_', '');
+      const targetCard = CARD_POOL.find(c => c.id === cardId);
+
+      if (!targetCard) {
+        return interaction.followUp({ content: `❌ Card not found.`, ephemeral: true });
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(targetCard.color)
+        .setTitle(`🎴 ${interaction.user.username} is flexing a card!`)
+        .setDescription(`**${targetCard.name}** [${targetCard.rarity}]`)
+        .setImage(targetCard.url);
+
+      await interaction.channel.send({ embeds: [embed] });
+      return interaction.deleteReply().catch(() => {});
+    }
     
     // --- MINI-DORA BUTTONS ---
     if (interaction.customId === 'md_feed') {
@@ -946,31 +966,6 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to Gian!${buffMessage}\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
         flags: MessageFlags.Ephemeral 
       });
-    }
-
-    
-    // --- SHOWCARD DROPDOWN HANDLER ---
-    if (interaction.isStringSelectMenu() && interaction.customId === 'select_card_flex') {
-      // 1. Immediately defer or reply so Discord doesn't throw "Interaction Failed"
-      await interaction.deferUpdate(); 
-
-      const cardId = interaction.values[0].replace('show_', '');
-      const targetCard = CARD_POOL.find(c => c.id === cardId);
-
-      if (!targetCard) {
-        return interaction.followUp({ content: `❌ Card not found.`, ephemeral: true });
-      }
-
-      // 2. Build the public flex embed
-      const embed = new EmbedBuilder()
-        .setColor(targetCard.color)
-        .setTitle(`🎴 ${interaction.user.username} is flexing a card!`)
-        .setDescription(`**${targetCard.name}** [${targetCard.rarity}]`)
-        .setImage(targetCard.url);
-
-      // 3. Send it publicly to the channel and clean up the original selection menu
-      await interaction.channel.send({ embeds: [embed] });
-      return interaction.deleteReply().catch(() => {});
     }
     
     
