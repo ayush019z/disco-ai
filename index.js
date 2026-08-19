@@ -399,7 +399,7 @@ client.on(Events.InteractionCreate, async interaction => {
             },
             { 
               name: '💸 How to Earn', 
-              value: `• **Daily:** Claim your \`/daily\` (+100 ${DORAYAKI_EMOJI})\n• **RPG:** Finish an \`/adventure\` (+150 ${DORAYAKI_EMOJI})\n• **Trivia:** Get a \`/quiz\` answer right (+25 ${DORAYAKI_EMOJI})\n• **Cricket:** Win a \`!batbattle\` (+50 ${DORAYAKI_EMOJI})\n• **Gamble:** Win the lottery or mystery box in the \`/shop\`` 
+              value: `• **Daily:** \`/daily\` (+100) & \`/quests\` (Up to +90)\n• **Gamble:** Win \`/bet\` pools or the \`/shop\` lottery\n• **RPG:** Finish an \`/adventure\` (+150)\n• **Trivia:** Get a \`/quiz\` answer right (+25)\n• **Cricket:** Win a \`!batbattle\` (+50)` 
             }
           );
         return interaction.update({ embeds: [econEmbed] });
@@ -577,7 +577,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
           { label: 'AI & Chat', description: 'Chat, Memory, and Utilities', value: 'help_ai', emoji: '🤖' },
           { label: 'Image & Fun', description: 'AI Images and Wanted Posters', value: 'help_image', emoji: '🎨' },
           { label: 'Games & RPG', description: 'Cricket, Quiz, Scramble & Adventure', value: 'help_games', emoji: '🎮' },
-          { label: 'Economy & Profile', description: 'Daily, Shop, and Stats', value: 'help_economy', emoji: '1538955587210182666' }
+          { label: 'Economy & Profile', description: 'Daily, Quests, Bets, Shop & Stats', value: 'help_economy', emoji: '1538955587210182666' }
         ])
     );
 
@@ -1020,7 +1020,7 @@ if (stats.activeQuests.includes('pay') && !stats.completedQuests.includes('pay')
 
       return interaction.reply(`🎰 **BET RESOLVED!**\nThe answer to **"${activeBet.question}"** was **${winningText}**!\n\n💰 A massive **${totalPot}** ${DORAYAKI_EMOJI} has been distributed among the winners! *(Check your DMs for your personal results!)*`);
     }
-    
+  }
 
           
     // --- /IMAGE (POWERED BY POLLINATIONS FLUX - 100% FREE) ---
