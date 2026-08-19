@@ -147,7 +147,7 @@ const commands = [
   enableDMs(new SlashCommandBuilder()
     .setName('giveaway')
     .setDescription('Start a Dorayaki giveaway (Bot Owner Only)')
-    .addIntegerOption(option =>
+    .addStringOption(option =>
       option
         .setName('prize')
         .setDescription('Amount of Dorayaki to give away')
