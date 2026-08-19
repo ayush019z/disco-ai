@@ -1078,20 +1078,24 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
           });
 
         imagesGenerated++;
-// ==========================================
+       // ==========================================
         try {
           const stats = await getPlayerStats(userId, interaction.user.username);
           if (stats) {
             stats.imagesGenerated += 1;
             await stats.save();
-            // 👈 Move Quest Trigger HERE (after stats is fetched!)
+            
+            // 👈 Quest Trigger
             if (stats.activeQuests?.includes('image') && !stats.completedQuests?.includes('image')) {
               stats.completedQuests.push('image');
-          }
-        } catch (dbErr) {
+            } // <-- Closes the activeQuests check
+            
+          } // <-- Closes the "if (stats)" block
+        } catch (dbErr) { // <-- Perfectly attached to the try block!
           console.error('Failed to save image stats:', dbErr);
         }
         // ==========================================
+
 
         await interaction.editReply({
           embeds: [embed]
