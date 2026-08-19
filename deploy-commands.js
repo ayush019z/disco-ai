@@ -216,6 +216,15 @@ const commands = [
 
   enableDMs(new SlashCommandBuilder().setName('minidora').setDescription('Check on your Mini-Dora pet, feed it, and claim passive income!')),
   
+  new SlashCommandBuilder()
+    .setName('gianraid')
+    .setDescription('Spawn a Gian Boss Raid!')
+    .addAttachmentOption(option => 
+      option.setName('image')
+        .setDescription('Upload an image of Gian singing')
+        .setRequired(false)
+    ),
+
   
   enableDMs(new SlashCommandBuilder()
     .setName('info')
