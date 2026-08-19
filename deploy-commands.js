@@ -234,7 +234,11 @@ const commands = [
         .setDescription('Upload an image of Gian singing')
         .setRequired(false)
     ),
-
+  
+  new SlashCommandBuilder()
+    .setName('flex')
+    .setDescription('Flex your rare cards or choose one from your binder to show off!'),
+  
   
   enableDMs(new SlashCommandBuilder()
     .setName('info')
