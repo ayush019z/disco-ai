@@ -510,9 +510,105 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
 
                 return interaction.reply({ content: `<:nobi:1538976662987735040> **WOW!** You purchased the Ultimate Profile Badge! Check your **/profile** to see it shining!`, ephemeral: false });
       }
+  
+// --- 5. MINI-DORA PET ---
+      if (selectedValue === 'buy_minidora') {
+        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+        
+        if (stats.hasMiniDora) {
+          return interaction.reply({ content: `⚠️ You already own a Mini-Dora! Type \`/minidora\` to play with it.`, flags: MessageFlags.Ephemeral });
+        }
+
+        if (stats.dorayaki < 3000) {
+          return interaction.reply({ content: `❌ You need 3000 ${DORAYAKI_EMOJI} to buy a Mini-Dora.`, flags: MessageFlags.Ephemeral });
+        }
+
+        stats.dorayaki -= 3000;
+        stats.hasMiniDora = true;
+        await stats.save();
+
+        return interaction.reply({ content: `<:dora:1539615957562163261> **SUCCESS!** You purchased a Mini-Dora! Type \`/minidora\` to feed it and start generating passive income!`, flags: MessageFlags.Ephemeral });
+      }
+    return; // <--- CRITICAL MAGIC LINE: Stops Discord from breaking!
+  }
+
+  // ==========================================
+  // ZONE 1.5: GLOBAL BUTTON LISTENER
+  // ==========================================
+  if (interaction.isButton()) {
+    
+    // --- QUEST CLAIM BUTTON ---
+    if (interaction.customId === 'claim_quests') {
+      try {
+        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+        let totalClaimed = 0;
+
+        if (!stats.activeQuests || stats.activeQuests.length === 0) {
+          return interaction.reply({ content: "⚠️ You don't have any active quests to claim right now!", flags: MessageFlags.Ephemeral });
+        }
+
+        stats.activeQuests.forEach(questId => {
+          if (stats.completedQuests.includes(questId) && !stats.claimedQuests.includes(questId)) {
+            stats.claimedQuests.push(questId);
+            totalClaimed += 30;
+          }
+        });
+
+        if (totalClaimed === 0) {
+          return interaction.reply({ content: "⚠️ You don't have any newly completed quests to claim right now!", flags: MessageFlags.Ephemeral });
+        }
+
+        stats.dorayaki += totalClaimed;
+        await stats.save();
+
+        const disabledRow = new ActionRowBuilder().addComponents(
+          ButtonBuilder.from(interaction.message.components[0].components[0]).setDisabled(true)
+        );
+        
+        await interaction.update({ components: [disabledRow] });
+        return interaction.followUp({ content: `🎉 **Success!** You claimed **${totalClaimed}** ${DORAYAKI_EMOJI} from your completed quests!`, flags: MessageFlags.Ephemeral });
+
+      } catch (error) {
+        console.error("Quest Claim Error:", error);
+        return interaction.reply({ content: "⚠️ An error occurred while claiming your rewards. Try again later!", flags: MessageFlags.Ephemeral });
+      }
     }
 
-    return; // <--- CRITICAL MAGIC LINE: Stops Discord from breaking!
+    // --- MINI-DORA BUTTONS ---
+    if (interaction.customId === 'md_feed') {
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+      if (stats.dorayaki < 25) return interaction.reply({ content: `❌ You don't have 25 ${DORAYAKI_EMOJI} to feed your Mini-Dora!`, flags: MessageFlags.Ephemeral });
+      
+      stats.dorayaki -= 25;
+      stats.miniDoraTimer = Date.now() + (12 * 60 * 60 * 1000); // Set timer for 12 hours from now!
+      await stats.save();
+
+            const unix = Math.floor(stats.miniDoraTimer / 1000);
+      const embed = new EmbedBuilder().setTitle('<:dora:1539615957562163261> Your Mini-Dora').setColor('#FFAA00') // 👈 Updated here!
+        .setDescription(`Mini-Dora ate the Dorayaki and went exploring! 🎒🌍\n\nIt will return **<t:${unix}:R>**.`);
+      const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('md_wait').setLabel('Exploring...').setStyle(ButtonStyle.Secondary).setDisabled(true));
+
+      return interaction.update({ embeds: [embed], components: [row] });
+    }
+
+    if (interaction.customId === 'md_claim') {
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+      if (stats.miniDoraTimer === 0 || stats.miniDoraTimer > Date.now()) {
+         return interaction.reply({ content: "⚠️ Mini-Dora isn't back from exploring yet!", flags: MessageFlags.Ephemeral });
+      }
+
+      stats.miniDoraTimer = 0;
+      stats.dorayaki += 250; // Give them the passive income!
+      await stats.save();
+
+            const embed = new EmbedBuilder().setTitle('<:dora:1539615957562163261> Your Mini-Dora').setColor('#00FF00') // 👈 Updated here!
+        .setDescription(`🎉 **You claimed 250 Dorayaki!** ${DORAYAKI_EMOJI}\n\nMini-Dora is sleepy again. Feed it 25 coins to send it back out!`);
+      const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('md_feed').setLabel('Feed (25 🪙)').setStyle(ButtonStyle.Primary));
+
+      return interaction.update({ embeds: [embed], components: [row] });
+    }
+
+    return; // <--- Tells the bot to stop reading once the button is handled!
   }
 
   // ==========================================
@@ -600,6 +696,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
           { label: 'Mystery Box', description: 'Cost: 250 Dorayaki. Test your luck for a coin payout!', value: 'buy_box', emoji: '🎲' },
           { label: 'VIP Role (7 Days)', description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.', value: 'buy_vip', emoji: '1538990239832612914' },
           { label: 'Time TV Lottery Ticket', description: 'Cost: 50 Dorayaki. 10% chance to win 1000 Dorayaki!', value: 'buy_lottery', emoji: '1538990835574509638' },
+          { label: 'Mini-Dora Pet', description: 'Cost: 3000 Dorayaki. Generates passive income!', value: 'buy_minidora', emoji: '1539615957562163261' }, // 👈 Updated here!
           { label: 'Ultimate Profile Badge', description: 'Cost: 5000 Dorayaki. Unlocks a permanent flex badge!', value: 'buy_badge', emoji: '1538976662987735040' }
         ])
     );
@@ -1273,6 +1370,41 @@ if (interaction.commandName === 'admin') {
   }
 
 
+    // =========================
+  // /MINIDORA (PASSIVE INCOME PET)
+  // =========================
+  if (interaction.commandName === 'minidora') {
+    await interaction.deferReply();
+    const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+
+    if (!stats.hasMiniDora) {
+      return interaction.editReply(`❌ You do not own a Mini-Dora yet! You can buy one from the \`/shop\` for 3000 ${DORAYAKI_EMOJI}.`);
+    }
+
+    const now = Date.now();
+    // 👇 Your custom emoji is already right here!
+    const embed = new EmbedBuilder().setTitle('<:dora:1539615957562163261> Your Mini-Dora');
+    const row = new ActionRowBuilder();
+
+    // State 1: Hungry & Idle
+    if (stats.miniDoraTimer === 0) {
+      embed.setColor('#FF4444').setDescription(`Mini-Dora is hungry and sleeping! 💤\n\nFeed it **25** ${DORAYAKI_EMOJI}, and it will go exploring to find coins for you!`);
+      row.addComponents(new ButtonBuilder().setCustomId('md_feed').setLabel('Feed (25 🪙)').setStyle(ButtonStyle.Primary));
+    
+    // State 2: Exploring
+    } else if (stats.miniDoraTimer > now) {
+      const unix = Math.floor(stats.miniDoraTimer / 1000);
+      embed.setColor('#FFAA00').setDescription(`Mini-Dora is happily exploring! 🎒🌍\n\nIt will return with Dorayaki **<t:${unix}:R>**.`);
+      row.addComponents(new ButtonBuilder().setCustomId('md_wait').setLabel('Exploring...').setStyle(ButtonStyle.Secondary).setDisabled(true));
+    
+    // State 3: Ready to Claim
+    } else {
+      embed.setColor('#00FF00').setDescription(`Mini-Dora has returned from its adventure with a giant pouch of coins! 💰✨`);
+      row.addComponents(new ButtonBuilder().setCustomId('md_claim').setLabel('Claim 250 🪙').setStyle(ButtonStyle.Success));
+    }
+
+    return interaction.editReply({ embeds: [embed], components: [row] });
+  }
   
 
   // =========================
@@ -2281,70 +2413,6 @@ CRITICAL RULES:
       return interaction.editReply('⚠️ Could not process the quiz.');
     }
   }
-
-
-  // =========================
-  // GLOBAL BUTTON LISTENER
-  // =========================
-  if (interaction.isButton()) {
-    
-    // --- QUEST CLAIM BUTTON ---
-    if (interaction.customId === 'claim_quests') {
-      try {
-        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
-        let totalClaimed = 0;
-
-        // Failsafe: Ensure they actually have quests
-        if (!stats.activeQuests || stats.activeQuests.length === 0) {
-          return interaction.reply({ 
-            content: "⚠️ You don't have any active quests to claim right now!", 
-            flags: MessageFlags.Ephemeral 
-          });
-        }
-
-        // Loop through active quests and pay out for any completed ones
-        stats.activeQuests.forEach(questId => {
-          if (stats.completedQuests.includes(questId) && !stats.claimedQuests.includes(questId)) {
-            stats.claimedQuests.push(questId);
-            totalClaimed += 30; // 30 Dorayaki per quest
-          }
-        });
-
-        if (totalClaimed === 0) {
-          return interaction.reply({ 
-            content: "⚠️ You don't have any newly completed quests to claim right now!", 
-            flags: MessageFlags.Ephemeral 
-          });
-        }
-
-        // Add the coins and save!
-        stats.dorayaki += totalClaimed;
-        await stats.save();
-
-        // Disable the button on the original message so they can't click it twice
-        const disabledRow = new ActionRowBuilder().addComponents(
-          ButtonBuilder.from(interaction.message.components[0].components[0]).setDisabled(true)
-        );
-        await interaction.message.edit({ components: [disabledRow] }).catch(console.error);
-
-        // Send success pop-up
-        return interaction.reply({ 
-          content: `🎉 **Success!** You claimed **${totalClaimed}** ${DORAYAKI_EMOJI} from your completed quests!`, 
-          flags: MessageFlags.Ephemeral 
-        });
-
-      } catch (error) {
-        console.error("Quest Claim Error:", error);
-        return interaction.reply({ 
-          content: "⚠️ An error occurred while claiming your rewards. Try again later!", 
-          flags: MessageFlags.Ephemeral 
-        });
-      }
-    }
-
-    // --- OTHER GLOBAL BUTTONS CAN GO HERE ---
-    // If you have a giveaway button from earlier, or future games, they sit right here
-}
   });
 
 
