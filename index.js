@@ -179,6 +179,18 @@ const giveawaySchema = new mongoose.Schema({
 });
 const Giveaway = mongoose.model('Giveaway', giveawaySchema);
 
+// --- BETTING POOL SCHEMA ---
+const betSchema = new mongoose.Schema({
+  question: String,
+  opt1: String,
+  opt2: String,
+  wagers: [{ userId: String, option: String, amount: Number }],
+  isActive: { type: Boolean, default: true }
+});
+const BetPool = mongoose.model('BetPool', betSchema);
+
+
+
 // Helper function to safely fetch or initialize user stats
 async function getPlayerStats(userId, username) {
   try {
@@ -860,6 +872,155 @@ if (stats.activeQuests.includes('pay') && !stats.completedQuests.includes('pay')
     return interaction.reply({ embeds: [embed] });
   }
 
+    // =========================
+  // /BET (LIVE EVENT POOLS)
+  // =========================
+  if (interaction.commandName === 'bet') {
+    const sub = interaction.options.getSubcommand();
+
+    // 1. CREATE A BET (Owner Only)
+    if (sub === 'create') {
+      if (interaction.user.id !== '773574818121383958') {
+        return interaction.reply({ content: '🚫 Only Ayush can open a betting pool!', flags: MessageFlags.Ephemeral });
+      }
+      
+      // Close any older active bets automatically
+      await BetPool.updateMany({ isActive: true }, { isActive: false }); 
+      
+      const question = interaction.options.getString('question');
+      const opt1 = interaction.options.getString('opt1');
+      const opt2 = interaction.options.getString('opt2');
+
+      await BetPool.create({ question, opt1, opt2, wagers: [], isActive: true });
+
+      const embed = new EmbedBuilder()
+        .setColor('#00FF00')
+        .setTitle('🎰 New Betting Pool Opened!')
+        .setDescription(`**${question}**\n\n1️⃣ **${opt1}**\n2️⃣ **${opt2}**\n\nUse \`/bet place\` to wager your Dorayaki on the winner!`);
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    // 2. VIEW ACTIVE BET
+    if (sub === 'view') {
+      const activeBet = await BetPool.findOne({ isActive: true });
+      if (!activeBet) return interaction.reply('❌ There are no active bets right now.');
+
+      let pool1 = 0; 
+      let pool2 = 0;
+      activeBet.wagers.forEach(w => { 
+        w.option === '1' ? pool1 += w.amount : pool2 += w.amount; 
+      });
+
+      const embed = new EmbedBuilder()
+        .setColor('#00AAFF')
+        .setTitle(`🎰 Active Bet: ${activeBet.question}`)
+        .setDescription(`1️⃣ **${activeBet.opt1}** — Total Pool: **${pool1}** ${DORAYAKI_EMOJI}\n2️⃣ **${activeBet.opt2}** — Total Pool: **${pool2}** ${DORAYAKI_EMOJI}`);
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    // 3. PLACE WAGER
+    if (sub === 'place') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const activeBet = await BetPool.findOne({ isActive: true });
+      if (!activeBet) return interaction.editReply('❌ There are no active bets right now.');
+
+      const option = interaction.options.getString('option');
+      const amount = interaction.options.getInteger('amount');
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+
+      if (stats.dorayaki < amount) {
+        return interaction.editReply(`❌ You only have **${stats.dorayaki}** ${DORAYAKI_EMOJI}. You can't bet what you don't have!`);
+      }
+      
+      if (activeBet.wagers.find(w => w.userId === interaction.user.id)) {
+        return interaction.editReply(`❌ You already placed a bet on this event! No changing sides.`);
+      }
+
+      // Deduct coins and save to the pool
+      stats.dorayaki -= amount;
+      await stats.save();
+
+      activeBet.wagers.push({ userId: interaction.user.id, option, amount });
+      await activeBet.save();
+
+      const chosenText = option === '1' ? activeBet.opt1 : activeBet.opt2;
+      return interaction.editReply(`✅ You successfully wagered **${amount}** ${DORAYAKI_EMOJI} on **"${chosenText}"**!`);
+    }
+
+        // 4. RESOLVE & PAYOUT (Owner Only)
+    if (sub === 'resolve') {
+      if (interaction.user.id !== '773574818121383958') {
+        return interaction.reply({ content: '🚫 Only Ayush can resolve bets!', flags: MessageFlags.Ephemeral });
+      }
+      
+      const activeBet = await BetPool.findOne({ isActive: true });
+      if (!activeBet) return interaction.reply({ content: '❌ No active bet to resolve.', flags: MessageFlags.Ephemeral });
+
+      const winnerOpt = interaction.options.getString('winner');
+      activeBet.isActive = false; // Close the bet
+      await activeBet.save();
+
+      let winningPool = 0; 
+      let losingPool = 0; 
+      const winners = [];
+      const losers = []; // 👈 We now track losers to DM them too!
+
+      // Calculate who won and who lost
+      activeBet.wagers.forEach(w => {
+        if (w.option === winnerOpt) { 
+          winningPool += w.amount; 
+          winners.push(w); 
+        } else { 
+          losingPool += w.amount;
+          losers.push(w); 
+        }
+      });
+
+      const totalPot = winningPool + losingPool;
+      const winningText = winnerOpt === '1' ? activeBet.opt1 : activeBet.opt2;
+
+      // Handle house wins (no winners)
+      if (winners.length === 0) {
+        // DM losers before ending
+        for (const w of losers) {
+          try {
+            const discordUser = await interaction.client.users.fetch(w.userId);
+            await discordUser.send(`🎰 **Bet Result: ${activeBet.question}**\nThe answer was **${winningText}**. Unfortunately, no one got it right, so you lost your wager of **${w.amount}** ${DORAYAKI_EMOJI}.`);
+          } catch (err) { /* Ignore if user has DMs disabled */ }
+        }
+        return interaction.reply(`🎰 The bet **"${activeBet.question}"** ended! No one picked the right answer, so the house keeps the entire pot!`);
+      }
+
+      // Pay out winners and DM them
+      for (const w of winners) {
+        const percentage = w.amount / winningPool; 
+        const winnings = Math.floor(totalPot * percentage); 
+        
+        const stats = await getPlayerStats(w.userId, "Unknown");
+        if (stats) { 
+          stats.dorayaki += winnings; 
+          await stats.save(); 
+          
+          try {
+            const discordUser = await interaction.client.users.fetch(w.userId);
+            await discordUser.send(`🎉 **YOU WON! — ${activeBet.question}**\nThe answer was **${winningText}**! You wagered **${w.amount}** and walked away with a payout of **${winnings}** ${DORAYAKI_EMOJI}!\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`);
+          } catch (err) { /* Ignore if user has DMs disabled */ }
+        }
+      }
+
+      // DM the losers
+      for (const w of losers) {
+        try {
+          const discordUser = await interaction.client.users.fetch(w.userId);
+          await discordUser.send(`💔 **BET LOST — ${activeBet.question}**\nThe answer was **${winningText}**. You lost your wager of **${w.amount}** ${DORAYAKI_EMOJI}. Better luck next time!`);
+        } catch (err) { /* Ignore if user has DMs disabled */ }
+      }
+
+      return interaction.reply(`🎰 **BET RESOLVED!**\nThe answer to **"${activeBet.question}"** was **${winningText}**!\n\n💰 A massive **${totalPot}** ${DORAYAKI_EMOJI} has been distributed among the winners! *(Check your DMs for your personal results!)*`);
+    }
+    
 
           
     // --- /IMAGE (POWERED BY POLLINATIONS FLUX - 100% FREE) ---
