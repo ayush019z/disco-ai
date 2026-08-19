@@ -1078,25 +1078,24 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
           });
 
         imagesGenerated++;
-       // ==========================================
+               // ==========================================
         try {
           const stats = await getPlayerStats(userId, interaction.user.username);
           if (stats) {
             stats.imagesGenerated += 1;
-            await stats.save();
             
-            // 👈 Quest Trigger happens BEFORE saving
+            // 👈 Quest check BEFORE saving
             if (stats.activeQuests?.includes('image') && !stats.completedQuests?.includes('image')) {
               stats.completedQuests.push('image');
             } 
             
-            // Now we save everything to the database at once!
             await stats.save();
           } 
         } catch (dbErr) { 
           console.error('Failed to save image stats:', dbErr);
         }
         // ==========================================
+        
 
 
         await interaction.editReply({
@@ -1300,10 +1299,13 @@ if (interaction.commandName === 'admin') {
       // Give them 100 Dorayaki
       stats.dorayaki += 100;
       stats.lastDaily = now;
+      // Quest check BEFORE saving
+      if (stats.activeQuests?.includes('daily') && !stats.completedQuests?.includes('daily')) { 
+        stats.completedQuests.push('daily'); 
+      }
       await stats.save();
 
-if (stats.activeQuests.includes('daily') && !stats.completedQuests.includes('daily')) { stats.completedQuests.push('daily'); }
-      
+
       
             // Replace the pancake emoji in your return statement
       return interaction.editReply(`${DORAYAKI_EMOJI} **Yum!** You claimed your daily reward of **100 Dorayaki**!\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`);
@@ -1546,6 +1548,10 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
             stats.adventuresCompleted += 1;
 // 👇 ADD THE DORAYAKI REWARD RIGHT HERE
             stats.dorayaki += 150; // 150 coins for finishing a story!
+            // 👈 Quest check BEFORE saving
+            if (stats.activeQuests?.includes('adventure') && !stats.completedQuests?.includes('adventure')) {
+              stats.completedQuests.push('adventure');
+            }
             await stats.save();
           }
         } catch (dbErr) {
@@ -2999,6 +3005,10 @@ if (message.content.toLowerCase() === '!batbattle') {
       const stats = await getPlayerStats(message.author.id, message.author.username);
       if (stats) {
         stats.imagesGenerated += 1;
+        // Quest check BEFORE saving
+        if (stats.activeQuests?.includes('image') && !stats.completedQuests?.includes('image')) {
+          stats.completedQuests.push('image');
+        }
         await stats.save();
       }
     } catch (dbErr) {
