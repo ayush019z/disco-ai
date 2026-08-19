@@ -770,25 +770,26 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       return interaction.reply({ embeds: [embed], components: [row], ephemeral: false });
     }
 
-     // --- FLEX DROPDOWN HANDLER (PASTE THIS HERE!) ---
-    if (interaction.customId === 'select_card_flex') {
-      await interaction.deferUpdate(); 
+         // --- FLEX DROPDOWN HANDLER ---
+    if (interaction.isStringSelectMenu() && interaction.customId === 'flex_card_menu') {
+      // 1. Instantly acknowledge the click to prevent timeout
+      await interaction.update({ content: `✅ Card flexed successfully!`, components: [] }).catch(() => {});
 
-      const cardId = interaction.values[0].replace('show_', '');
+      const cardId = interaction.values[0].replace('flex_', '');
       const targetCard = CARD_POOL.find(c => c.id === cardId);
 
-      if (!targetCard) {
-        return interaction.followUp({ content: `❌ Card not found.`, ephemeral: true });
-      }
+      if (!targetCard) return;
 
+      // 2. Build the public embed
       const embed = new EmbedBuilder()
         .setColor(targetCard.color)
         .setTitle(`🎴 ${interaction.user.username} is flexing a card!`)
         .setDescription(`**${targetCard.name}** [${targetCard.rarity}]`)
         .setImage(targetCard.url);
 
+      // 3. Post it publicly to the channel where they ran the command
       await interaction.channel.send({ embeds: [embed] });
-      return interaction.deleteReply().catch(() => {});
+      return;
     }
     
     // --- MINI-DORA BUTTONS ---
@@ -1322,44 +1323,44 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     return interaction.reply({ content: '✅ Gian Raid successfully spawned with 1500 HP!', flags: MessageFlags.Ephemeral });
   }
 
-    // =========================
-  // /FLEX (INTERACTIVE BINDER FLEX)
+      // =========================
+  // /FLEX (SELECT MENU BINDER)
   // =========================
   if (interaction.commandName === 'flex') {
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true }); // Ephemeral so only they see the menu
     const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
 
     const inventoryIds = stats.inventory || [];
     if (inventoryIds.length === 0) {
-      return interaction.editReply(`❌ Your binder is completely empty! Open some packs using your \`/pocket\` first.`);
+      return interaction.editReply(`❌ Your binder is empty! Open some packs using your \`/pocket\` first.`);
     }
 
-    // Get unique owned cards so dropdown options aren't repetitive
     const uniqueOwnedIds = [...new Set(inventoryIds)];
     const ownedCards = CARD_POOL.filter(c => uniqueOwnedIds.includes(c.id));
 
-    // Build dropdown options (Discord limits to 25 max)
+    // Map cards into dropdown options (Max 25 items)
     const options = ownedCards.slice(0, 25).map(card => {
       const count = inventoryIds.filter(id => id === card.id).length;
       return {
-        label: `${card.name}`,
+        label: card.name,
         description: `Rarity: ${card.rarity} | Owned: x${count}`,
-        value: `show_${card.id}`
+        value: `flex_${card.id}`
       };
     });
 
     const menu = new StringSelectMenuBuilder()
-      .setCustomId('select_card_flex')
-      .setPlaceholder('Choose a card from your binder to show off...')
+      .setCustomId('flex_card_menu')
+      .setPlaceholder('Choose a card to flex...')
       .addOptions(options);
 
     const row = new ActionRowBuilder().addComponents(menu);
 
     return interaction.editReply({
-      content: `🎴 **Select a card below to flex it to the chat!**`,
+      content: `🎴 Choose a card from your binder below to show it off to the channel:`,
       components: [row]
     });
   }
+
   
 
   // =========================
