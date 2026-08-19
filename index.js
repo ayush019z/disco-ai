@@ -1386,8 +1386,8 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
             // Update the title line in your /profile command embed to look like this:
                 const embed = new EmbedBuilder()
       .setColor('#00FFAA') // Or whatever color you use
-      .setTitle(`🪪 Player Card — ${user.username}`) // Removed the badge from here
-      .setThumbnail(user.displayAvatarURL());
+      .setTitle(`🪪 Player Card — ${targetUser.username}`) // 👈 Use targetUser here
+      .setThumbnail(targetUser.displayAvatarURL());        // 👈 And use targetUser here
 
     // Add a dedicated field just for the badge so it stands out
     if (stats.hasBadge) {
