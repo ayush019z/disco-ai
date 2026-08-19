@@ -667,7 +667,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         { name: '💨 Air Cannon', min: 70, max: 120, rarity: 'Epic' },
         { name: '🥊 Champion Gloves', min: 70, max: 120, rarity: 'Epic' },
         { name: '⚡ Electrical Sword', min: 70, max: 120, rarity: 'Epic' },
-        { name: '🚨 Emergency Button', min: 180, max: 280, rarity: '🌟 MYTHIC 🌟' },
+        { name: '🚨 Emergency Button', min: 180, max: 300, rarity: '🌟 MYTHIC 🌟' },
         { name: '👩‍🦱 Gian\'s Mom', min: 250, max: 400, rarity: '🌟 MYTHIC 🌟' } 
       ];
 
@@ -1075,12 +1075,12 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     }
 
     const attachedImage = interaction.options.getAttachment('image');
-    const imageUrl = attachedImage ? attachedImage.url : 'https://i.ibb.co/C3PqrMwK/file-00000000db2882088038edff95f39572.png'; // Fallback to wanted poster just in case
+    const imageUrl = attachedImage ? attachedImage.url : 'https://i.ibb.co/6ccFh3PR/7mxjacjq6yc91.jpg'; // Fallback to wanted poster just in case
 
     await BossRaid.updateMany({}, { isActive: false }); // End old raids
 
     let boss = await BossRaid.create({
-      bossName: 'Gian (Recital of Doom)',
+      bossName: 'Mai hu Gian',
       maxHp: 1500,
       currentHp: 1500,
       phase: 1,
