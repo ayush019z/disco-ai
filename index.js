@@ -1384,11 +1384,22 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         : '0.0';
 
             // Update the title line in your /profile command embed to look like this:
-            const embed = new EmbedBuilder()
-        .setColor('#00FFAA')
-        .setTitle(`🪪 Player Card — ${stats.username} ${stats.hasBadge ? '<:nobi:1538976662987735040>' : ''}`)
-        .setThumbnail(targetUser.displayAvatarURL())
-        .addFields(
+                const embed = new EmbedBuilder()
+      .setColor('#00FFAA') // Or whatever color you use
+      .setTitle(`🪪 Player Card — ${user.username}`) // Removed the badge from here
+      .setThumbnail(user.displayAvatarURL());
+
+    // Add a dedicated field just for the badge so it stands out
+    if (stats.hasBadge) {
+      embed.addFields({ 
+        name: '🌟 Exclusive Status', 
+        value: '<:nobi:1538976662987735040> **Ultimate Flex Badge Equipped**', 
+        inline: false 
+      });
+    }
+    
+    // ... continue adding your Wallet, Cricket Arena, etc. fields below
+
                     {
             name: '💰 Wallet',
             value: `**${stats.dorayaki || 0}** Dorayaki ${DORAYAKI_EMOJI}`,
