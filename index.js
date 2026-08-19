@@ -1085,13 +1085,15 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
             stats.imagesGenerated += 1;
             await stats.save();
             
-            // 👈 Quest Trigger
+            // 👈 Quest Trigger happens BEFORE saving
             if (stats.activeQuests?.includes('image') && !stats.completedQuests?.includes('image')) {
               stats.completedQuests.push('image');
-            } // <-- Closes the activeQuests check
+            } 
             
-          } // <-- Closes the "if (stats)" block
-        } catch (dbErr) { // <-- Perfectly attached to the try block!
+            // Now we save everything to the database at once!
+            await stats.save();
+          } 
+        } catch (dbErr) { 
           console.error('Failed to save image stats:', dbErr);
         }
         // ==========================================
@@ -2247,6 +2249,10 @@ CRITICAL RULES:
               if (stats) {
                 stats.quizWins += 1;
                 stats.dorayaki += 25; // Reward 25 Dorayaki for correct answer!
+               // 👈 Quest Trigger MUST happen before saving!
+                if (stats.activeQuests?.includes('quiz') && !stats.completedQuests?.includes('quiz')) {
+                  stats.completedQuests.push('quiz');
+                }
                 await stats.save();
               }
             } catch (dbErr) {
