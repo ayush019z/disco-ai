@@ -1400,7 +1400,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
     
     // ... continue adding your Wallet, Cricket Arena, etc. fields below
 
-                    {
+                    embed.addFields({
             name: '💰 Wallet',
             value: `**${stats.dorayaki || 0}** Dorayaki ${DORAYAKI_EMOJI}`,
             inline: false
