@@ -2405,8 +2405,8 @@ CRITICAL RULES:
 
         if (losers.length > 0) resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
 
-        interaction.followUp(resultText);
-
+      await interaction.followUp(resultText);
+      });
     } catch (error) {
       console.error('Quiz Error:', error);
       return interaction.editReply('⚠️ Could not process the quiz.');
