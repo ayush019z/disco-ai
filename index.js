@@ -1077,14 +1077,15 @@ if (stats.activeQuests.includes('pay') && !stats.completedQuests.includes('pay')
           });
 
         imagesGenerated++;
-if (stats.activeQuests.includes('image') && !stats.completedQuests.includes('image')) { stats.completedQuests.push('image'); }
-        
 // ==========================================
         try {
           const stats = await getPlayerStats(userId, interaction.user.username);
           if (stats) {
             stats.imagesGenerated += 1;
             await stats.save();
+            // 👈 Move Quest Trigger HERE (after stats is fetched!)
+            if (stats.activeQuests?.includes('image') && !stats.completedQuests?.includes('image')) {
+              stats.completedQuests.push('image');
           }
         } catch (dbErr) {
           console.error('Failed to save image stats:', dbErr);
