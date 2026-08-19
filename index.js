@@ -2158,7 +2158,7 @@ CRITICAL RULES:
 
     // --- OTHER GLOBAL BUTTONS CAN GO HERE ---
     // If you have a giveaway button from earlier, or future games, they sit right here
-
+}
   });
 
 
