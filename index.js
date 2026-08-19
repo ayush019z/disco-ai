@@ -705,62 +705,61 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       
       await boss.save();
 
-      // 4. CHECK IF BOSS IS DEAD (GRAND PAYOUT)
-      if (boss.currentHp === 0) {
-        boss.isActive = false;
-        await boss.save();
-
-        boss.damageLeaderboard.sort((a, b) => b.damage - a.damage);
-        let rewardsText = '';
+      
         
-        // Loop through everyone who attacked and give them 1 Dorayaki per 2 damage dealt
-        for (let i = 0; i < boss.damageLeaderboard.length; i++) {
-          const p = boss.damageLeaderboard[i];
-          const coinsEarned = Math.floor(p.damage / 2); 
-          
-          try {
-            const stats = await getPlayerStats(p.userId, p.username);
-            stats.dorayaki += coinsEarned;
-            await stats.save();
-          } catch (e) {
-            console.error('Failed to reward player:', e);
-          }
+        if (boss.currentHp === 0) {
+  boss.isActive = false;
+  await boss.save();
 
-          if (i < 5) {
-            rewardsText += `**${i + 1}. ${p.username}** — ${p.damage} DMG (+${coinsEarned} ${DORAYAKI_EMOJI})\n`;
-          }
-        }
+  boss.damageLeaderboard.sort((a, b) => b.damage - a.damage);
 
-        const deadEmbed = new EmbedBuilder()
-          .setColor('#00FF00')
-          .setTitle(`🎉 GIAN DEFEATED!`)
-          .setDescription(`**${boss.bossName}**'s terrible concert was stopped!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`)
-          .setImage(interaction.message.embeds[0].image.url);
+  let rewardsText = '';
 
-        await interaction.update({ embeds: [deadEmbed], components: [] });
-        return interaction.followUp({ content: `💥 **${interaction.user.username}** used the **${selectedGadget.name}** and landed the final blow!` });
+  for (let i = 0; i < boss.damageLeaderboard.length; i++) {
+    const p = boss.damageLeaderboard[i];
+    const coinsEarned = Math.floor(p.damage / 2);
+
+    try {
+      const stats = await getPlayerStats(p.userId, p.username);
+      if (stats) {
+        stats.dorayaki += coinsEarned;
+        await stats.save();
       }
-
-      // 5. UPDATE HEALTH BAR & RECENT LOGS
-      let logsText = '';
-      boss.recentAttacks.forEach(atk => {
-        logsText += `• **${atk.username}** dealt **${atk.damage}** damage\n`;
-      });
-
-      const percentage = (boss.currentHp / boss.maxHp) * 100;
-      const filledBlocks = Math.round((percentage / 100) * 10);
-      const healthBar = '█'.repeat(filledBlocks) + '░'.repeat(10 - filledBlocks);
-
-      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setTitle(`🎤 Mythic Boss Raid Active — Phase ${boss.phase} of 3`)
-        .setDescription(`**Boss:** ${boss.bossName}\n**Remaining HP:** ${boss.currentHp.toLocaleString()} / ${boss.maxHp.toLocaleString()} HP\n\n\`${healthBar}\` **${percentage.toFixed(1)}%**\n\nGian is singing! Click **Attack Gian** to stop him!\n\n📜 **Recent Attacks**\n${logsText}`);
-
-      await interaction.update({ embeds: [updatedEmbed], components: interaction.message.components });
-      return interaction.followUp({ 
-        content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to Gian!\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
-        flags: MessageFlags.Ephemeral 
-      });
+    } catch (e) {
+      console.error('Failed to reward player:', e);
     }
+
+    if (i < 5) {
+      rewardsText += `**${i + 1}. ${p.username}** — ${p.damage} DMG (+${coinsEarned} ${DORAYAKI_EMOJI})\n`;
+    }
+  }
+
+  const deadEmbed = new EmbedBuilder()
+    .setColor('#00FF00')
+    .setTitle('🎉 GIAN DEFEATED!')
+    .setDescription(
+      `**${boss.bossName}**'s terrible concert was stopped!\n\n` +
+      `🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`
+    );
+
+  // Safely preserve the original image
+  const originalImage = interaction.message.embeds[0]?.image?.url;
+  if (originalImage) {
+    deadEmbed.setImage(originalImage);
+  }
+
+  await interaction.update({
+    embeds: [deadEmbed],
+    components: []
+  });
+
+  // Send the final-blow message separately
+  await interaction.followUp({
+    content: `💥 **${interaction.user.username}** used the **${selectedGadget.name}** and landed the **final blow!**`
+  });
+
+  return;
+        }
 
     // --- GIVEAWAY ENTER BUTTON ---
     if (interaction.customId === 'enter_giveaway') {
