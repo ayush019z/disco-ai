@@ -81,7 +81,12 @@ const commands = [
       option.setName('target')
         .setDescription('The user you want to challenge (Leave blank for an open lobby!)')
         .setRequired(false))),
-
+  
+// --- NEW: QUESTS COMMAND ---
+  enableDMs(new SlashCommandBuilder()
+    .setName('quests')
+    .setDescription('Check and claim your randomized daily tasks to earn Dorayaki!')),
+  
   enableDMs(new SlashCommandBuilder()
     .setName('admin')
     .setDescription('Owner admin commands')
