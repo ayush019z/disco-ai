@@ -362,7 +362,7 @@ client.once(Events.ClientReady, () => {
 
       for (let i = 0; i < deadBoss.damageLeaderboard.length; i++) {
         const p = deadBoss.damageLeaderboard[i];
-        const coinsEarned = Math.floor(p.damage / 2); 
+        const coinsEarned = Math.floor(p.damage * 0.8);
         
         try {
           const stats = await getPlayerStats(p.userId, p.username);
@@ -732,7 +732,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         { name: '💨 Air Cannon', min: 70, max: 120, rarity: 'Epic' },
         { name: '🥊 Champion Gloves', min: 70, max: 120, rarity: 'Epic' },
         { name: '⚡ Electrical Sword', min: 70, max: 120, rarity: 'Epic' },
-        { name: '🚨 Emergency Button', min: 180, max: 280, rarity: '🌟 MYTHIC 🌟' },
+        { name: '🚨 Emergency Button', min: 180, max: 300, rarity: '🌟 MYTHIC 🌟' },
         { name: '👩‍🦱 Gian\'s Mom', min: 250, max: 400, rarity: '🌟 MYTHIC 🌟' } 
       ];
 
@@ -803,7 +803,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         // Loop through everyone who attacked and give them 1 Dorayaki per 2 damage dealt
         for (let i = 0; i < boss.damageLeaderboard.length; i++) {
           const p = boss.damageLeaderboard[i];
-          const coinsEarned = Math.floor(p.damage / 2); 
+          const coinsEarned = Math.floor(p.damage * 0.8);
           
           try {
             const stats = await getPlayerStats(p.userId, p.username);
