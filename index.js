@@ -2092,9 +2092,6 @@ CRITICAL RULES:
       return interaction.editReply('⚠️ Could not process the quiz.');
     }
   }
-  
-
-}
 
 
   // =========================
