@@ -2406,7 +2406,6 @@ CRITICAL RULES:
         if (losers.length > 0) resultText += `💀 **Incorrect:** ${losers.join(', ')}`;
 
         interaction.followUp(resultText);
-      });
 
     } catch (error) {
       console.error('Quiz Error:', error);
