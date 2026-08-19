@@ -85,7 +85,7 @@ const commands = [
 // --- NEW: QUESTS COMMAND ---
   enableDMs(new SlashCommandBuilder()
     .setName('quests')
-    .setDescription('Check and claim your randomized daily tasks to earn Dorayaki!')),
+    .setDescription('Check and claim your daily tasks to earn Dorayaki!')),
   
   enableDMs(new SlashCommandBuilder()
     .setName('admin')
