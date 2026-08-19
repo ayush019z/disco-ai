@@ -214,6 +214,9 @@ const commands = [
     .setName('leaderboard')
     .setDescription('View the top 5 richest Dorayaki hoarders across the server!')),
 
+  enableDMs(new SlashCommandBuilder().setName('minidora').setDescription('Check on your Mini-Dora pet, feed it, and claim passive income!')),
+  
+  
   enableDMs(new SlashCommandBuilder()
     .setName('info')
     .setDescription('View bot information')),
