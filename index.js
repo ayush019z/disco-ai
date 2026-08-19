@@ -189,6 +189,29 @@ const betSchema = new mongoose.Schema({
 });
 const BetPool = mongoose.model('BetPool', betSchema);
 
+// --- GIAN BOSS RAID SCHEMA ---
+const bossRaidSchema = new mongoose.Schema({
+  bossName: { type: String, default: 'Gian (Recital of Doom)' },
+  maxHp: { type: Number, default: 1500 },
+  currentHp: { type: Number, default: 1500 },
+  phase: { type: Number, default: 1 },
+  isActive: { type: Boolean, default: false },
+  recentAttacks: [{
+    username: String,
+    damage: Number,
+    timestamp: { type: Number, default: Date.now }
+  }],
+  playerCooldowns: [{ 
+    userId: String,
+    nextAttack: Number
+  }],
+  damageLeaderboard: [{ 
+    userId: String,
+    username: String,
+    damage: Number
+  }]
+});
+const BossRaid = mongoose.model('BossRaid', bossRaidSchema);
 
 
 // Helper function to safely fetch or initialize user stats
@@ -608,6 +631,125 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       return interaction.update({ embeds: [embed], components: [row] });
     }
 
+    // --- GIAN RAID ATTACK BUTTON ---
+    if (interaction.customId === 'raid_attack') {
+      const boss = await BossRaid.findOne({ isActive: true });
+      if (!boss || boss.currentHp <= 0) {
+        return interaction.reply({ content: '❌ Gian already finished his concert (or was defeated)!', flags: MessageFlags.Ephemeral });
+      }
+
+      // 1. CHECK COOLDOWN (20 MINUTES)
+      const cooldownData = boss.playerCooldowns.find(p => p.userId === interaction.user.id);
+      if (cooldownData && cooldownData.nextAttack > Date.now()) {
+        const unixTimer = Math.floor(cooldownData.nextAttack / 1000);
+        return interaction.reply({ content: `⏳ You are recovering from the terrible singing! You can attack Gian again **<t:${unixTimer}:R>**`, flags: MessageFlags.Ephemeral });
+      }
+
+      // 2. GADGET "CARD" POOL SYSTEM (Balanced for 1500 HP)
+      const gadgets = [
+        { name: '🔫 Air Pistol', min: 10, max: 25, rarity: 'Common' },
+        { name: '🎧 Sound Cancelling Earplugs', min: 10, max: 25, rarity: 'Common' },
+        { name: '💘 Friendship Arrow', min: 10, max: 25, rarity: 'Common' },
+        { name: '🍌 Banana Leaf Fan', min: 30, max: 60, rarity: 'Rare' },
+        { name: '💨 Air Cannon', min: 70, max: 120, rarity: 'Epic' },
+        { name: '🥊 Champion Gloves', min: 70, max: 120, rarity: 'Epic' },
+        { name: '⚡ Electrical Sword', min: 70, max: 120, rarity: 'Epic' },
+        { name: '🚨 Emergency Button', min: 180, max: 280, rarity: '🌟 MYTHIC 🌟' },
+        { name: '👩‍🦱 Gian\'s Mom', min: 250, max: 400, rarity: '🌟 MYTHIC 🌟' } 
+      ];
+
+      const roll = Math.random();
+      let selectedGadget;
+      if (roll > 0.95) selectedGadget = gadgets[Math.floor(Math.random() * 2) + 7]; // 5% Mythic
+      else if (roll > 0.75) selectedGadget = gadgets[Math.floor(Math.random() * 3) + 4]; // 20% Epic
+      else if (roll > 0.45) selectedGadget = gadgets[3]; // 30% Rare
+      else selectedGadget = gadgets[Math.floor(Math.random() * 3)]; // 45% Common
+
+      const damage = Math.floor(Math.random() * (selectedGadget.max - selectedGadget.min + 1)) + selectedGadget.min;
+      boss.currentHp = Math.max(0, boss.currentHp - damage);
+
+      // 3. ADD DAMAGE TO LEADERBOARD
+      let playerRecord = boss.damageLeaderboard.find(p => p.userId === interaction.user.id);
+      if (playerRecord) {
+        playerRecord.damage += damage;
+      } else {
+        boss.damageLeaderboard.push({ userId: interaction.user.id, username: interaction.user.username, damage: damage });
+      }
+
+      // Phase changes
+      if (boss.currentHp <= boss.maxHp * 0.33) boss.phase = 3;
+      else if (boss.currentHp <= boss.maxHp * 0.66) boss.phase = 2;
+
+      boss.recentAttacks.unshift({ username: interaction.user.username, damage, timestamp: Date.now() });
+      if (boss.recentAttacks.length > 5) boss.recentAttacks.pop(); 
+
+      // Apply the 20-minute cooldown
+      if (cooldownData) {
+        cooldownData.nextAttack = Date.now() + (20 * 60 * 1000);
+      } else {
+        boss.playerCooldowns.push({ userId: interaction.user.id, nextAttack: Date.now() + (20 * 60 * 1000) });
+      }
+      
+      await boss.save();
+
+      // 4. CHECK IF BOSS IS DEAD (GRAND PAYOUT)
+      if (boss.currentHp === 0) {
+        boss.isActive = false;
+        await boss.save();
+
+        boss.damageLeaderboard.sort((a, b) => b.damage - a.damage);
+        let rewardsText = '';
+        
+        // Loop through everyone who attacked and give them 1 Dorayaki per 2 damage dealt
+        for (let i = 0; i < boss.damageLeaderboard.length; i++) {
+          const p = boss.damageLeaderboard[i];
+          const coinsEarned = Math.floor(p.damage / 2); 
+          
+          try {
+            const stats = await getPlayerStats(p.userId, p.username);
+            stats.dorayaki += coinsEarned;
+            await stats.save();
+          } catch (e) {
+            console.error('Failed to reward player:', e);
+          }
+
+          if (i < 5) {
+            rewardsText += `**${i + 1}. ${p.username}** — ${p.damage} DMG (+${coinsEarned} ${DORAYAKI_EMOJI})\n`;
+          }
+        }
+
+        const deadEmbed = new EmbedBuilder()
+          .setColor('#00FF00')
+          .setTitle(`🎉 GIAN DEFEATED!`)
+          .setDescription(`**${boss.bossName}**'s terrible concert was stopped!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`)
+          .setImage(interaction.message.embeds[0].image.url);
+
+        await interaction.update({ embeds: [deadEmbed], components: [] });
+        return interaction.followUp({ content: `💥 **${interaction.user.username}** used the **${selectedGadget.name}** and landed the final blow!` });
+      }
+
+      // 5. UPDATE HEALTH BAR & RECENT LOGS
+      let logsText = '';
+      boss.recentAttacks.forEach(atk => {
+        logsText += `• **${atk.username}** dealt **${atk.damage}** damage\n`;
+      });
+
+      const percentage = (boss.currentHp / boss.maxHp) * 100;
+      const filledBlocks = Math.round((percentage / 100) * 10);
+      const healthBar = '█'.repeat(filledBlocks) + '░'.repeat(10 - filledBlocks);
+
+      const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+        .setTitle(`🎤 Mythic Boss Raid Active — Phase ${boss.phase} of 3`)
+        .setDescription(`**Boss:** ${boss.bossName}\n**Remaining HP:** ${boss.currentHp.toLocaleString()} / ${boss.maxHp.toLocaleString()} HP\n\n\`${healthBar}\` **${percentage.toFixed(1)}%**\n\nGian is singing! Click **Attack Gian** to stop him!\n\n📜 **Recent Attacks**\n${logsText}`);
+
+      await interaction.update({ embeds: [updatedEmbed], components: interaction.message.components });
+      return interaction.followUp({ 
+        content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to Gian!\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
+        flags: MessageFlags.Ephemeral 
+      });
+    }
+
+
     return; // <--- Tells the bot to stop reading once the button is handled!
   }
 
@@ -886,6 +1028,47 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     }
   }
 
+  // =========================
+  // /GIANRAID SPAWN (OWNER ONLY)
+  // =========================
+  if (interaction.commandName === 'gianraid') {
+    if (interaction.user.id !== '773574818121383958') {
+      return interaction.reply({ content: '🚫 Only Ayush can spawn the Gian Raid!', flags: MessageFlags.Ephemeral });
+    }
+
+    const attachedImage = interaction.options.getAttachment('image');
+    const imageUrl = attachedImage ? attachedImage.url : 'https://i.ibb.co/C3PqrMwK/file-00000000db2882088038edff95f39572.png'; // Fallback to wanted poster just in case
+
+    await BossRaid.updateMany({}, { isActive: false }); // End old raids
+
+    let boss = await BossRaid.create({
+      bossName: 'Gian (Recital of Doom)',
+      maxHp: 1500,
+      currentHp: 1500,
+      phase: 1,
+      isActive: true,
+      recentAttacks: [],
+      playerCooldowns: [],
+      damageLeaderboard: [] 
+    });
+
+    const percentage = Math.max(0, (boss.currentHp / boss.maxHp) * 100);
+    const filledBlocks = Math.round((percentage / 100) * 10);
+    const healthBar = '█'.repeat(filledBlocks) + '░'.repeat(10 - filledBlocks);
+
+    const embed = new EmbedBuilder()
+      .setColor('#FF6600')
+      .setTitle(`🎤 Mythic Boss Raid Active — Phase ${boss.phase} of 3`)
+      .setDescription(`**Boss:** ${boss.bossName}\n**Remaining HP:** ${boss.currentHp.toLocaleString()} / ${boss.maxHp.toLocaleString()} HP\n\n\`${healthBar}\` **${percentage.toFixed(1)}%**\n\nGian has started singing! Use your gadgets to attack him and save everyone's ears!`)
+      .setImage(imageUrl);
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('raid_attack').setLabel('Attack Gian').setStyle(ButtonStyle.Danger).setEmoji('⚔️')
+    );
+
+    await interaction.channel.send({ embeds: [embed], components: [row] });
+    return interaction.reply({ content: '✅ Gian Raid successfully spawned with 1500 HP!', flags: MessageFlags.Ephemeral });
+  }
 
 
   // =========================
