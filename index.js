@@ -141,7 +141,11 @@ adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
 
   // 🐈 Mini-Dora Pet System (ADD THESE TWO LINES!)
   hasMiniDora: { type: Boolean, default: false },
-  miniDoraTimer: { type: Number, default: 0 }
+  miniDoraTimer: { type: Number, default: 0 },
+    
+  // 🎴 Gacha Inventory (ADD THESE TWO LINES)
+  inventory: { type: [String], default: [] },
+  cardPacks: { type: Number, default: 0 }
 }, { timestamps: true });
 
 const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
@@ -222,6 +226,33 @@ const bossRaidSchema = new mongoose.Schema({
   }]
 });
 const BossRaid = mongoose.model('BossRaid', bossRaidSchema);
+
+// =========================
+// GACHA CARD POOL
+// =========================
+const CARD_POOL = [
+  // Commons (65% chance)
+  { id: 'c_bamboo', name: 'Bamboo Copter', rarity: 'Common', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539767761478090763/file_0000000091e88211a96086e47840ccb0.png?ex=6a8783f9&is=6a863279&hm=04212c54bffb1bc250d58e7a0e0d65b5caa01da7928f4fe47621df8b5ffad59c&' },
+
+  // Rares (23% chance)
+  { id: 'r_nobita', name: 'Nobita', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765395051774012/file_00000000befc821181e9130966e264c0.png?ex=6a8781c5&is=6a863045&hm=fbf0be43e9a3b7414f6ba6bee02c00d82c58e7e8e5eb19a59630cfc85b9ac6e8&' },
+  { id: 'r_shizuka', name: 'Shizuka', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765402920427601/file_000000006890820786cd40f950fad456.png?ex=6a8781c7&is=6a863047&hm=7c61ba9c1ea036d9c3568ac1e0285060a8d7429c7f15786f3a8c8989187a0cbb&' },
+  { id: 'r_suneo', name: 'Suneo', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766533398466710/file_0000000068c08211bdf19ffa1bbbfcf3.png?ex=6a8782d5&is=6a863155&hm=ed44ff1e8fce7677280707f93573f4c20d6adb0bfe600a0a9df0fade995cca4a&' },
+  { id: 'r_gian', name: 'Gian', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765291234369649/file_00000000dd988208b16eb24b64a0e80f.png?ex=6a8781ac&is=6a86302c&hm=a3e7d1b6a768a8e326ce50196f6a1ba33142d97bebe97100226d05b4756c44b9&' },
+  { id: 'r_door', name: 'Anywhere Door', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765410629427371/file_000000002abc82119a7231f18215eec6.png?ex=6a8781c9&is=6a863049&hm=d258279aa07330659b586b54c8245783aed34d1a26b8c50ac658d94b3c2da5a6&' },
+
+  // Epics (9% chance)
+  { id: 'e_dorami', name: 'Dorami', rarity: 'Epic', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766878631632946/file_00000000bfac8211a92355beb397f218.png?ex=6a878327&is=6a8631a7&hm=e9159a61cfc79ba8d1a67daea974cbb91e2d782373147c738eb208854dfe94bb&' },
+  { id: 'e_time_machine', name: 'Time Machine', rarity: 'Epic', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539767461287559188/file_0000000035d082119a518f801a1b3b4a.png?ex=6a8783b2&is=6a863232&hm=4cf7494df151b573cf79d7af44230616f74f5fe6ae2f2d7cea11b33571eb0ccb&' },
+  { id: 'e_detective_nobita', name: 'Detective Nobita', rarity: 'Epic', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539768347783077888/file_00000000f4ec821198a9486dfcc86e35.png?ex=6a878485&is=6a863305&hm=f4bfe6d3ce6b51d9a24d2b20edcc2a048e006b266242de7c5699969629161ea9&' },
+  { id: 'e_singer_gian', name: 'Singer Gian', rarity: 'Epic', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766085451255940/file_000000009e988208a727f7ac98583dfa.png?ex=6a87826a&is=6a8630ea&hm=2f586c6a52880de753ed9116412ca25d675153f4f06c0f9048e90f62af6aeb9c&' },
+
+  // Mythics (2.5% chance)
+  { id: 'm_doraemon', name: 'Doraemon', rarity: 'Mythic', color: '#FFD700', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765130324086904/file_00000000397c820789fe31e639754b26.png?ex=6a878186&is=6a863006&hm=acc1d2adb6b3eeeabe0bc23b605241f13b606c2da594d142553ea474fe7b241a&' },
+
+  // Legendary (0.5% chance)
+  { id: 'l_dora_nobi', name: 'Dora × Nobi', rarity: 'Legendary', color: '#FF0055', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765488446611523/file_000000009354820882ad9631546ea9d0.png?ex=6a8781db&is=6a86305b&hm=0b697bc59200feb3dfbc74019b0a62d7c4e5b83f8030ff7ffc8b2e07f1ece791&' }
+];
 
 
 // Helper function to safely fetch or initialize user stats
@@ -514,6 +545,26 @@ client.on(Events.InteractionCreate, async interaction => {
 
       // 2. PROCESS PURCHASES (Using guaranteed .reply() for the ephemeral popups)
       
+      // --- BUY CARDS PACK ---
+      if (selectedValue === 'buy_cardpack') {
+        const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+        const pullCost = 500;
+
+        if (stats.dorayaki < pullCost) {
+          return interaction.reply({ content: `❌ You need **${pullCost}** ${DORAYAKI_EMOJI} to buy a Cards Pack!`, ephemeral: true });
+        }
+
+        // Charge coins and add 1 pack to inventory
+        stats.dorayaki -= pullCost;
+        stats.cardPacks = (stats.cardPacks || 0) + 1;
+        await stats.save();
+
+        return interaction.reply({ 
+          content: `🎒 **Success!** You bought a **Cards Pack** for 500 ${DORAYAKI_EMOJI}!\nType \`/pocket\` to open it!`, 
+          ephemeral: true 
+        });
+      }
+      
       
       // Mystery Box Gamble
       if (selectedValue === 'buy_box') {
@@ -672,6 +723,54 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       }
     }
 
+    // --- OPEN CARDS PACK BUTTON ---
+    if (interaction.customId === 'open_pack') {
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+      
+      if (!stats.cardPacks || stats.cardPacks <= 0) {
+        return interaction.reply({ content: `❌ You don't have any unopened Cards Packs! Buy some from the \`/shop\`.`, ephemeral: true });
+      }
+
+      // 1. Consume 1 pack
+      stats.cardPacks -= 1;
+
+      // 2. Roll the RNG for Rarity
+      const roll = Math.random();
+      let pulledRarity = 'Common';
+      if (roll > 0.995) pulledRarity = 'Legendary';   
+      else if (roll > 0.970) pulledRarity = 'Mythic'; 
+      else if (roll > 0.880) pulledRarity = 'Epic';   
+      else if (roll > 0.650) pulledRarity = 'Rare';   
+
+      // 3. Pick random card & save
+      const availableCards = CARD_POOL.filter(c => c.rarity === pulledRarity);
+      const pulledCard = availableCards[Math.floor(Math.random() * availableCards.length)];
+
+      if (!stats.inventory) stats.inventory = [];
+      stats.inventory.push(pulledCard.id);
+      await stats.save();
+
+      // 4. Build the Reveal
+      const embed = new EmbedBuilder()
+        .setColor(pulledCard.color)
+        .setTitle(`✨ You ripped open a pack and pulled a ${pulledCard.rarity} Card!`)
+        .setDescription(`**${pulledCard.name}** was added to your pocket.\n📦 **Packs Remaining:** ${stats.cardPacks}`)
+        .setImage(pulledCard.url);
+      
+      // Build the button so they can keep opening more
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('open_pack')
+          .setLabel('Open Another')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('📦')
+          .setDisabled(stats.cardPacks <= 0)
+      );
+
+      return interaction.reply({ embeds: [embed], components: [row], ephemeral: false });
+    }
+    
+    
     // --- MINI-DORA BUTTONS ---
     if (interaction.customId === 'md_feed') {
       const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
@@ -968,6 +1067,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         .setCustomId('shop_menu')
         .setPlaceholder('Choose a gadget to buy...')
         .addOptions([
+          { label: 'Cards Pack', description: 'Cost: 500 Dorayaki. Buy a pack to open in your pocket!', value: 'buy_cardpack', emoji: '🎴' }, // 👈 ADD THIS HERE
           { label: 'Mystery Box', description: 'Cost: 250 Dorayaki. Test your luck for a coin payout!', value: 'buy_box', emoji: '🎲' },
           { label: 'VIP Role (7 Days)', description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.', value: 'buy_vip', emoji: '1538990239832612914' },
           { label: 'Time TV Lottery Ticket', description: 'Cost: 50 Dorayaki. 10% chance to win 1000 Dorayaki!', value: 'buy_lottery', emoji: '1538990835574509638' },
@@ -1433,7 +1533,67 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     }
   }
 
-          
+       // =========================
+  // /POCKET (INVENTORY & PACK OPENING)
+  // =========================
+  if (interaction.commandName === 'pocket') {
+    await interaction.deferReply();
+    const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+
+    // 1. Calculate Collection Progress
+    const inventoryIds = stats.inventory || [];
+    const uniqueOwned = new Set(inventoryIds).size;
+    const totalCards = CARD_POOL.length;
+    const packs = stats.cardPacks || 0;
+
+    // 2. Count Duplicates and Group by Rarity
+    const cardCounts = {};
+    inventoryIds.forEach(id => {
+      cardCounts[id] = (cardCounts[id] || 0) + 1;
+    });
+
+    const collection = { Legendary: [], Mythic: [], Epic: [], Rare: [], Common: [] };
+
+    for (const [id, count] of Object.entries(cardCounts)) {
+      const card = CARD_POOL.find(c => c.id === id);
+      if (card) {
+        collection[card.rarity].push(`${card.name} (x${count})`);
+      }
+    }
+
+    // 3. Build the visual list
+    let displayList = '';
+    if (collection.Legendary.length > 0) displayList += `\n🩵 **Legendary:** ${collection.Legendary.join(', ')}`;
+    if (collection.Mythic.length > 0) displayList += `\n🟡 **Mythic:** ${collection.Mythic.join(', ')}`;
+    if (collection.Epic.length > 0) displayList += `\n🟣 **Epic:** ${collection.Epic.join(', ')}`;
+    if (collection.Rare.length > 0) displayList += `\n🔵 **Rare:** ${collection.Rare.join(', ')}`;
+    if (collection.Common.length > 0) displayList += `\n⚪ **Common:** ${collection.Common.join(', ')}`;
+
+    if (displayList === '') displayList = '\n*Your binder is empty! Buy a Cards Pack from the `/shop`.*';
+
+    // 4. Construct the Embed
+    const desc = `Welcome to your 4D Pocket!\n\n📦 **Unopened Packs:** **${packs}**\n🎴 **Cards Collected:** **${uniqueOwned} / ${totalCards}**\n\n**📖 YOUR BINDER:**${displayList}`;
+
+    const embed = new EmbedBuilder()
+      .setColor('#00BFFF')
+      .setTitle(`🎒 ${interaction.user.username}'s Collection`)
+      .setDescription(desc)
+      .setThumbnail(interaction.user.displayAvatarURL());
+
+    // 5. Build the "Open Pack" button
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('open_pack')
+        .setLabel(packs > 0 ? `Open Pack (${packs})` : 'No Packs Owned')
+        .setStyle(packs > 0 ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setEmoji('📦')
+        .setDisabled(packs <= 0)
+    );
+
+    return interaction.editReply({ embeds: [embed], components: [row] });
+  }
+  
+  
     // --- /IMAGE (POWERED BY POLLINATIONS FLUX - 100% FREE) ---
     if (interaction.commandName === 'image') {
       const prompt = interaction.options.getString('prompt');
