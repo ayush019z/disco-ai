@@ -531,7 +531,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       }
     return; // <--- CRITICAL MAGIC LINE: Stops Discord from breaking!
   }
-
+  }
   // ==========================================
   // ZONE 1.5: GLOBAL BUTTON LISTENER
   // ==========================================
@@ -2412,7 +2412,7 @@ CRITICAL RULES:
       return interaction.editReply('⚠️ Could not process the quiz.');
     }
   }
-
+});
 
 // =========================
 // MESSAGE COMMANDS
