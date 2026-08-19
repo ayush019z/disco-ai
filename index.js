@@ -137,7 +137,11 @@ adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
   
   
   // Cosmetics (ADD THIS LINE!)
-  hasBadge: { type: Boolean, default: false }
+  hasBadge: { type: Boolean, default: false },
+
+  // 🐈 Mini-Dora Pet System (ADD THESE TWO LINES!)
+  hasMiniDora: { type: Boolean, default: false },
+  miniDoraTimer: { type: Number, default: 0 }
 }, { timestamps: true });
 
 const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
