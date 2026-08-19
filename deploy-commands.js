@@ -220,6 +220,11 @@ const commands = [
     .setDescription('View the top 5 richest Dorayaki hoarders across the server!')),
 
   enableDMs(new SlashCommandBuilder().setName('minidora').setDescription('Check on your Mini-Dora pet, feed it, and claim passive income!')),
+
+  new SlashCommandBuilder()
+    .setName('pocket')
+    .setDescription('Open your 4D Pocket to view your card collection and open packs!'),
+  
   
   new SlashCommandBuilder()
     .setName('gianraid')
