@@ -146,6 +146,7 @@ adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
   // 🐈 Mini-Dora Pet System (ADD THESE TWO LINES!)
   hasMiniDora: { type: Boolean, default: false },
   miniDoraTimer: { type: Number, default: 0 },
+  miniDoraLevel: { type: Number, default: 1 },
     
   // 🎴 Gacha Inventory (ADD THESE TWO LINES)
   inventory: { type: [String], default: [] },
@@ -1970,39 +1971,393 @@ if (interaction.customId === 'open_pack') {
   });
 }
 
-    // --- MINI-DORA BUTTONS ---
-    if (interaction.customId === 'md_feed') {
-      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
-      if (stats.dorayaki < 25) return interaction.reply({ content: `❌ You don't have 25 ${DORAYAKI_EMOJI} to feed your Mini-Dora!`, flags: MessageFlags.Ephemeral });
-      
-      stats.dorayaki -= 25;
-      stats.miniDoraTimer = Date.now() + (12 * 60 * 60 * 1000); // Set timer for 12 hours from now!
-      await stats.save();
+    // ==========================================
+// 🐈 MINI-DORA BUTTONS
+// ==========================================
 
-            const unix = Math.floor(stats.miniDoraTimer / 1000);
-      const embed = new EmbedBuilder().setTitle('<:dora:1539615957562163261> Your Mini-Dora').setColor('#FFAA00') // 👈 Updated here!
-        .setDescription(`Mini-Dora ate the Dorayaki and went exploring! 🎒🌍\n\nIt will return **<t:${unix}:R>**.`);
-      const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('md_wait').setLabel('Exploring...').setStyle(ButtonStyle.Secondary).setDisabled(true));
 
-      return interaction.update({ embeds: [embed], components: [row] });
+// ==========================================
+// 🍪 FEED MINI-DORA
+// ==========================================
+if (interaction.customId === 'md_feed') {
+  const stats = await getPlayerStats(
+    interaction.user.id,
+    interaction.user.username
+  );
+
+  if (!stats.hasMiniDora) {
+    return interaction.reply({
+      content: '❌ You do not own a Mini-Dora!',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  if (stats.dorayaki < 25) {
+    return interaction.reply({
+      content:
+        `❌ You don't have **25** ${DORAYAKI_EMOJI} to feed your Mini-Dora!`,
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  stats.dorayaki -= 25;
+
+  // 12 hour exploration
+  stats.miniDoraTimer =
+    Date.now() + (12 * 60 * 60 * 1000);
+
+  await stats.save();
+
+  const level =
+    stats.miniDoraLevel || 1;
+
+  const rewards = {
+    1: 250,
+    2: 300,
+    3: 350,
+    4: 425,
+    5: 500
+  };
+
+  const reward =
+    rewards[level] || 250;
+
+  const unix =
+    Math.floor(
+      stats.miniDoraTimer / 1000
+    );
+
+  const embed =
+    new EmbedBuilder()
+      .setTitle(
+        '<:dora:1539615957562163261> Your Mini-Dora'
+      )
+      .setColor('#FFAA00')
+      .setDescription(
+        `Mini-Dora ate the Dorayaki and went exploring! 🎒🌍\n\n` +
+        `⭐ **Level:** ${level}/5\n` +
+        `💰 **Expected Reward:** ${reward} ${DORAYAKI_EMOJI}\n\n` +
+        `It will return **<t:${unix}:R>**.`
+      );
+
+  const row =
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('md_wait')
+        .setLabel('Exploring...')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true)
+    );
+
+  return interaction.update({
+    embeds: [embed],
+    components: [row]
+  });
+}
+
+
+// ==========================================
+// 💰 CLAIM MINI-DORA REWARD
+// ==========================================
+if (interaction.customId === 'md_claim') {
+  const stats = await getPlayerStats(
+    interaction.user.id,
+    interaction.user.username
+  );
+
+  if (
+    stats.miniDoraTimer === 0 ||
+    stats.miniDoraTimer > Date.now()
+  ) {
+    return interaction.reply({
+      content:
+        "⚠️ Mini-Dora isn't back from exploring yet!",
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const level =
+    stats.miniDoraLevel || 1;
+
+  const rewards = {
+    1: 250,
+    2: 300,
+    3: 350,
+    4: 425,
+    5: 500
+  };
+
+  const reward =
+    rewards[level] || 250;
+
+  // Reset adventure
+  stats.miniDoraTimer = 0;
+
+  // Give Dorayaki
+  stats.dorayaki += reward;
+
+
+  // ==========================================
+  // 🎁 BONUS DROP
+  // ==========================================
+  let bonusText = '';
+
+  const roll = Math.random();
+
+  // ==========================================
+  // LEVEL 5
+  // 🍀 1% Lucky Pack
+  // 🎴 5% Normal Pack
+  // ==========================================
+  if (level >= 5) {
+
+    if (roll < 0.01) {
+
+      stats.luckyPacks =
+        (stats.luckyPacks || 0) + 1;
+
+      bonusText =
+        `\n\n🍀 **JACKPOT! Mini-Dora found a Lucky Pack!**`;
+
+    } else if (roll < 0.06) {
+
+      stats.cardPacks =
+        (stats.cardPacks || 0) + 1;
+
+      bonusText =
+        `\n\n🎴 **Mini-Dora found a Cards Pack!**`;
     }
 
-    if (interaction.customId === 'md_claim') {
-      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
-      if (stats.miniDoraTimer === 0 || stats.miniDoraTimer > Date.now()) {
-         return interaction.reply({ content: "⚠️ Mini-Dora isn't back from exploring yet!", flags: MessageFlags.Ephemeral });
-      }
+  // ==========================================
+  // LEVEL 4
+  // 🎴 5% Normal Pack
+  // ==========================================
+  } else if (level === 4) {
 
-      stats.miniDoraTimer = 0;
-      stats.dorayaki += 250; // Give them the passive income!
-      await stats.save();
+    if (roll < 0.05) {
 
-            const embed = new EmbedBuilder().setTitle('<:dora:1539615957562163261> Your Mini-Dora').setColor('#00FF00') // 👈 Updated here!
-        .setDescription(`🎉 **You claimed 250 Dorayaki!** ${DORAYAKI_EMOJI}\n\nMini-Dora is sleepy again. Feed it 25 coins to send it back out!`);
-      const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('md_feed').setLabel('Feed (25 🪙)').setStyle(ButtonStyle.Primary));
+      stats.cardPacks =
+        (stats.cardPacks || 0) + 1;
 
-      return interaction.update({ embeds: [embed], components: [row] });
+      bonusText =
+        `\n\n🎴 **Mini-Dora found a Cards Pack!**`;
     }
+
+  // ==========================================
+  // LEVEL 3
+  // 🎴 3% Normal Pack
+  // ==========================================
+  } else if (level === 3) {
+
+    if (roll < 0.03) {
+
+      stats.cardPacks =
+        (stats.cardPacks || 0) + 1;
+
+      bonusText =
+        `\n\n🎴 **Mini-Dora found a Cards Pack!**`;
+    }
+  }
+
+  await stats.save();
+
+
+  // ==========================================
+  // RESULT
+  // ==========================================
+  const embed =
+    new EmbedBuilder()
+      .setTitle(
+        '<:dora:1539615957562163261> Your Mini-Dora'
+      )
+      .setColor('#00FF00')
+      .setDescription(
+        `🎉 **You claimed ${reward} Dorayaki!** ${DORAYAKI_EMOJI}` +
+        `${bonusText}\n\n` +
+
+        `⭐ **Mini-Dora Level:** ${level}/5\n` +
+        `💰 **Balance:** ${stats.dorayaki.toLocaleString()} ${DORAYAKI_EMOJI}\n\n` +
+
+        `Mini-Dora is sleepy again. 💤\n` +
+        `Feed it **25 Dorayaki** to send it exploring again!`
+      );
+
+  const row =
+    new ActionRowBuilder();
+
+  // Feed button
+  row.addComponents(
+    new ButtonBuilder()
+      .setCustomId('md_feed')
+      .setLabel('Feed (25 🪙)')
+      .setStyle(ButtonStyle.Primary)
+  );
+
+  // Upgrade button if not max
+  if (level < 5) {
+
+    const upgradeCosts = {
+      1: 1500,
+      2: 3500,
+      3: 7500,
+      4: 15000
+    };
+
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId('md_upgrade')
+        .setLabel(
+          `Upgrade (${upgradeCosts[level]} 🪙)`
+        )
+        .setEmoji('⬆️')
+        .setStyle(ButtonStyle.Success)
+    );
+  }
+
+  return interaction.update({
+    embeds: [embed],
+    components: [row]
+  });
+}
+
+
+// ==========================================
+// ⬆️ UPGRADE MINI-DORA
+// ==========================================
+if (interaction.customId === 'md_upgrade') {
+  const stats = await getPlayerStats(
+    interaction.user.id,
+    interaction.user.username
+  );
+
+  if (!stats.hasMiniDora) {
+    return interaction.reply({
+      content:
+        '❌ You do not own a Mini-Dora!',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const level =
+    stats.miniDoraLevel || 1;
+
+  // Already maxed
+  if (level >= 5) {
+    return interaction.reply({
+      content:
+        '🌟 Your Mini-Dora is already **MAX LEVEL!**',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const upgradeCosts = {
+    1: 1500,
+    2: 3500,
+    3: 7500,
+    4: 15000
+  };
+
+  const cost =
+    upgradeCosts[level];
+
+  if (stats.dorayaki < cost) {
+    return interaction.reply({
+      content:
+        `❌ You need **${cost.toLocaleString()}** ${DORAYAKI_EMOJI} to upgrade Mini-Dora to **Level ${level + 1}**!\n\n` +
+        `💰 Your Balance: **${stats.dorayaki.toLocaleString()}** ${DORAYAKI_EMOJI}`,
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  // Pay upgrade cost
+  stats.dorayaki -= cost;
+
+  // Level up
+  stats.miniDoraLevel =
+    level + 1;
+
+  await stats.save();
+
+  const newLevel =
+    stats.miniDoraLevel;
+
+  const rewards = {
+    1: 250,
+    2: 300,
+    3: 350,
+    4: 425,
+    5: 500
+  };
+
+  const perks = {
+    1: 'Basic Explorer',
+    2: '💰 Improved Income',
+    3: '🎴 3% Cards Pack chance',
+    4: '🎴 5% Cards Pack chance',
+    5: '🍀 5% Cards Pack + 1% Lucky Pack chance'
+  };
+
+  const embed =
+    new EmbedBuilder()
+      .setColor('#00FFAA')
+      .setTitle(
+        '⬆️ Mini-Dora Upgraded!'
+      )
+      .setDescription(
+        `<:dora:1539615957562163261> Your Mini-Dora reached **Level ${newLevel}!** 🎉\n\n` +
+
+        `💰 **Adventure Reward:** ${rewards[newLevel]} ${DORAYAKI_EMOJI}\n` +
+        `✨ **Ability:** ${perks[newLevel]}\n\n` +
+
+        `💳 **Balance:** ${stats.dorayaki.toLocaleString()} ${DORAYAKI_EMOJI}`
+      );
+
+  const row =
+    new ActionRowBuilder();
+
+  // If idle, allow feeding immediately
+  if (stats.miniDoraTimer === 0) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId('md_feed')
+        .setLabel('Feed (25 🪙)')
+        .setStyle(ButtonStyle.Primary)
+    );
+  }
+
+  // Allow another upgrade if below Lv5
+  if (newLevel < 5) {
+
+    const nextCost =
+      upgradeCosts[newLevel];
+
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId('md_upgrade')
+        .setLabel(
+          `Upgrade (${nextCost} 🪙)`
+        )
+        .setEmoji('⬆️')
+        .setStyle(ButtonStyle.Success)
+    );
+
+  } else {
+
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId('md_max')
+        .setLabel('MAX LEVEL')
+        .setEmoji('🌟')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true)
+    );
+  }
+
+  return interaction.update({
+    embeds: [embed],
+    components: [row]
+  });
+}
 
      
               // --- GIAN / CUSTOM RAID ATTACK BUTTON ---
@@ -3695,42 +4050,149 @@ if (interaction.commandName === 'admin') {
     }
   }
 
+// =========================
+// /MINIDORA (PASSIVE INCOME PET)
+// =========================
+if (interaction.commandName === 'minidora') {
+  await interaction.deferReply();
 
-    // =========================
-  // /MINIDORA (PASSIVE INCOME PET)
-  // =========================
-  if (interaction.commandName === 'minidora') {
-    await interaction.deferReply();
-    const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+  const stats = await getPlayerStats(
+    interaction.user.id,
+    interaction.user.username
+  );
 
-    if (!stats.hasMiniDora) {
-      return interaction.editReply(`❌ You do not own a Mini-Dora yet! You can buy one from the \`/shop\` for 3000 ${DORAYAKI_EMOJI}.`);
-    }
-
-    const now = Date.now();
-    // 👇 Your custom emoji is already right here!
-    const embed = new EmbedBuilder().setTitle('<:dora:1539615957562163261> Your Mini-Dora');
-    const row = new ActionRowBuilder();
-
-    // State 1: Hungry & Idle
-    if (stats.miniDoraTimer === 0) {
-      embed.setColor('#FF4444').setDescription(`Mini-Dora is hungry and sleeping! 💤\n\nFeed it **25** ${DORAYAKI_EMOJI}, and it will go exploring to find coins for you!`);
-      row.addComponents(new ButtonBuilder().setCustomId('md_feed').setLabel('Feed (25 🪙)').setStyle(ButtonStyle.Primary));
-    
-    // State 2: Exploring
-    } else if (stats.miniDoraTimer > now) {
-      const unix = Math.floor(stats.miniDoraTimer / 1000);
-      embed.setColor('#FFAA00').setDescription(`Mini-Dora is happily exploring! 🎒🌍\n\nIt will return with Dorayaki **<t:${unix}:R>**.`);
-      row.addComponents(new ButtonBuilder().setCustomId('md_wait').setLabel('Exploring...').setStyle(ButtonStyle.Secondary).setDisabled(true));
-    
-    // State 3: Ready to Claim
-    } else {
-      embed.setColor('#00FF00').setDescription(`Mini-Dora has returned from its adventure with a giant pouch of coins! 💰✨`);
-      row.addComponents(new ButtonBuilder().setCustomId('md_claim').setLabel('Claim 250 🪙').setStyle(ButtonStyle.Success));
-    }
-
-    return interaction.editReply({ embeds: [embed], components: [row] });
+  if (!stats.hasMiniDora) {
+    return interaction.editReply(
+      `❌ You do not own a Mini-Dora yet! You can buy one from the \`/shop\` for 3000 ${DORAYAKI_EMOJI}.`
+    );
   }
+
+  const level = stats.miniDoraLevel || 1;
+
+  const rewards = {
+    1: 250,
+    2: 300,
+    3: 350,
+    4: 425,
+    5: 500
+  };
+
+  const upgradeCosts = {
+    1: 1500,
+    2: 3500,
+    3: 7500,
+    4: 15000
+  };
+
+  const reward = rewards[level] || 250;
+
+  const perks = {
+    1: 'Basic Explorer',
+    2: '💰 Improved Income',
+    3: '🎴 3% Cards Pack chance',
+    4: '🎴 5% Cards Pack chance',
+    5: '🍀 5% Cards Pack + 1% Lucky Pack chance'
+  };
+
+  const now = Date.now();
+
+  const embed = new EmbedBuilder()
+    .setTitle('<:dora:1539615957562163261> Your Mini-Dora')
+    .addFields(
+      {
+        name: '⭐ Level',
+        value: `**${level} / 5**`,
+        inline: true
+      },
+      {
+        name: '💰 Adventure Reward',
+        value: `**${reward}** ${DORAYAKI_EMOJI}`,
+        inline: true
+      },
+      {
+        name: '✨ Ability',
+        value: perks[level],
+        inline: false
+      }
+    );
+
+  const row = new ActionRowBuilder();
+
+  // ==========================================
+  // STATE 1 — HUNGRY / IDLE
+  // ==========================================
+  if (stats.miniDoraTimer === 0) {
+    embed
+      .setColor('#FF4444')
+      .setDescription(
+        `Mini-Dora is hungry and sleeping! 💤\n\n` +
+        `Feed it **25** ${DORAYAKI_EMOJI} and it will explore for **12 hours**.`
+      );
+
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId('md_feed')
+        .setLabel('Feed (25 🪙)')
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    // Add upgrade button if not max level
+    if (level < 5) {
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId('md_upgrade')
+          .setLabel(`Upgrade (${upgradeCosts[level]} 🪙)`)
+          .setEmoji('⬆️')
+          .setStyle(ButtonStyle.Success)
+      );
+    }
+
+  // ==========================================
+  // STATE 2 — EXPLORING
+  // ==========================================
+  } else if (stats.miniDoraTimer > now) {
+    const unix = Math.floor(
+      stats.miniDoraTimer / 1000
+    );
+
+    embed
+      .setColor('#FFAA00')
+      .setDescription(
+        `Mini-Dora is happily exploring! 🎒🌍\n\n` +
+        `It will return **<t:${unix}:R>**.`
+      );
+
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId('md_wait')
+        .setLabel('Exploring...')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true)
+    );
+
+  // ==========================================
+  // STATE 3 — READY TO CLAIM
+  // ==========================================
+  } else {
+    embed
+      .setColor('#00FF00')
+      .setDescription(
+        `Mini-Dora has returned from its adventure with a giant pouch of rewards! 💰✨`
+      );
+
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId('md_claim')
+        .setLabel(`Claim ${reward} 🪙`)
+        .setStyle(ButtonStyle.Success)
+    );
+  }
+
+  return interaction.editReply({
+    embeds: [embed],
+    components: [row]
+  });
+}
 
 
 // =========================
