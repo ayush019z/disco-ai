@@ -228,35 +228,36 @@ const bossRaidSchema = new mongoose.Schema({
 });
 const BossRaid = mongoose.model('BossRaid', bossRaidSchema);
 
-// =========================
-// GACHA CARD POOL
+
+  // =========================
+// GACHA CARD POOL (WITH CUSTOM EMOJIS!)
 // =========================
 const CARD_POOL = [
-  // Commons (65% total chance)
-  { id: 'c_bamboo', name: 'Bamboo Copter', rarity: 'Common', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539767761478090763/file_0000000091e88211a96086e47840ccb0.png?ex=6a8783f9&is=6a863279&hm=04212c54bffb1bc250d58e7a0e0d65b5caa01da7928f4fe47621df8b5ffad59c&' },
-  { id: 'c_jelly', name: 'Translation Jelly', rarity: 'Common', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539909521856798740/file_000000009700821188a0f710227e554c.png?ex=6a880800&is=6a86b680&hm=87fa4b3b8872a89a29d5160ac31b7e4548c51b2b1900baceeedeacf8144226dc&' },
-  { id: 'c_small_light', name: 'Small Light', rarity: 'Common', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539910553995182080/file_00000000055482118241cb2a1c94baf5.png?ex=6a8808f6&is=6a86b776&hm=6212744ccfc40841a414fe2482e4ec58c1534dd30c710bb8cf9ba32d3b91ab16&' },
+  // Commons (52.5% total chance)
+  { id: 'c_bamboo', name: 'Bamboo Copter', rarity: 'Common', emoji: '<:bamboocopter:1539924957524529173>', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539767761478090763/file_0000000091e88211a96086e47840ccb0.png?ex=6a8783f9&is=6a863279&hm=04212c54bffb1bc250d58e7a0e0d65b5caa01da7928f4fe47621df8b5ffad59c&' },
+  { id: 'c_jelly', name: 'Translation Jelly', rarity: 'Common', emoji: '<:jelly:1539926033891991602>', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539909521856798740/file_000000009700821188a0f710227e554c.png?ex=6a880800&is=6a86b680&hm=87fa4b3b8872a89a29d5160ac31b7e4548c51b2b1900baceeedeacf8144226dc&' },
+  { id: 'c_small_light', name: 'Small Light', rarity: 'Common', emoji: '<:smallight:1539925400359014490>', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539910553995182080/file_00000000055482118241cb2a1c94baf5.png?ex=6a8808f6&is=6a86b776&hm=6212744ccfc40841a414fe2482e4ec58c1534dd30c710bb8cf9ba32d3b91ab16&' },
 
-  // Rares (23% chance)
-  { id: 'r_nobita', name: 'Nobita', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765395051774012/file_00000000befc821181e9130966e264c0.png?ex=6a8781c5&is=6a863045&hm=fbf0be43e9a3b7414f6ba6bee02c00d82c58e7e8e5eb19a59630cfc85b9ac6e8&' },
-  { id: 'r_shizuka', name: 'Shizuka', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765402920427601/file_000000006890820786cd40f950fad456.png?ex=6a8781c7&is=6a863047&hm=7c61ba9c1ea036d9c3568ac1e0285060a8d7429c7f15786f3a8c8989187a0cbb&' },
-  { id: 'r_suneo', name: 'Suneo', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766533398466710/file_0000000068c08211bdf19ffa1bbbfcf3.png?ex=6a8782d5&is=6a863155&hm=ed44ff1e8fce7677280707f93573f4c20d6adb0bfe600a0a9df0fade995cca4a&' },
-  { id: 'r_gian', name: 'Gian', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765291234369649/file_00000000dd988208b16eb24b64a0e80f.png?ex=6a8781ac&is=6a86302c&hm=a3e7d1b6a768a8e326ce50196f6a1ba33142d97bebe97100226d05b4756c44b9&' },
-  { id: 'r_door', name: 'Anywhere Door', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765410629427371/file_000000002abc82119a7231f18215eec6.png?ex=6a8781c9&is=6a863049&hm=d258279aa07330659b586b54c8245783aed34d1a26b8c50ac658d94b3c2da5a6&' },
-  { id: 'r_cannon', name: 'Air Cannon', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539909534884171827/file_000000003150821183a2318aacb6c0da.png?ex=6a880803&is=6a86b683&hm=b8958da799ec87fb11f230bfc16ef1af98cade4ab0854ff081071e6e51840432&' },
-  { id: 'r_big_light', name: 'Big Light', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539910663592484904/file_000000001f7c8211b76754fc23ee9f25.png?ex=6a880910&is=6a86b790&hm=549af9dece2023de97d7d2e47f7cac46f72b1e7a3319a88cc1b685a6c33c2e42&' },
+  // Rares (30.0% chance)
+  { id: 'r_nobita', name: 'Nobita', rarity: 'Rare', emoji: '<:cardnobi:1539924944253620244>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765395051774012/file_00000000befc821181e9130966e264c0.png?ex=6a8781c5&is=6a863045&hm=fbf0be43e9a3b7414f6ba6bee02c00d82c58e7e8e5eb19a59630cfc85b9ac6e8&' },
+  { id: 'r_shizuka', name: 'Shizuka', rarity: 'Rare', emoji: '<:cardzuka:1539924939346288681>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765402920427601/file_000000006890820786cd40f950fad456.png?ex=6a8781c7&is=6a863047&hm=7c61ba9c1ea036d9c3568ac1e0285060a8d7429c7f15786f3a8c8989187a0cbb&' },
+  { id: 'r_suneo', name: 'Suneo', rarity: 'Rare', emoji: '<:suneocard:1539924951304376371>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766533398466710/file_0000000068c08211bdf19ffa1bbbfcf3.png?ex=6a8782d5&is=6a863155&hm=ed44ff1e8fce7677280707f93573f4c20d6adb0bfe600a0a9df0fade995cca4a&' },
+  { id: 'r_gian', name: 'Gian', rarity: 'Rare', emoji: '<:cardgian:1539924937366704218>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765291234369649/file_00000000dd988208b16eb24b64a0e80f.png?ex=6a8781ac&is=6a86302c&hm=a3e7d1b6a768a8e326ce50196f6a1ba33142d97bebe97100226d05b4756c44b9&' },
+  { id: 'r_door', name: 'Anywhere Door', rarity: 'Rare', emoji: '<:carddoor:1539924942026571797>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765410629427371/file_000000002abc82119a7231f18215eec6.png?ex=6a8781c9&is=6a863049&hm=d258279aa07330659b586b54c8245783aed34d1a26b8c50ac658d94b3c2da5a6&' },
+  { id: 'r_cannon', name: 'Air Cannon', rarity: 'Rare', emoji: '<:cannon:1539925398094225478>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539909534884171827/file_000000003150821183a2318aacb6c0da.png?ex=6a880803&is=6a86b683&hm=b8958da799ec87fb11f230bfc16ef1af98cade4ab0854ff081071e6e51840432&' },
+  { id: 'r_big_light', name: 'Big Light', rarity: 'Rare', emoji: '<:biglight:1539925395858788443>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539910663592484904/file_000000001f7c8211b76754fc23ee9f25.png?ex=6a880910&is=6a86b790&hm=549af9dece2023de97d7d2e47f7cac46f72b1e7a3319a88cc1b685a6c33c2e42&' },
 
-  // Epics (9% chance)
-  { id: 'e_dorami', name: 'Dorami', rarity: 'Epic', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766878631632946/file_00000000bfac8211a92355beb397f218.png?ex=6a878327&is=6a8631a7&hm=e9159a61cfc79ba8d1a67daea974cbb91e2d782373147c738eb208854dfe94bb&' },
-  { id: 'e_time_machine', name: 'Time Machine', rarity: 'Epic', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539767461287559188/file_0000000035d082119a518f801a1b3b4a.png?ex=6a8783b2&is=6a863232&hm=4cf7494df151b573cf79d7af44230616f74f5fe6ae2f2d7cea11b33571eb0ccb&' },
-  { id: 'e_detective_nobita', name: 'Detective Nobita', rarity: 'Epic', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539768347783077888/file_00000000f4ec821198a9486dfcc86e35.png?ex=6a878485&is=6a863305&hm=f4bfe6d3ce6b51d9a24d2b20edcc2a048e006b266242de7c5699969629161ea9&' },
-  { id: 'e_singer_gian', name: 'Singer Gian', rarity: 'Epic', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766085451255940/file_000000009e988208a727f7ac98583dfa.png?ex=6a87826a&is=6a8630ea&hm=2f586c6a52880de753ed9116412ca25d675153f4f06c0f9048e90f62af6aeb9c&' },
+  // Epics (12.0% chance)
+  { id: 'e_dorami', name: 'Dorami', rarity: 'Epic', emoji: '<:dorami:1539924953393012836>', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766878631632946/file_00000000bfac8211a92355beb397f218.png?ex=6a878327&is=6a8631a7&hm=e9159a61cfc79ba8d1a67daea974cbb91e2d782373147c738eb208854dfe94bb&' },
+  { id: 'e_time_machine', name: 'Time Machine', rarity: 'Epic', emoji: '<:timeMachine:1539924955368529940>', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539767461287559188/file_0000000035d082119a518f801a1b3b4a.png?ex=6a8783b2&is=6a863232&hm=4cf7494df151b573cf79d7af44230616f74f5fe6ae2f2d7cea11b33571eb0ccb&' },
+  { id: 'e_detective_nobita', name: 'Detective Nobita', rarity: 'Epic', emoji: '<:detectivenobi:1539924959697051668>', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539768347783077888/file_00000000f4ec821198a9486dfcc86e35.png?ex=6a878485&is=6a863305&hm=f4bfe6d3ce6b51d9a24d2b20edcc2a048e006b266242de7c5699969629161ea9&' },
+  { id: 'e_singer_gian', name: 'Singer Gian', rarity: 'Epic', emoji: '<:singergian:1539924948972343386>', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766085451255940/file_000000009e988208a727f7ac98583dfa.png?ex=6a87826a&is=6a8630ea&hm=2f586c6a52880de753ed9116412ca25d675153f4f06c0f9048e90f62af6aeb9c&' },
 
-  // Mythics (2.5% chance)
-  { id: 'm_doraemon', name: 'Doraemon', rarity: 'Mythic', color: '#FFD700', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765130324086904/file_00000000397c820789fe31e639754b26.png?ex=6a878186&is=6a863006&hm=acc1d2adb6b3eeeabe0bc23b605241f13b606c2da594d142553ea474fe7b241a&' },
+  // Mythics (5.0% chance)
+  { id: 'm_doraemon', name: 'Doraemon', rarity: 'Mythic', emoji: '<:doracard:1539924935248711690>', color: '#FFD700', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765130324086904/file_00000000397c820789fe31e639754b26.png?ex=6a878186&is=6a863006&hm=acc1d2adb6b3eeeabe0bc23b605241f13b606c2da594d142553ea474fe7b241a&' },
 
   // Legendary (0.5% chance)
-  { id: 'l_dora_nobi', name: 'Dora × Nobi', rarity: 'Legendary', color: '#FF0055', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765488446611523/file_000000009354820882ad9631546ea9d0.png?ex=6a8781db&is=6a86305b&hm=0b697bc59200feb3dfbc74019b0a62d7c4e5b83f8030ff7ffc8b2e07f1ece791&' }
+  { id: 'l_dora_nobi', name: 'Dora × Nobi', rarity: 'Legendary', emoji: '<:legendary:1539924946510151770>', color: '#FF0055', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765488446611523/file_000000009354820882ad9631546ea9d0.png?ex=6a8781db&is=6a86305b&hm=0b697bc59200feb3dfbc74019b0a62d7c4e5b83f8030ff7ffc8b2e07f1ece791&' }
 ];
 
 
@@ -1704,7 +1705,8 @@ if (interaction.customId === 'open_pack') {
       return {
         label: card.name,
         description: `Rarity: ${card.rarity}`,
-        value: `equip_${card.id}`
+        value: `equip_${card.id}`,
+        emoji: card.emoji // 
       };
     });
 
