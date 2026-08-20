@@ -109,6 +109,8 @@ const playerStatsSchema = new mongoose.Schema({
   bounty: { type: Number, default: 0 }, // 👈 ADD THIS LINE
   bountyPosts: [{ channelId: String, messageId: String }], // 👈 ADD THIS LINE
   lastDaily: { type: Date, default: null },
+  dailyStreak: { type: Number, default: 0 },
+lastDailyStreakDate: { type: Date, default: null },
 
   // Cricket Games
   superOver: {
@@ -2449,52 +2451,154 @@ if (interaction.commandName === 'admin') {
 
     return interaction.editReply({ embeds: [embed], components: [row] });
   }
-  
-
-  // =========================
-  // /DAILY (ECONOMY)
-  // =========================
-  if (interaction.commandName === 'daily') {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-    try {
-      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
-      
-      const now = new Date();
-      const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-
-      // Check if they already claimed today
-      if (stats.lastDaily && (now - stats.lastDaily.getTime() < oneDay)) {
-        const timeLeft = oneDay - (now - stats.lastDaily.getTime());
-        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-        
-        return interaction.editReply(`⏰ You already got your Dorayaki today! Come back in **${hours}h ${minutes}m**.`);
-      }
-
-      // Give them 100 Dorayaki
-      stats.dorayaki += 100;
-      stats.lastDaily = now;
-      // Quest check BEFORE saving
-      if (stats.activeQuests?.includes('daily') && !stats.completedQuests?.includes('daily')) { 
-        stats.completedQuests.push('daily'); 
-      }
-      await stats.save();
 
 
-      
-            // Replace the pancake emoji in your return statement
-      return interaction.editReply(`${DORAYAKI_EMOJI} **Yum!** You claimed your daily reward of **100 Dorayaki**!\n💰 **New Balance:** ${stats.dorayaki} ${DORAYAKI_EMOJI}`);
+// =========================
+// /DAILY (7-DAY STREAK)
+// =========================
+if (interaction.commandName === 'daily') {
+  await interaction.deferReply({
+    flags: MessageFlags.Ephemeral
+  });
 
-    } catch (err) {
-      console.error('Daily Command Error:', err);
-      return interaction.editReply('⚠️ Could not process your daily reward.');
+  try {
+    const stats = await getPlayerStats(
+      interaction.user.id,
+      interaction.user.username
+    );
+
+    const now = new Date();
+
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    // =====================================
+    // CHECK 24-HOUR COOLDOWN
+    // =====================================
+    if (
+      stats.lastDaily &&
+      now.getTime() - stats.lastDaily.getTime() < oneDay
+    ) {
+      const timeLeft =
+        oneDay - (now.getTime() - stats.lastDaily.getTime());
+
+      const hours = Math.floor(
+        timeLeft / (1000 * 60 * 60)
+      );
+
+      const minutes = Math.floor(
+        (timeLeft % (1000 * 60 * 60)) /
+        (1000 * 60)
+      );
+
+      return interaction.editReply(
+        `⏰ You already claimed today's reward!\n` +
+        `Come back in **${hours}h ${minutes}m**.\n\n` +
+        `🔥 **Current Daily Streak:** ${stats.dailyStreak || 0}/7`
+      );
     }
+
+    // =====================================
+    // DETERMINE WHETHER STREAK CONTINUES
+    // =====================================
+    if (stats.lastDailyStreakDate) {
+      const gap =
+        now.getTime() -
+        stats.lastDailyStreakDate.getTime();
+
+      // More than 48 hours = streak broken
+      if (gap > 48 * 60 * 60 * 1000) {
+        stats.dailyStreak = 0;
+      }
+    }
+
+    // Move to next streak day
+    stats.dailyStreak =
+      (stats.dailyStreak || 0) + 1;
+
+    // Safety
+    if (stats.dailyStreak > 7) {
+      stats.dailyStreak = 1;
+    }
+
+    // =====================================
+    // REWARD TABLE
+    // =====================================
+    const dailyRewards = {
+      1: 100,
+      2: 125,
+      3: 150,
+      4: 175,
+      5: 200,
+      6: 250,
+      7: 300
+    };
+
+    const reward =
+      dailyRewards[stats.dailyStreak];
+
+    stats.dorayaki += reward;
+
+    let bonusText = '';
+
+    // Day 7 bonus
+    if (stats.dailyStreak === 7) {
+      stats.cardPacks =
+        (stats.cardPacks || 0) + 1;
+
+      bonusText =
+        `\n🎴 **7-Day Bonus:** +1 Card Pack!`;
+
+      // Start again next claim
+      stats.dailyStreak = 0;
+    }
+
+    stats.lastDaily = now;
+    stats.lastDailyStreakDate = now;
+
+    // =====================================
+    // DAILY QUEST
+    // =====================================
+    if (
+      stats.activeQuests?.includes('daily') &&
+      !stats.completedQuests?.includes('daily')
+    ) {
+      stats.completedQuests.push('daily');
+    }
+
+    await stats.save();
+
+    // Display 7 instead of 0 when they just completed Day 7
+    const displayedDay =
+      bonusText ? 7 : stats.dailyStreak;
+
+    const nextDay =
+      displayedDay === 7
+        ? 1
+        : displayedDay + 1;
+
+    return interaction.editReply(
+      `${DORAYAKI_EMOJI} **Daily Reward Claimed!**\n\n` +
+
+      `🔥 **Streak Day ${displayedDay}/7**\n` +
+      `💰 You received **${reward} Dorayaki**!` +
+
+      `${bonusText}\n\n` +
+
+      `💳 **Balance:** ${stats.dorayaki.toLocaleString()} ${DORAYAKI_EMOJI}\n` +
+      `📅 **Next Reward:** Day ${nextDay}`
+    );
+
+  } catch (err) {
+    console.error(
+      'Daily Command Error:',
+      err
+    );
+
+    return interaction.editReply(
+      '⚠️ Could not process your daily reward.'
+    );
   }
-
-
-
-
+}
 
       
 
