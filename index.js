@@ -4140,10 +4140,10 @@ if (interaction.commandName === 'minidora') {
     if (level < 5) {
       row.addComponents(
         new ButtonBuilder()
-          .setCustomId('md_upgrade')
-          .setLabel(`Upgrade (${upgradeCosts[level]} ${DORAYAKI_EMOJI})`)
-          .setEmoji('⬆️')
-          .setStyle(ButtonStyle.Success)
+  .setCustomId('md_upgrade')
+  .setLabel(`⬆️ Upgrade (${upgradeCosts[level]})`)
+  .setEmoji('1538955587210182666')
+  .setStyle(ButtonStyle.Success)
       );
     }
 
@@ -4173,10 +4173,10 @@ if (interaction.commandName === 'minidora') {
 if (level < 5) {
   row.addComponents(
     new ButtonBuilder()
-      .setCustomId('md_upgrade')
-      .setLabel(`Upgrade (${upgradeCosts[level]} ${DORAYAKI_EMOJI})`)
-      .setEmoji('⬆️')
-      .setStyle(ButtonStyle.Success)
+  .setCustomId('md_upgrade')
+  .setLabel(`⬆️ Upgrade (${upgradeCosts[level]})`)
+  .setEmoji('1538955587210182666')
+  .setStyle(ButtonStyle.Success)
     );
 }
   // ==========================================
