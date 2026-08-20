@@ -211,6 +211,8 @@ const bossRaidSchema = new mongoose.Schema({
   rewarded: { type: Boolean, default: false }, // 👈 ADDED
   channelId: { type: String },                 // 👈 ADDED
   messageId: { type: String },                 // 👈 ADDED
+imageUrl: { type: String },           // 👈 ADD THIS LINE
+  actionText: { type: String },         // 👈 ADD THIS LINE
   recentAttacks: [{
     username: String,
     damage: Number,
@@ -1057,34 +1059,35 @@ if (interaction.customId === 'open_pack') {
       return interaction.update({ embeds: [embed], components: [row] });
     }
 
-    // --- GIAN RAID ATTACK BUTTON ---
+     
+              // --- GIAN / CUSTOM RAID ATTACK BUTTON ---
     if (interaction.customId === 'raid_attack') {
       const boss = await BossRaid.findOne({ isActive: true });
       if (!boss || boss.currentHp <= 0) {
-        return interaction.reply({ content: '❌ Gian already finished his concert (or was defeated)!', flags: MessageFlags.Ephemeral });
+        return interaction.reply({ content: '❌ This boss has already been defeated!', flags: MessageFlags.Ephemeral });
       }
 
       // 1. CHECK COOLDOWN (20 MINUTES)
       const cooldownData = boss.playerCooldowns.find(p => p.userId === interaction.user.id);
       if (cooldownData && cooldownData.nextAttack > Date.now()) {
         const unixTimer = Math.floor(cooldownData.nextAttack / 1000);
-        return interaction.reply({ content: `⏳ You are recovering from the terrible singing! You can attack Gian again **<t:${unixTimer}:R>**`, flags: MessageFlags.Ephemeral });
+        return interaction.reply({ content: `⏳ You are recovering from your last attack! You can strike again **<t:${unixTimer}:R>**`, flags: MessageFlags.Ephemeral });
       }
 
-            // 1.5 FETCH STATS FOR BUFFS BEFORE ROLLING
+      // 1.5 FETCH STATS FOR BUFFS
       const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
 
-      // 2. GADGET "CARD" POOL SYSTEM (Balanced for 1500 HP)
+      // 2. DYNAMIC GADGET "CARD" POOL SYSTEM (Scales with ANY Boss HP!)
       const gadgets = [
-        { name: '🔫 Air Pistol', min: 10, max: 25, rarity: 'Common' },
-        { name: '🎧 Sound Cancelling Earplugs', min: 10, max: 25, rarity: 'Common' },
-        { name: '💘 Friendship Arrow', min: 10, max: 25, rarity: 'Common' },
-        { name: '🍌 Banana Leaf Fan', min: 30, max: 60, rarity: 'Rare' },
-        { name: '💨 Air Cannon', min: 70, max: 120, rarity: 'Epic' },
-        { name: '🥊 Champion Gloves', min: 70, max: 120, rarity: 'Epic' },
-        { name: '⚡ Electrical Sword', min: 70, max: 120, rarity: 'Epic' },
-        { name: '🚨 Emergency Button', min: 180, max: 300, rarity: '🌟 MYTHIC 🌟' },
-        { name: '👩‍🦱 Gian\'s Mom', min: 250, max: 400, rarity: '🌟 MYTHIC 🌟' } 
+        { name: '🔫 Air Pistol', minPct: 0.01, maxPct: 0.03, rarity: 'Common' },               // 1% - 3%
+        { name: '🎧 Sound Cancelling Earplugs', minPct: 0.01, maxPct: 0.03, rarity: 'Common' }, // 1% - 3%
+        { name: '💘 Friendship Arrow', minPct: 0.01, maxPct: 0.03, rarity: 'Common' },         // 1% - 3%
+        { name: '🍌 Banana Leaf Fan', minPct: 0.04, maxPct: 0.07, rarity: 'Rare' },             // 4% - 7%
+        { name: '💨 Air Cannon', minPct: 0.08, maxPct: 0.12, rarity: 'Epic' },                  // 8% - 12%
+        { name: '🥊 Champion Gloves', minPct: 0.08, maxPct: 0.12, rarity: 'Epic' },             // 8% - 12%
+        { name: '⚡ Electrical Sword', minPct: 0.08, maxPct: 0.12, rarity: 'Epic' },             // 8% - 12%
+        { name: '🚨 Emergency Button', minPct: 0.15, maxPct: 0.22, rarity: '🌟 MYTHIC 🌟' },    // 15% - 22%
+        { name: '👩‍🦱 Gian\'s Mom', minPct: 0.20, maxPct: 0.30, rarity: '🌟 MYTHIC 🌟' }        // 20% - 30%
       ];
 
       const roll = Math.random();
@@ -1094,28 +1097,30 @@ if (interaction.customId === 'open_pack') {
       else if (roll > 0.45) selectedGadget = gadgets[3]; // 30% Rare
       else selectedGadget = gadgets[Math.floor(Math.random() * 3)]; // 45% Common
 
-      let baseDamage = Math.floor(Math.random() * (selectedGadget.max - selectedGadget.min + 1)) + selectedGadget.min;
+      // Calculate base damage dynamically based on the boss's Max HP
+      const minDamage = Math.floor(boss.maxHp * selectedGadget.minPct);
+      const maxDamage = Math.floor(boss.maxHp * selectedGadget.maxPct);
 
-          // ----------------------------------------------------
+      let baseDamage = Math.floor(Math.random() * (maxDamage - minDamage + 1)) + minDamage;
+      if (baseDamage < 1) baseDamage = 1; // Safety net
+
+      // ----------------------------------------------------
       // 🛡️ APPLY SHOP ITEM & EQUIPPED CARD BUFFS
       // ----------------------------------------------------
       let multiplier = 1.0;
       let buffMessage = '';
 
-      // 1. Static Profile Buffs
       if (stats.hasBadge) multiplier += 0.3; // +30%
       if (stats.hasMiniDora) multiplier += 0.2; // +20%
 
-      // 2. Equipped Card Buffs!
       if (stats.equippedCard) {
         const eqCard = CARD_POOL.find(c => c.id === stats.equippedCard);
         if (eqCard) {
-          if (eqCard.rarity === 'Common') multiplier += 0.10;      // +10% Damage
-          else if (eqCard.rarity === 'Rare') multiplier += 0.25;    // +25% Damage
-          else if (eqCard.rarity === 'Epic') multiplier += 0.50;    // +50% Damage
-          else if (eqCard.rarity === 'Mythic') multiplier += 1.00;  // +100% Damage (Double!)
-          else if (eqCard.rarity === 'Legendary') multiplier += 2.00; // +200% Damage (Triple!)
-          
+          if (eqCard.rarity === 'Common') multiplier += 0.10;
+          else if (eqCard.rarity === 'Rare') multiplier += 0.25;
+          else if (eqCard.rarity === 'Epic') multiplier += 0.50;
+          else if (eqCard.rarity === 'Mythic') multiplier += 1.00;
+          else if (eqCard.rarity === 'Legendary') multiplier += 2.00;
           buffMessage += `\n🎴 **Card Buff:** ${eqCard.name} boosted your attack!`;
         }
       }
@@ -1123,68 +1128,86 @@ if (interaction.customId === 'open_pack') {
       if (stats.hasBadge) buffMessage += `\n<:nobi:1538976662987735040> **Badge Power!** (+30%)`;
       if (stats.hasMiniDora) buffMessage += `\n<:dora:1539615957562163261> **Mini-Dora Assist!** (+20%)`;
 
-      // Calculate final boosted damage
       const damage = Math.floor(baseDamage * multiplier);
-      boss.currentHp = Math.max(0, boss.currentHp - damage);
 
-      
-      
+      // ----------------------------------------------------
+      // 🚀 ATOMIC DATABASE UPDATES (PREVENTS CRASHES!)
+      // ----------------------------------------------------
+      const hasLeaderboard = boss.damageLeaderboard.some(p => p.userId === interaction.user.id);
+      const hasCooldown = boss.playerCooldowns.some(p => p.userId === interaction.user.id);
 
-      // 3. ADD DAMAGE TO LEADERBOARD
-      let playerRecord = boss.damageLeaderboard.find(p => p.userId === interaction.user.id);
-      if (playerRecord) {
-        playerRecord.damage += damage;
+      const updateQuery = {
+        $inc: { currentHp: -damage },
+        $push: {
+          recentAttacks: {
+            $each: [{ username: interaction.user.username, damage: damage, timestamp: Date.now() }],
+            $position: 0,
+            $slice: 5
+          }
+        }
+      };
+
+      const setOps = {};
+      const arrayFilters = [];
+
+      if (hasCooldown) {
+        setOps['playerCooldowns.$[cd].nextAttack'] = Date.now() + (20 * 60 * 1000);
+        arrayFilters.push({ 'cd.userId': interaction.user.id });
       } else {
-        boss.damageLeaderboard.push({ userId: interaction.user.id, username: interaction.user.username, damage: damage });
+        updateQuery.$push.playerCooldowns = { userId: interaction.user.id, nextAttack: Date.now() + (20 * 60 * 1000) };
       }
 
-      // Phase changes
-      if (boss.currentHp <= boss.maxHp * 0.33) boss.phase = 3;
-      else if (boss.currentHp <= boss.maxHp * 0.66) boss.phase = 2;
-
-      boss.recentAttacks.unshift({ username: interaction.user.username, damage, timestamp: Date.now() });
-      if (boss.recentAttacks.length > 5) boss.recentAttacks.pop(); 
-
-      // Apply the 20-minute cooldown
-      if (cooldownData) {
-        cooldownData.nextAttack = Date.now() + (20 * 60 * 1000);
+      if (hasLeaderboard) {
+        updateQuery.$inc['damageLeaderboard.$[lb].damage'] = damage;
+        arrayFilters.push({ 'lb.userId': interaction.user.id });
       } else {
-        boss.playerCooldowns.push({ userId: interaction.user.id, nextAttack: Date.now() + (20 * 60 * 1000) });
+        updateQuery.$push.damageLeaderboard = { userId: interaction.user.id, username: interaction.user.username, damage: damage };
       }
-      
-      await boss.save();
 
-      // 4. CHECK IF BOSS IS DEAD (GRAND PAYOUT)
-      if (boss.currentHp === 0) {
-        boss.isActive = false;
-        await boss.save();
+      if (Object.keys(setOps).length > 0) updateQuery.$set = setOps;
 
-        boss.damageLeaderboard.sort((a, b) => b.damage - a.damage);
+      let updatedBoss = await BossRaid.findOneAndUpdate(
+        { _id: boss._id },
+        updateQuery,
+        { new: true, arrayFilters: arrayFilters.length > 0 ? arrayFilters : undefined }
+      );
+
+      if (updatedBoss.currentHp < 0) updatedBoss.currentHp = 0;
+
+      if (updatedBoss.currentHp > 0) {
+        let newPhase = updatedBoss.phase;
+        if (updatedBoss.currentHp <= updatedBoss.maxHp * 0.33) newPhase = 3;
+        else if (updatedBoss.currentHp <= updatedBoss.maxHp * 0.66) newPhase = 2;
+
+        if (newPhase !== updatedBoss.phase) {
+          updatedBoss.phase = newPhase;
+          await BossRaid.updateOne({ _id: updatedBoss._id }, { $set: { phase: newPhase } });
+        }
+      }
+
+      // 4. CHECK IF BOSS IS DEAD
+      if (updatedBoss.currentHp === 0) {
+        await BossRaid.updateOne({ _id: updatedBoss._id }, { $set: { isActive: false, currentHp: 0 } });
+
+        updatedBoss.damageLeaderboard.sort((a, b) => b.damage - a.damage);
         let rewardsText = '';
         
-        // Loop through everyone who attacked and give them 1 Dorayaki per 2 damage dealt
-        for (let i = 0; i < boss.damageLeaderboard.length; i++) {
-          const p = boss.damageLeaderboard[i];
+        for (let i = 0; i < updatedBoss.damageLeaderboard.length; i++) {
+          const p = updatedBoss.damageLeaderboard[i];
           const coinsEarned = Math.floor(p.damage * 0.8);
-          
           try {
-            const stats = await getPlayerStats(p.userId, p.username);
-            stats.dorayaki += coinsEarned;
-            await stats.save();
-          } catch (e) {
-            console.error('Failed to reward player:', e);
-          }
-
-          if (i < 5) {
-            rewardsText += `**${i + 1}. ${p.username}** — ${p.damage} DMG (+${coinsEarned} ${DORAYAKI_EMOJI})\n`;
-          }
+            const playerStatsData = await getPlayerStats(p.userId, p.username);
+            playerStatsData.dorayaki += coinsEarned;
+            await playerStatsData.save();
+          } catch (e) {}
+          if (i < 5) rewardsText += `**${i + 1}. ${p.username}** — ${p.damage} DMG (+${coinsEarned} ${DORAYAKI_EMOJI})\n`;
         }
 
         const deadEmbed = new EmbedBuilder()
           .setColor('#00FF00')
-          .setTitle(`🎉 GIAN DEFEATED!`)
-          .setDescription(`**${boss.bossName}**'s terrible concert was stopped!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`)
-          .setImage(interaction.message.embeds[0].image.url);
+          .setTitle(`🎉 BOSS DEFEATED!`)
+          .setDescription(`**${updatedBoss.bossName}** was successfully taken down!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`)
+          .setImage(updatedBoss.imageUrl);
 
         await interaction.update({ embeds: [deadEmbed], components: [] });
         return interaction.followUp({ content: `💥 **${interaction.user.username}** used the **${selectedGadget.name}** and landed the final blow!` });
@@ -1192,24 +1215,25 @@ if (interaction.customId === 'open_pack') {
 
       // 5. UPDATE HEALTH BAR & RECENT LOGS
       let logsText = '';
-      boss.recentAttacks.forEach(atk => {
+      updatedBoss.recentAttacks.forEach(atk => {
         logsText += `• **${atk.username}** dealt **${atk.damage}** damage\n`;
       });
 
-      const percentage = (boss.currentHp / boss.maxHp) * 100;
-      const filledBlocks = Math.round((percentage / 100) * 10);
+      const percentage = (updatedBoss.currentHp / updatedBoss.maxHp) * 100;
+      const filledBlocks = Math.max(0, Math.min(10, Math.round((percentage / 100) * 10)));
       const healthBar = '█'.repeat(filledBlocks) + '░'.repeat(10 - filledBlocks);
 
       const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setTitle(`🎤 Mythic Boss Raid Active — Phase ${boss.phase} of 3`)
-        .setDescription(`**Boss:** ${boss.bossName}\n**Remaining HP:** ${boss.currentHp.toLocaleString()} / ${boss.maxHp.toLocaleString()} HP\n\n\`${healthBar}\` **${percentage.toFixed(1)}%**\n\nGian is singing! Click **Attack Gian** to stop him!\n\n📜 **Recent Attacks**\n${logsText}`);
+        .setTitle(`🛑 Mythic Boss Raid Active — Phase ${updatedBoss.phase} of 3`)
+        .setDescription(`**Boss:** ${updatedBoss.bossName}\n**Remaining HP:** ${updatedBoss.currentHp.toLocaleString()} / ${updatedBoss.maxHp.toLocaleString()} HP\n\n\`${healthBar}\` **${percentage.toFixed(1)}%**\n\n${updatedBoss.actionText || 'Attack to save the day!'}\n\n📜 **Recent Attacks**\n${logsText}`);
 
-            await interaction.update({ embeds: [updatedEmbed], components: interaction.message.components });
+      await interaction.update({ embeds: [updatedEmbed], components: interaction.message.components });
       return interaction.followUp({ 
-        content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to Gian!${buffMessage}\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
+        content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to **${updatedBoss.bossName}**!${buffMessage}\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
         flags: MessageFlags.Ephemeral 
       });
     }
+
     
     
     
@@ -1557,6 +1581,8 @@ if (interaction.customId === 'open_pack') {
       isActive: true,
       channelId: interaction.channel.id, // 👈 Saved here!
       messageId: bossMessage.id,         // 👈 Saved here!
+imageUrl: imageUrl, // 👈 Make sure this is here!
+      actionText: "Gian has started singing! Use your gadgets to attack him and save everyone's ears!", // 👈 And this!
       recentAttacks: [],
       playerCooldowns: [],
       damageLeaderboard: [] 
@@ -1564,6 +1590,61 @@ if (interaction.customId === 'open_pack') {
 
     return interaction.reply({ content: '✅ Gian Raid successfully spawned with 1500 HP!', flags: MessageFlags.Ephemeral });
   }
+
+  // =========================
+  // /CUSTOMRAID (OWNER ONLY)
+  // =========================
+  if (interaction.commandName === 'customraid') {
+    if (interaction.user.id !== '773574818121383958') {
+      return interaction.reply({ content: '🚫 Only Ayush can spawn custom Raids!', flags: MessageFlags.Ephemeral });
+    }
+
+    // Grab all the custom inputs from the slash command
+    const bossName = interaction.options.getString('name');
+    const bossHp = interaction.options.getInteger('hp');
+    const actionText = interaction.options.getString('action_text');
+    const bossImage = interaction.options.getAttachment('image'); 
+
+    await BossRaid.updateMany({}, { isActive: false }); // End old raids
+
+    // 1. Build the Custom Embed
+    const healthBar = '██████████';
+
+    const embed = new EmbedBuilder()
+      .setColor('#9933FF') // A cool purple for custom bosses!
+      .setTitle(`🛑 Mythic Boss Raid Active — Phase 1 of 3`)
+      .setDescription(`**Boss:** ${bossName}\n**Remaining HP:** ${bossHp.toLocaleString()} / ${bossHp.toLocaleString()} HP\n\n\`${healthBar}\` **100.0%**\n\n${actionText}`)
+      .setImage(bossImage.url); // Uses the Discord URL of the image you uploaded!
+
+    // Dynamically names the attack button based on the boss's first name
+    const shortName = bossName.split(' ')[0];
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('raid_attack').setLabel(`Attack ${shortName}`).setStyle(ButtonStyle.Danger).setEmoji('⚔️')
+    );
+
+    // 2. Send the message so we can grab its ID!
+    const bossMessage = await interaction.channel.send({ embeds: [embed], components: [row] });
+
+    // 3. Save the completely custom boss to the database
+    await BossRaid.create({
+      bossName: bossName,
+      maxHp: bossHp,
+      currentHp: bossHp,
+      phase: 1,
+      isActive: true,
+      channelId: interaction.channel.id, 
+      messageId: bossMessage.id,         
+      imageUrl: bossImage.url,           
+      actionText: actionText,            
+      recentAttacks: [],
+      playerCooldowns: [],
+      damageLeaderboard: [] 
+    });
+
+    return interaction.reply({ content: `✅ **${bossName}** successfully created and spawned with ${bossHp.toLocaleString()} HP!`, flags: MessageFlags.Ephemeral });
+  }
+
+
 
       // =========================
   // /FLEX (SELECT MENU BINDER)
