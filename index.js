@@ -230,6 +230,14 @@ imageUrl: { type: String },           // 👈 ADD THIS LINE
     userId: String,
     username: String,
     damage: Number
+  }],
+  raidRewards: [{
+  userId: String,
+  username: String,
+  damage: Number,
+  placement: Number,
+  dorayaki: Number,
+  cardPacks: { type: Number, default: 0 }
   }]
 });
 const BossRaid = mongoose.model('BossRaid', bossRaidSchema);
@@ -1137,6 +1145,81 @@ if (selectedValue === 'buy_featured_card') {
   // ZONE 1.5: GLOBAL BUTTON LISTENER
   // ==========================================
   if (interaction.isButton()) {
+
+// ==========================================
+// 🎁 CHECK MY RAID REWARDS
+// ==========================================
+if (
+  interaction.customId.startsWith(
+    'raid_rewards_'
+  )
+) {
+  const raidId =
+    interaction.customId.replace(
+      'raid_rewards_',
+      ''
+    );
+
+  const raid =
+    await BossRaid.findById(raidId);
+
+  if (!raid) {
+    return interaction.reply({
+      content:
+        '❌ This raid could not be found.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const reward =
+    raid.raidRewards?.find(
+      r => r.userId === interaction.user.id
+    );
+
+  // Player didn't attack
+  if (!reward) {
+    return interaction.reply({
+      content:
+        `❌ You didn't participate in this raid, so you don't have any rewards to check.`,
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  let dropText =
+    '❌ No bonus drop this time.';
+
+  if (reward.cardPacks === 1) {
+    dropText =
+      '🎴 **1 Cards Pack**';
+  }
+
+  if (reward.cardPacks >= 2) {
+    dropText =
+      `🎴 **${reward.cardPacks} Cards Packs**`;
+  }
+
+  const rewardEmbed =
+    new EmbedBuilder()
+      .setColor('#FFD700')
+      .setTitle('🎁 Your Raid Rewards')
+      .setDescription(
+        `👹 **Boss:** ${raid.bossName}\n\n` +
+
+        `🏆 **Placement:** #${reward.placement}\n` +
+        `💥 **Damage:** ${reward.damage.toLocaleString()}\n\n` +
+
+        `💰 **Dorayaki:** +${reward.dorayaki.toLocaleString()} ${DORAYAKI_EMOJI}\n` +
+        `🎁 **Raid Drop:** ${dropText}`
+      )
+      .setFooter({
+        text: 'Rewards have already been added to your account.'
+      });
+
+  return interaction.reply({
+    embeds: [rewardEmbed],
+    flags: MessageFlags.Ephemeral
+  });
+}
     
     // --- QUEST CLAIM BUTTON ---
     if (interaction.customId === 'claim_quests') {
@@ -1459,35 +1542,148 @@ const damage = Math.floor(baseDamage * multiplier);
         await BossRaid.updateOne({ _id: updatedBoss._id }, { $set: { isActive: false, currentHp: 0 } });
 
         updatedBoss.damageLeaderboard.sort((a, b) => b.damage - a.damage);
-        let rewardsText = '';
-        
-        for (let i = 0; i < updatedBoss.damageLeaderboard.length; i++) {
-          const p = updatedBoss.damageLeaderboard[i];
-          const coinsEarned = Math.floor(p.damage * 0.8);
-          try {
-            const playerStatsData = await getPlayerStats(p.userId, p.username);
-            playerStatsData.dorayaki += coinsEarned;
-            await playerStatsData.save();
-          } catch (e) {}
-          if (i < 5) rewardsText += `**${i + 1}. ${p.username}** — ${p.damage} DMG (+${coinsEarned} ${DORAYAKI_EMOJI})\n`;
-        }
 
-        // 🛑 NEW: Edit the original message to show 0 HP and remove the button
-        const endedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-          .setTitle(`🛑 Mythic Boss Raid — ENDED`)
-          .setDescription(`**Boss:** ${updatedBoss.bossName}\n**Remaining HP:** 0 / ${updatedBoss.maxHp.toLocaleString()} HP\n\n\`░░░░░░░░░░\` **0.0%**\n\n💀 **This boss has been defeated!**`);
+let leaderboardText = '';
+const raidRewards = [];
 
-        await interaction.update({ embeds: [endedEmbed], components: [] });
+// ==========================================
+// 🎁 CALCULATE + PAY RAID REWARDS
+// ==========================================
+for (let i = 0; i < updatedBoss.damageLeaderboard.length; i++) {
+  const p = updatedBoss.damageLeaderboard[i];
 
-        // 🎉 NEW: Send the leaderboard and rewards as a new standalone message!
-        const deadEmbed = new EmbedBuilder()
-          .setColor('#00FF00')
-          .setTitle(`🎉 BOSS DEFEATED!`)
-          .setDescription(`**${updatedBoss.bossName}** was successfully taken down!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`)
-          .setImage(updatedBoss.imageUrl);
+  const coinsEarned = Math.floor(p.damage * 0.8);
 
-        return interaction.followUp({ content: `💥 **${interaction.user.username}** used the **${selectedGadget.name}** and landed the final blow!`, embeds: [deadEmbed] });
+  // ==========================================
+  // 🎴 RAID DROP ROLL
+  //
+  // 3%  = 2 Card Packs
+  // 10% = 1 Card Pack
+  // 87% = No Card Pack
+  // ==========================================
+  const dropRoll = Math.random();
+
+  let cardPacksEarned = 0;
+
+  if (dropRoll < 0.03) {
+    cardPacksEarned = 2;
+  } else if (dropRoll < 0.13) {
+    cardPacksEarned = 1;
+  }
+
+  try {
+    const playerStatsData = await getPlayerStats(
+      p.userId,
+      p.username
+    );
+
+    if (playerStatsData) {
+      playerStatsData.dorayaki += coinsEarned;
+
+      if (cardPacksEarned > 0) {
+        playerStatsData.cardPacks =
+          (playerStatsData.cardPacks || 0) +
+          cardPacksEarned;
       }
+
+      await playerStatsData.save();
+    }
+
+  } catch (e) {
+    console.error(
+      'Failed to reward raid player:',
+      e
+    );
+  }
+
+  // Save this player's result
+  raidRewards.push({
+    userId: p.userId,
+    username: p.username,
+    damage: p.damage,
+    placement: i + 1,
+    dorayaki: coinsEarned,
+    cardPacks: cardPacksEarned
+  });
+
+  // Public leaderboard = DAMAGE ONLY
+  if (i < 5) {
+    const medal =
+      i === 0 ? '🥇' :
+      i === 1 ? '🥈' :
+      i === 2 ? '🥉' :
+      `${i + 1}.`;
+
+    leaderboardText +=
+      `${medal} **${p.username}** — **${p.damage.toLocaleString()} DMG**\n`;
+  }
+}
+
+// Save rewards onto this raid
+updatedBoss.raidRewards = raidRewards;
+updatedBoss.rewarded = true;
+updatedBoss.isActive = false;
+
+await updatedBoss.save();
+
+// ==========================================
+// 🛑 END ORIGINAL RAID MESSAGE
+// ==========================================
+const endedEmbed =
+  EmbedBuilder.from(interaction.message.embeds[0])
+    .setTitle(`🛑 Mythic Boss Raid — ENDED`)
+    .setDescription(
+      `**Boss:** ${updatedBoss.bossName}\n` +
+      `**Remaining HP:** 0 / ${updatedBoss.maxHp.toLocaleString()} HP\n\n` +
+      `\`░░░░░░░░░░\` **0.0%**\n\n` +
+      `💀 **This boss has been defeated!**`
+    );
+
+await interaction.update({
+  embeds: [endedEmbed],
+  components: []
+});
+
+// ==========================================
+// 🎁 CHECK REWARDS BUTTON
+// ==========================================
+const rewardsRow =
+  new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(
+        `raid_rewards_${updatedBoss._id}`
+      )
+      .setLabel('Check My Rewards')
+      .setEmoji('🎁')
+      .setStyle(ButtonStyle.Success)
+  );
+
+// ==========================================
+// 🏆 PUBLIC LEADERBOARD
+// ==========================================
+const deadEmbed = new EmbedBuilder()
+  .setColor('#00FF00')
+  .setTitle(`🎉 BOSS DEFEATED!`)
+  .setDescription(
+    `**${updatedBoss.bossName}** was successfully taken down!\n\n` +
+
+    `🏆 **Top 5 Damage Dealers**\n` +
+    `${leaderboardText || 'No damage recorded.'}\n\n` +
+
+    `🎁 **Participated in the raid?**\n` +
+    `Press the button below to see your personal rewards!`
+  )
+  .setImage(updatedBoss.imageUrl);
+
+await interaction.followUp({
+  content:
+    `💥 **${interaction.user.username}** used the **${selectedGadget.name}** and landed the final blow!`,
+  embeds: [deadEmbed],
+  components: [rewardsRow]
+});
+
+return;
+         }
 
 
       // 5. UPDATE HEALTH BAR & RECENT LOGS
