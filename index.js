@@ -4141,7 +4141,7 @@ if (interaction.commandName === 'minidora') {
       row.addComponents(
         new ButtonBuilder()
           .setCustomId('md_upgrade')
-          .setLabel(`Upgrade (${upgradeCosts[level]} 🪙)`)
+          .setLabel(`Upgrade (${upgradeCosts[level]} ${DORAYAKI_EMOJI})`)
           .setEmoji('⬆️')
           .setStyle(ButtonStyle.Success)
       );
@@ -4174,7 +4174,7 @@ if (level < 5) {
   row.addComponents(
     new ButtonBuilder()
       .setCustomId('md_upgrade')
-      .setLabel(`Upgrade (${upgradeCosts[level]} 🪙)`)
+      .setLabel(`Upgrade (${upgradeCosts[level]} ${DORAYAKI_EMOJI})`)
       .setEmoji('⬆️')
       .setStyle(ButtonStyle.Success)
     );
