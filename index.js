@@ -353,6 +353,84 @@ process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception thrown:', err);
 });
 
+// ==========================================
+// ❌ CREATE DEFEATED RAID BOSS IMAGE
+// ==========================================
+async function createDefeatedBossImage(imageUrl) {
+  try {
+    const image = await loadImage(imageUrl);
+
+    const canvas = createCanvas(image.width, image.height);
+    const ctx = canvas.getContext('2d');
+
+    // Draw original boss image
+    ctx.drawImage(
+      image,
+      0,
+      0,
+      image.width,
+      image.height
+    );
+
+    // Darken image by 25%
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.fillRect(
+      0,
+      0,
+      image.width,
+      image.height
+    );
+
+    // ==========================================
+    // ❌ BIG RED X
+    // ==========================================
+    ctx.strokeStyle = '#FF0000';
+    ctx.lineWidth = Math.max(
+      20,
+      image.width * 0.06
+    );
+
+    ctx.lineCap = 'round';
+
+    const padding = image.width * 0.12;
+
+    ctx.beginPath();
+
+    // Top-left → Bottom-right
+    ctx.moveTo(
+      padding,
+      padding
+    );
+
+    ctx.lineTo(
+      image.width - padding,
+      image.height - padding
+    );
+
+    // Top-right → Bottom-left
+    ctx.moveTo(
+      image.width - padding,
+      padding
+    );
+
+    ctx.lineTo(
+      padding,
+      image.height - padding
+    );
+
+    ctx.stroke();
+
+    return canvas.toBuffer('image/png');
+
+  } catch (error) {
+    console.error(
+      '❌ Failed to create defeated boss image:',
+      error
+    );
+
+    return null;
+  }
+}
 
 // =========================
 // BLOCKED WORDS
@@ -1659,6 +1737,24 @@ const rewardsRow =
   );
 
 // ==========================================
+// ❌ CREATE CROSSED-OUT BOSS IMAGE
+// ==========================================
+const defeatedBuffer = await createDefeatedBossImage(
+  updatedBoss.imageUrl
+);
+
+let defeatedAttachment = null;
+
+if (defeatedBuffer) {
+  defeatedAttachment = new AttachmentBuilder(
+    defeatedBuffer,
+    {
+      name: 'defeated-boss.png'
+    }
+  );
+}
+        
+// ==========================================
 // 🏆 PUBLIC LEADERBOARD
 // ==========================================
 const deadEmbed = new EmbedBuilder()
@@ -1675,11 +1771,23 @@ const deadEmbed = new EmbedBuilder()
   )
   .setImage(updatedBoss.imageUrl);
 
+if (defeatedAttachment) {
+  deadEmbed.setImage('attachment://defeated-boss.png');
+} else {
+  deadEmbed.setImage(updatedBoss.imageUrl);
+}
+        
 await interaction.followUp({
   content:
     `💥 **${interaction.user.username}** used the **${selectedGadget.name}** and landed the final blow!`,
+
   embeds: [deadEmbed],
-  components: [rewardsRow]
+
+  components: [rewardsRow],
+
+  files: defeatedAttachment
+    ? [defeatedAttachment]
+    : []
 });
 
 return;
