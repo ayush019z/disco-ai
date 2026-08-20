@@ -1506,8 +1506,19 @@ const damage = Math.floor(baseDamage * multiplier);
     ? `🔥 ENRAGED BOSS RAID — Phase 3 of 3`
     : `🛑 Mythic Boss Raid Active — Phase ${updatedBoss.phase} of 3`
 )
-        .setDescription(`**Boss:** ${updatedBoss.bossName}\n**Remaining HP:** ${updatedBoss.currentHp.toLocaleString()} / ${updatedBoss.maxHp.toLocaleString()} HP\n\n\`${healthBar}\` **${percentage.toFixed(1)}%**\n\n${updatedBoss.actionText || 'Attack to save the day!'}\n\n📜 **Recent Attacks**\n${logsText}`);
+        .setDescription(
+  `**Boss:** ${updatedBoss.bossName}\n` +
+  `**Remaining HP:** ${updatedBoss.currentHp.toLocaleString()} / ${updatedBoss.maxHp.toLocaleString()} HP\n\n` +
+  `\`${healthBar}\` **${percentage.toFixed(1)}%**\n\n` +
 
+  `${updatedBoss.phase === 3
+    ? `🔥 **ENRAGED! All attackers deal +20% damage!**\n\n`
+    : ''
+  }` +
+
+  `${updatedBoss.actionText || 'Attack to save the day!'}\n\n` +
+  `📜 **Recent Attacks**\n${logsText}`
+)
       await interaction.update({ embeds: [updatedEmbed], components: interaction.message.components });
       return interaction.followUp({ 
         content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to **${updatedBoss.bossName}**!${buffMessage}\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
