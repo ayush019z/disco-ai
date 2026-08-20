@@ -2002,14 +2002,22 @@ if (interaction.customId === 'md_feed') {
 
   stats.dorayaki -= 25;
 
-  // 12 hour exploration
-  stats.miniDoraTimer =
-    Date.now() + (12 * 60 * 60 * 1000);
+  const level = stats.miniDoraLevel || 1;
+
+  const explorationHours = {
+  1: 12,
+  2: 10,
+  3: 8,
+  4: 6,
+  5: 4
+};
+
+const hours = explorationHours[level] || 12;
+
+stats.miniDoraTimer =
+  Date.now() + (hours * 60 * 60 * 1000);
 
   await stats.save();
-
-  const level =
-    stats.miniDoraLevel || 1;
 
   const rewards = {
     1: 250,
@@ -4077,6 +4085,16 @@ if (interaction.commandName === 'minidora') {
     5: 500
   };
 
+const explorationHours = {
+  1: 12,
+  2: 10,
+  3: 8,
+  4: 6,
+  5: 4
+};
+
+const hours = explorationHours[level] || 12;
+  
   const upgradeCosts = {
     1: 1500,
     2: 3500,
@@ -4126,7 +4144,7 @@ if (interaction.commandName === 'minidora') {
       .setColor('#FF4444')
       .setDescription(
         `Mini-Dora is hungry and sleeping! 💤\n\n` +
-        `Feed it **25** ${DORAYAKI_EMOJI} and it will explore for **12 hours**.`
+        `Feed it **25** ${DORAYAKI_EMOJI} and it will explore for **${hours} hours**.`
       );
 
     row.addComponents(
