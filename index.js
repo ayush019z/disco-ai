@@ -1434,7 +1434,8 @@ if (interaction.customId === 'open_pack') {
       return {
         label: card.name,
         description: `Rarity: ${card.rarity} | Owned: x${count}`,
-        value: `flex_${card.id}`
+        value: `flex_${card.id}`,
+        emoji: card.emoji //
       };
     });
 
