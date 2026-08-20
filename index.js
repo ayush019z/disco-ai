@@ -2033,7 +2033,7 @@ if (interaction.customId === 'open_pack') {
     const row = new ActionRowBuilder().addComponents(menu);
 
     return interaction.editReply({
-      content: `💰 **Card Sell-Back System**\nSelect a card from your binder to sell for Dorayaki!\n\n*(Values: Common 50 | Rare 150 | Epic 300 | Mythic 800 | Legendary 5000)*`,
+      content: `💰 **Card Sell-Back System**\nSelect a card from your binder to sell for Dorayaki!\n\n*(Values: Common 75 | Rare 200 | Epic 300 | Mythic 800 | Legendary 5000)*`,
       components: [row]
     });
   }
