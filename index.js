@@ -106,6 +106,7 @@ const playerStatsSchema = new mongoose.Schema({
   
 // 💰 Economy
   dorayaki: { type: Number, default: 0 },
+  bounty: { type: Number, default: 0 }, // 👈 ADD THIS LINE
   lastDaily: { type: Date, default: null },
 
   // Cricket Games
@@ -2784,6 +2785,58 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
 }
 
     // =========================
+  // /BOUNTY (PVP STAKES)
+  // =========================
+  if (interaction.commandName === 'bounty') {
+    const target = interaction.options.getUser('target');
+    const amount = interaction.options.getInteger('amount');
+
+    if (target.bot) return interaction.reply({ content: "🤖 Bots don't have bounties!", flags: MessageFlags.Ephemeral });
+    if (target.id === interaction.user.id) return interaction.reply({ content: "❌ You can't place a bounty on yourself!", flags: MessageFlags.Ephemeral });
+    if (amount < 100) return interaction.reply({ content: "❌ The minimum bounty is 100 Dorayaki.", flags: MessageFlags.Ephemeral });
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral }); // Make the confirmation private
+
+    const senderStats = await getPlayerStats(interaction.user.id, interaction.user.username);
+    if (senderStats.dorayaki < amount) {
+      return interaction.editReply(`❌ You don't have enough Dorayaki! You need **${amount}**.`);
+    }
+
+    const targetStats = await getPlayerStats(target.id, target.username);
+    
+    senderStats.dorayaki -= amount;
+    targetStats.bounty += amount;
+    
+    await senderStats.save();
+    await targetStats.save();
+
+    // 1. Send the private confirmation to the user who placed it
+    await interaction.editReply(`✅ You successfully paid **${amount}** ${DORAYAKI_EMOJI} to place a hit on **${target.username}**!`);
+
+    // 2. 📢 SEND THE PUBLIC ANNOUNCEMENT TO A SPECIFIC CHANNEL!
+    // 👉 Replace this ID with your actual bounty announcement channel ID!
+    const ANNOUNCEMENT_CHANNEL_ID = '1521168222181785682'; 
+    const bountyChannel = await interaction.client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID).catch(() => null);
+
+    if (bountyChannel) {
+      const bountyEmbed = new EmbedBuilder()
+        .setColor('#FF0000') // Aggressive Red!
+        .setTitle('🚨 NEW BOUNTY POSTED 🚨')
+        .setDescription(`<@${interaction.user.id}> just placed a **${amount}** ${DORAYAKI_EMOJI} hit on **<@${target.id}>**!`)
+        .addFields(
+          { name: 'Total Bounty on Head', value: `**${targetStats.bounty.toLocaleString()}** ${DORAYAKI_EMOJI} 💰`, inline: false },
+          { name: 'How to claim?', value: `Defeat <@${target.id}> in a \`/battle\` to steal their bounty!`, inline: false }
+        )
+        .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }))
+        .setFooter({ text: 'DoraBot Bounty Board' })
+        .setTimestamp();
+
+      await bountyChannel.send({ content: `🎯 <@${target.id}>, watch your back!`, embeds: [bountyEmbed] });
+    }
+  }
+  
+
+    // =========================
   // /PROFILE (FULL STATS CARD)
   // =========================
   if (interaction.commandName === 'profile') {
@@ -3185,15 +3238,29 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         winnerAnnouncement = `🏆 **WINNER: <@${player1.id}> (${character1.toUpperCase()})**`;
       }
       
-// ==========================================
-      // 👇 ADD THIS BLOCK HERE
+      // ==========================================
+      // 💾 DB SAVING & BOUNTY CLAIMING
       // ==========================================
       const winningUser = (winLower.includes(c2Lower) || c2Lower.includes(winLower)) ? player2 : player1;
+      const losingUser = winningUser.id === player1.id ? player2 : player1;
+      
+      let claimedBounty = 0;
+
       try {
         const stats = await getPlayerStats(winningUser.id, winningUser.username);
+        const loserStats = await getPlayerStats(losingUser.id, losingUser.username);
+
         if (stats) {
           stats.battleWins += 1;
-          // 👈 Quest trigger sits safely inside here
+          
+          // 🎯 Check if the loser had a bounty!
+          if (loserStats && loserStats.bounty > 0) {
+            claimedBounty = loserStats.bounty;
+            stats.dorayaki += claimedBounty; // Winner takes the money
+            loserStats.bounty = 0;           // Reset loser's bounty
+            await loserStats.save();
+          }
+
           if (stats.activeQuests?.includes('battle') && !stats.completedQuests?.includes('battle')) {
             stats.completedQuests.push('battle');
           }
@@ -3202,17 +3269,20 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       } catch (dbErr) {
         console.error('Failed to save Battle win:', dbErr);
       }
+      
+      let bountyText = claimedBounty > 0 ? `\n\n💰 **BOUNTY CLAIMED!** <@${winningUser.id}> collected the **${claimedBounty}** ${DORAYAKI_EMOJI} bounty on ${losingUser.username}'s head!` : "";
       // ==========================================
 
       await activeChannel.send({
         content: `🏆 <@${player1.id}> ⚔️ <@${player2.id}>`,
         embeds: [{
           title: `⚔️ BATTLE CONCLUDED!`,
-          description: `${finalNarrative}\n\n${winnerAnnouncement}`,
+          description: `${finalNarrative}\n\n${winnerAnnouncement}${bountyText}`,
           color: 0xFF3333,
           footer: { text: `Simulated by Groq AI` }
         }]
       });
+      
 
 
     } catch (error) {
