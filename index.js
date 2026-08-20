@@ -150,6 +150,7 @@ adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
   // 🎴 Gacha Inventory (ADD THESE TWO LINES)
   inventory: { type: [String], default: [] },
   cardPacks: { type: Number, default: 0 },
+  luckyPacks: { type: Number, default: 0 },
 equippedCard: { type: String, default: null }
 }, { timestamps: true });
 
@@ -430,6 +431,155 @@ async function createDefeatedBossImage(imageUrl) {
 
     return null;
   }
+}
+
+// ==========================================
+// 📦 OPEN NORMAL / LUCKY CARD PACK
+// ==========================================
+async function openCardPack(stats, packType) {
+  const isLucky = packType === 'lucky';
+
+  // Consume pack
+  if (isLucky) {
+    stats.luckyPacks -= 1;
+  } else {
+    stats.cardPacks -= 1;
+  }
+
+  // ==========================================
+  // 🎲 RARITY ROLL
+  // ==========================================
+  const roll = Math.random();
+
+  let pulledRarity = 'Common';
+
+  if (isLucky) {
+    // 🍀 LUCKY PACK:
+    // Common 25%
+    // Rare 40%
+    // Epic 22%
+    // Mythic 11%
+    // Legendary 2%
+
+    if (roll < 0.02) pulledRarity = 'Legendary';
+    else if (roll < 0.13) pulledRarity = 'Mythic';
+    else if (roll < 0.35) pulledRarity = 'Epic';
+    else if (roll < 0.75) pulledRarity = 'Rare';
+    else pulledRarity = 'Common';
+
+  } else {
+    // 📦 NORMAL PACK — YOUR CURRENT ODDS
+    if (roll > 0.995) pulledRarity = 'Legendary';
+    else if (roll > 0.945) pulledRarity = 'Mythic';
+    else if (roll > 0.825) pulledRarity = 'Epic';
+    else if (roll > 0.525) pulledRarity = 'Rare';
+  }
+
+  // ==========================================
+  // 🎴 CHOOSE CARD
+  // ==========================================
+  let pulledCard;
+
+  if (pulledRarity === 'Common') {
+    const commonRoll = Math.random();
+
+    if (commonRoll < 0.15) {
+      pulledCard = CARD_POOL.find(
+        c => c.id === 'c_small_light'
+      );
+    } else {
+      const regularCommons = CARD_POOL.filter(
+        c =>
+          c.rarity === 'Common' &&
+          c.id !== 'c_small_light'
+      );
+
+      pulledCard =
+        regularCommons[
+          Math.floor(
+            Math.random() * regularCommons.length
+          )
+        ];
+    }
+
+  } else {
+    const availableCards = CARD_POOL.filter(
+      c => c.rarity === pulledRarity
+    );
+
+    pulledCard =
+      availableCards[
+        Math.floor(
+          Math.random() * availableCards.length
+        )
+      ];
+  }
+
+  if (!pulledCard) {
+    throw new Error(
+      `No card found for rarity ${pulledRarity}`
+    );
+  }
+
+  if (!stats.inventory) {
+    stats.inventory = [];
+  }
+
+  // ==========================================
+  // ✨ SHINY CHECK
+  // ==========================================
+  let isShiny = false;
+
+  if (pulledCard.shinyUrl) {
+    isShiny = Math.random() < 0.01;
+  }
+
+  if (isShiny) {
+    stats.inventory.push(
+      `shiny_${pulledCard.id}`
+    );
+  } else {
+    stats.inventory.push(
+      pulledCard.id
+    );
+  }
+
+  await stats.save();
+
+  // ==========================================
+  // RESULT EMBED
+  // ==========================================
+  const remainingNormal =
+    stats.cardPacks || 0;
+
+  const remainingLucky =
+    stats.luckyPacks || 0;
+
+  const embed = new EmbedBuilder()
+    .setColor(
+      isShiny
+        ? '#FFFFFF'
+        : pulledCard.color
+    )
+    .setTitle(
+      isShiny
+        ? `✨✨ SHINY PULL! ✨✨`
+        : isLucky
+          ? `🍀 Lucky Pack Pull — ${pulledCard.rarity}!`
+          : `✨ You ripped open a pack and pulled a ${pulledCard.rarity} Card!`
+    )
+    .setDescription(
+      isShiny
+        ? `🌟 **SHINY ${pulledCard.name}** [${pulledCard.rarity}] was added to your pocket!\n\n📦 Normal Packs: **${remainingNormal}**\n🍀 Lucky Packs: **${remainingLucky}**`
+        : `**${pulledCard.name}** was added to your pocket!\n\n📦 Normal Packs: **${remainingNormal}**\n🍀 Lucky Packs: **${remainingLucky}**`
+    )
+    .setImage(
+      isShiny
+        ? pulledCard.shinyUrl
+        : pulledCard.url
+    );
+
+  return embed;
 }
 
 // =========================
