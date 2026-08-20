@@ -145,7 +145,8 @@ adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
     
   // 🎴 Gacha Inventory (ADD THESE TWO LINES)
   inventory: { type: [String], default: [] },
-  cardPacks: { type: Number, default: 0 }
+  cardPacks: { type: Number, default: 0 },
+equippedCard: { type: String, default: null }
 }, { timestamps: true });
 
 const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
@@ -541,7 +542,30 @@ client.on(Events.InteractionCreate, async interaction => {
 
     return;
   }
-    
+        // --- EQUIP CARD MENU ---
+    if (interaction.customId === 'equip_card_menu') {
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+      const cardId = interaction.values[0].replace('equip_', '');
+      
+      if (cardId === 'none') {
+        stats.equippedCard = null;
+        await stats.save();
+        return interaction.update({ content: '✅ You unequipped your card. You will no longer receive card buffs.', components: [] });
+      }
+
+      const targetCard = CARD_POOL.find(c => c.id === cardId);
+      if (targetCard) {
+        stats.equippedCard = cardId;
+        await stats.save();
+        return interaction.update({
+          content: `✅ You equipped **${targetCard.name}** [${targetCard.rarity}]!\n💥 Your damage in Boss Raids is now boosted!`,
+          components: []
+        });
+      }
+    }
+
+
+
     // --- 1. HELP MENU LOGIC ---
     if (interaction.customId === 'help_menu') {
       const selected = interaction.values[0];
@@ -919,26 +943,37 @@ if (interaction.customId === 'open_pack') {
 
       let baseDamage = Math.floor(Math.random() * (selectedGadget.max - selectedGadget.min + 1)) + selectedGadget.min;
 
-      // ----------------------------------------------------
-      // 🛡️ APPLY SHOP ITEM BUFFS
+          // ----------------------------------------------------
+      // 🛡️ APPLY SHOP ITEM & EQUIPPED CARD BUFFS
       // ----------------------------------------------------
       let multiplier = 1.0;
       let buffMessage = '';
 
-      if (stats.hasBadge && stats.hasMiniDora) {
-        multiplier = 1.5; // +50% Damage
-        buffMessage = `\n🌟 **ULTIMATE COMBO!** Your Badge and Mini-Dora boosted your damage by 50%!`;
-      } else if (stats.hasBadge) {
-        multiplier = 1.3; // +30% Damage
-        buffMessage = `\n<:nobi:1538976662987735040> **Badge Power!** Your Ultimate Badge boosted your damage by 30%!`;
-      } else if (stats.hasMiniDora) {
-        multiplier = 1.2; // +20% Damage
-        buffMessage = `\n<:dora:1539615957562163261> **Mini-Dora Assist!** Mini-Dora helped you deal 20% more damage!`;
+      // 1. Static Profile Buffs
+      if (stats.hasBadge) multiplier += 0.3; // +30%
+      if (stats.hasMiniDora) multiplier += 0.2; // +20%
+
+      // 2. Equipped Card Buffs!
+      if (stats.equippedCard) {
+        const eqCard = CARD_POOL.find(c => c.id === stats.equippedCard);
+        if (eqCard) {
+          if (eqCard.rarity === 'Common') multiplier += 0.10;      // +10% Damage
+          else if (eqCard.rarity === 'Rare') multiplier += 0.25;    // +25% Damage
+          else if (eqCard.rarity === 'Epic') multiplier += 0.50;    // +50% Damage
+          else if (eqCard.rarity === 'Mythic') multiplier += 1.00;  // +100% Damage (Double!)
+          else if (eqCard.rarity === 'Legendary') multiplier += 2.00; // +200% Damage (Triple!)
+          
+          buffMessage += `\n🎴 **Card Buff:** ${eqCard.name} boosted your attack!`;
+        }
       }
+
+      if (stats.hasBadge) buffMessage += `\n<:nobi:1538976662987735040> **Badge Power!** (+30%)`;
+      if (stats.hasMiniDora) buffMessage += `\n<:dora:1539615957562163261> **Mini-Dora Assist!** (+20%)`;
 
       // Calculate final boosted damage
       const damage = Math.floor(baseDamage * multiplier);
       boss.currentHp = Math.max(0, boss.currentHp - damage);
+
       
       
 
@@ -1648,6 +1683,51 @@ if (interaction.customId === 'open_pack') {
       return interaction.reply(`🎰 **BET RESOLVED!**\nThe answer to **"${activeBet.question}"** was **${winningText}**!\n\n💰 A massive **${totalPot}** ${DORAYAKI_EMOJI} has been distributed among the winners! *(Check your DMs for your personal results!)*`);
     }
   }
+
+  // =========================
+  // /EQUIP (CARD BUFF SYSTEM)
+  // =========================
+  if (interaction.commandName === 'equip') {
+    await interaction.deferReply({ ephemeral: true });
+    const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+
+    const inventoryIds = stats.inventory || [];
+    if (inventoryIds.length === 0) {
+      return interaction.editReply(`❌ Your binder is empty! You need cards to equip.`);
+    }
+
+    const uniqueOwnedIds = [...new Set(inventoryIds)];
+    const ownedCards = CARD_POOL.filter(c => uniqueOwnedIds.includes(c.id));
+
+    // Map cards into dropdown options (Max 24 items so we can fit the "Unequip" button)
+    const options = ownedCards.slice(0, 24).map(card => {
+      return {
+        label: card.name,
+        description: `Rarity: ${card.rarity}`,
+        value: `equip_${card.id}`
+      };
+    });
+
+    // Add an option to take the card off
+    options.push({ label: 'Unequip Card', description: 'Remove your active card', value: 'equip_none', emoji: '❌' });
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId('equip_card_menu')
+      .setPlaceholder('Choose a card to equip for raid buffs...')
+      .addOptions(options);
+
+    const row = new ActionRowBuilder().addComponents(menu);
+
+    let currentEquipText = stats.equippedCard 
+      ? `\n\n🛡️ **Currently Equipped:** ${CARD_POOL.find(c => c.id === stats.equippedCard)?.name || 'None'}`
+      : `\n\n🛡️ **Currently Equipped:** None`;
+
+    return interaction.editReply({
+      content: `🎴 **Select a card to equip for massive Raid Boss damage buffs!**${currentEquipText}`,
+      components: [row]
+    });
+  }
+
 
        // =========================
   // /POCKET (INVENTORY & PACK OPENING)
