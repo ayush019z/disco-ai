@@ -252,6 +252,10 @@ const commands = [
     .setName('flex')
     .setDescription('Flex your rare cards or choose one from your binder to show off!'),
   
+  new SlashCommandBuilder()
+    .setName('sell')
+    .setDescription('Sell duplicate cards from your binder for Dorayaki!'),
+
   
   enableDMs(new SlashCommandBuilder()
     .setName('info')
