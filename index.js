@@ -1387,7 +1387,17 @@ await stats.save();
       if (stats.hasBadge) buffMessage += `\n<:nobi:1538976662987735040> **Badge Power!** (+30%)`;
       if (stats.hasMiniDora) buffMessage += `\n<:dora:1539615957562163261> **Mini-Dora Assist!** (+20%)`;
 
-      const damage = Math.floor(baseDamage * multiplier);
+      // ==========================================
+// 🔥 ENRAGED BOSS PHASE
+// ==========================================
+const isEnraged = boss.currentHp <= boss.maxHp * 0.33;
+
+if (isEnraged) {
+  multiplier += 0.20; // +20% damage during enraged phase
+  buffMessage += `\n🔥 **ENRAGED PHASE BONUS!** (+20% Damage)`;
+}
+
+const damage = Math.floor(baseDamage * multiplier);
 
       // ----------------------------------------------------
       // 🚀 ATOMIC DATABASE UPDATES (PREVENTS CRASHES!)
@@ -1491,7 +1501,11 @@ await stats.save();
       const healthBar = '█'.repeat(filledBlocks) + '░'.repeat(10 - filledBlocks);
 
       const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setTitle(`🛑 Mythic Boss Raid Active — Phase ${updatedBoss.phase} of 3`)
+        .setTitle(
+  updatedBoss.phase === 3
+    ? `🔥 ENRAGED BOSS RAID — Phase 3 of 3`
+    : `🛑 Mythic Boss Raid Active — Phase ${updatedBoss.phase} of 3`
+)
         .setDescription(`**Boss:** ${updatedBoss.bossName}\n**Remaining HP:** ${updatedBoss.currentHp.toLocaleString()} / ${updatedBoss.maxHp.toLocaleString()} HP\n\n\`${healthBar}\` **${percentage.toFixed(1)}%**\n\n${updatedBoss.actionText || 'Attack to save the day!'}\n\n📜 **Recent Attacks**\n${logsText}`);
 
       await interaction.update({ embeds: [updatedEmbed], components: interaction.message.components });
