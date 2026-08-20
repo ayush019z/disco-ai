@@ -107,6 +107,7 @@ const playerStatsSchema = new mongoose.Schema({
 // 💰 Economy
   dorayaki: { type: Number, default: 0 },
   bounty: { type: Number, default: 0 }, // 👈 ADD THIS LINE
+  bountyPosts: [{ channelId: String, messageId: String }], // 👈 ADD THIS LINE
   lastDaily: { type: Date, default: null },
 
   // Cricket Games
@@ -2835,14 +2836,13 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
     // 1. Send the private confirmation to the user who placed it
     await interaction.editReply(`✅ You successfully paid **${amount}** ${DORAYAKI_EMOJI} to place a hit on **${target.username}**!`);
 
-    // 2. 📢 SEND THE PUBLIC ANNOUNCEMENT TO A SPECIFIC CHANNEL!
-    // 👉 Replace this ID with your actual bounty announcement channel ID!
-    const ANNOUNCEMENT_CHANNEL_ID = '1521168222181785682'; 
+        // 2. 📢 SEND THE PUBLIC ANNOUNCEMENT TO A SPECIFIC CHANNEL!
+    const ANNOUNCEMENT_CHANNEL_ID = 'PUT_YOUR_CHANNEL_ID_HERE'; // 👈 Replace with your channel ID
     const bountyChannel = await interaction.client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID).catch(() => null);
 
     if (bountyChannel) {
       const bountyEmbed = new EmbedBuilder()
-        .setColor('#FF0000') // Aggressive Red!
+        .setColor('#FF0000') 
         .setTitle('🚨 NEW BOUNTY POSTED 🚨')
         .setDescription(`<@${interaction.user.id}> just placed a **${amount}** ${DORAYAKI_EMOJI} hit on **<@${target.id}>**!`)
         .addFields(
@@ -2853,9 +2853,12 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         .setFooter({ text: 'DoraBot Bounty Board' })
         .setTimestamp();
 
-      await bountyChannel.send({ content: `🎯 <@${target.id}>, watch your back!`, embeds: [bountyEmbed] });
+      const sentMsg = await bountyChannel.send({ content: `🎯 <@${target.id}>, watch your back!`, embeds: [bountyEmbed] });
+      
+      // 👈 Save the message reference so we can edit it later when claimed!
+      targetStats.bountyPosts.push({ channelId: bountyChannel.id, messageId: sentMsg.id });
+      await targetStats.save();
     }
-  }
   
 
     // =========================
@@ -3260,7 +3263,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
         winnerAnnouncement = `🏆 **WINNER: <@${player1.id}> (${character1.toUpperCase()})**`;
       }
       
-      // ==========================================
+            // ==========================================
       // 💾 DB SAVING & BOUNTY CLAIMING
       // ==========================================
       const winningUser = (winLower.includes(c2Lower) || c2Lower.includes(winLower)) ? player2 : player1;
@@ -3279,7 +3282,30 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
           if (loserStats && loserStats.bounty > 0) {
             claimedBounty = loserStats.bounty;
             stats.dorayaki += claimedBounty; // Winner takes the money
+
+            // 🛑 EDIT ALL PUBLIC ANNOUNCEMENT MESSAGES TO SHOW "CLAIMED"
+            if (loserStats.bountyPosts && loserStats.bountyPosts.length > 0) {
+              for (const post of loserStats.bountyPosts) {
+                try {
+                  const channel = await client.channels.fetch(post.channelId).catch(() => null);
+                  if (channel) {
+                    const msg = await channel.messages.fetch(post.messageId).catch(() => null);
+                    if (msg && msg.embeds.length > 0) {
+                      const claimedEmbed = EmbedBuilder.from(msg.embeds[0])
+                        .setColor('#00FF00') // Turn it green for success!
+                        .setTitle('✅ BOUNTY CLAIMED ✅')
+                        .setDescription(`The **${claimedBounty}** ${DORAYAKI_EMOJI} bounty on **<@${losingUser.id}>** has been successfully collected by **<@${winningUser.id}>**!`);
+                      await msg.edit({ content: `🎉 **Bounty Hunt Concluded!**`, embeds: [claimedEmbed] }).catch(() => {});
+                    }
+                  }
+                } catch (err) {
+                  console.error('Failed to update bounty post message:', err);
+                }
+              }
+            }
+
             loserStats.bounty = 0;           // Reset loser's bounty
+            loserStats.bountyPosts = [];     // Clear old post references
             await loserStats.save();
           }
 
@@ -3294,6 +3320,9 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       
       let bountyText = claimedBounty > 0 ? `\n\n💰 **BOUNTY CLAIMED!** <@${winningUser.id}> collected the **${claimedBounty}** ${DORAYAKI_EMOJI} bounty on ${losingUser.username}'s head!` : "";
       // ==========================================
+      
+      
+      
 
       await activeChannel.send({
         content: `🏆 <@${player1.id}> ⚔️ <@${player2.id}>`,
