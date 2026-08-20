@@ -750,7 +750,6 @@ client.on(Events.InteractionCreate, async interaction => {
         const gameEmbed = new EmbedBuilder().setColor('#00FFAA').setTitle(`🎮 Games & RPG Commands`).setDescription(`• **/adventure** — Play a Doraemon interactive text RPG\n• **/battle <user> <character>** — Fiction PvP combat simulator\n• **/quiz** — Play an AI-generated trivia quiz\n• **!superover** — Solo cricket batting game\n• **!batbattle** — Multiplayer 6-ball cricket duel\n• **!scramble** — Multiplayer word scramble race`);
         return interaction.update({ embeds: [gameEmbed] });
       }
-      if (selected === 'help_economy') {
       
       // 👇 UPDATED ECONOMY PAGE
       if (selected === 'help_economy') {
