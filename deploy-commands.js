@@ -177,6 +177,19 @@ const commands = [
         .setRequired(false)
     )),
 
+  
+  new SlashCommandBuilder()
+    .setName('bounty')
+    .setDescription('Place a Dorayaki bounty on another player!')
+    .addUserOption(option => 
+      option.setName('target')
+      .setDescription('The player you want to put a hit on')
+      .setRequired(true))
+    .addIntegerOption(option => 
+      option.setName('amount')
+      .setDescription('How much Dorayaki to add to their bounty')
+      .setRequired(true)),
+  
   // --- PAY / TRANSFER COMMAND ---
   enableDMs(new SlashCommandBuilder()
     .setName('pay')
