@@ -1497,18 +1497,20 @@ if (
     });
   }
 
-  let dropText =
-    '❌ No bonus drop this time.';
+  let dropText = '❌ No bonus drop this time.';
 
-  if (reward.cardPacks === 1) {
-    dropText =
-      '🎴 **1 Cards Pack**';
-  }
+if (reward.luckyPacks > 0) {
+  dropText =
+    `🍀 **${reward.luckyPacks} Lucky Pack${reward.luckyPacks > 1 ? 's' : ''}!**`;
 
-  if (reward.cardPacks >= 2) {
-    dropText =
-      `🎴 **${reward.cardPacks} Cards Packs**`;
-  }
+} else if (reward.cardPacks === 1) {
+  dropText =
+    '🎴 **1 Cards Pack**';
+
+} else if (reward.cardPacks >= 2) {
+  dropText =
+    `🎴 **${reward.cardPacks} Cards Packs**`;
+}
 
   const rewardEmbed =
     new EmbedBuilder()
