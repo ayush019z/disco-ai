@@ -239,6 +239,14 @@ const commands = [
     .setName('equip')
     .setDescription('Equip a rare card from your binder to get damage buffs in Boss Raids!'),
 
+  new SlashCommandBuilder()
+    .setName('trade')
+    .setDescription('Trade equivalent cards with another player (Costs 50 Dorayaki)')
+    .addUserOption(option => 
+      option.setName('user')
+      .setDescription('The player you want to trade with')
+      .setRequired(true)),
+
 
   new SlashCommandBuilder()
     .setName('flex')
