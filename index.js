@@ -751,6 +751,9 @@ client.on(Events.InteractionCreate, async interaction => {
         return interaction.update({ embeds: [gameEmbed] });
       }
       if (selected === 'help_economy') {
+      
+      // 👇 UPDATED ECONOMY PAGE
+      if (selected === 'help_economy') {
         const econEmbed = new EmbedBuilder()
           .setColor('#FF9900')
           .setTitle(`💰 Economy & Dorayaki Guide`)
@@ -758,16 +761,35 @@ client.on(Events.InteractionCreate, async interaction => {
           .addFields(
             { 
               name: '🏦 Economy Commands', 
-              value: `• **/daily** — Claim your daily reward\n• **/profile** — View your wallet and win rates\n• **/shop** — Spend Dorayaki on items and roles` 
+              value: `• **/daily** — Claim your daily reward\n• **/profile** — View your wallet and stats\n• **/shop** — Spend Dorayaki on items and roles\n• **/minidora** — Manage your passive income pet\n• **/bounty <user> <amount>** — Place a hit on a rival!` 
             },
             { 
               name: '💸 How to Earn', 
-              value: `• **Daily:** \`/daily\` (+100) & \`/quests\` (Up to +90)\n• **Gamble:** Win \`/bet\` pools or the \`/shop\` lottery\n• **RPG:** Finish an \`/adventure\` (+150)\n• **Trivia:** Get a \`/quiz\` answer right (+25)\n• **Cricket:** Win a \`!batbattle\` (+50)` 
+              value: `• **Daily:** \`/daily\` (+100) & \`/quests\` (Up to +90)\n• **Gamble:** Win \`/bet\` pools or the \`/shop\` lottery\n• **PvP:** Win \`/battle\` to claim bounties!\n• **RPG:** Finish an \`/adventure\` (+150)\n• **Trivia:** Get a \`/quiz\` answer right (+25)` 
             }
           );
         return interaction.update({ embeds: [econEmbed] });
       }
-    }
+
+      // 👇 BRAND NEW GACHA PAGE
+      if (selected === 'help_gacha') {
+        const gachaEmbed = new EmbedBuilder()
+          .setColor('#9933FF')
+          .setTitle(`🎴 Gacha & Boss Raids`)
+          .setDescription(`Build your 4D Pocket collection and fight massive server bosses!`)
+          .addFields(
+            {
+              name: '🎒 Card Collection',
+              value: `• **/pocket** — View your binder and open Card Packs\n• **/flex** — Show off a card to the channel\n• **/equip** — Equip a card for Boss Raid multipliers\n• **/trade <user>** — Swap duplicate cards with friends\n• **/sell** — Sell duplicate cards for Dorayaki`
+            },
+            {
+              name: '🛑 Boss Raids',
+              value: `Massive server-wide bosses will occasionally spawn! Click the **Attack** button using Doraemon's gadgets to deal damage. Equip rare cards to multiply your damage and win a share of the massive Dorayaki loot pool!`
+            }
+          );
+        return interaction.update({ embeds: [gachaEmbed] });
+      }
+      }
 
     // --- 2. SHOP MENU LOGIC ---
     if (interaction.customId === 'shop_menu') {
@@ -1357,7 +1379,8 @@ if (interaction.customId === 'open_pack') {
           { label: 'AI & Chat', description: 'Chat, Memory, and Utilities', value: 'help_ai', emoji: '🤖' },
           { label: 'Image & Fun', description: 'AI Images and Wanted Posters', value: 'help_image', emoji: '🎨' },
           { label: 'Games & RPG', description: 'Cricket, Quiz, Scramble & Adventure', value: 'help_games', emoji: '🎮' },
-          { label: 'Economy & Profile', description: 'Daily, Quests, Bets, Shop & Stats', value: 'help_economy', emoji: '1538955587210182666' }
+          { label: 'Economy & Profile', description: 'Daily, Quests, Bets, Shop & Stats', value: 'help_economy', emoji: '1538955587210182666' },
+          { label: 'Gacha & Raids', description: 'Card Packs, Trading, and Boss Fights', value: 'help_gacha', emoji: '🎴' } // 👈 NEW CATEGORY!
         ])
     );
 
