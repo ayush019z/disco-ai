@@ -565,6 +565,120 @@ client.on(Events.InteractionCreate, async interaction => {
       }
     }
 
+    // --- TRADE: MENU 1 (Initiator selects card to give) ---
+    if (interaction.customId === 'trade_offer_menu') {
+      const [targetId, offeredCardId] = interaction.values[0].split('|');
+      const offeredCard = CARD_POOL.find(c => c.id === offeredCardId);
+
+      // 💰 DYNAMIC FEE DICTIONARY
+      const TRADE_FEES = { 'Common': 50, 'Rare': 150, 'Epic': 500, 'Mythic': 1500, 'Legendary': 5000 };
+      const fee = TRADE_FEES[offeredCard.rarity] || 50;
+
+      // Check if initiator can afford this specific rarity
+      const initiatorStats = await getPlayerStats(interaction.user.id, "Unknown");
+      if (initiatorStats.dorayaki < fee) {
+        return interaction.update({ content: `❌ You need **${fee}** ${DORAYAKI_EMOJI} to trade a **${offeredCard.rarity}** card!`, components: [] });
+      }
+
+      const targetStats = await getPlayerStats(targetId, "Unknown");
+      if (!targetStats || !targetStats.inventory || targetStats.inventory.length === 0) {
+          return interaction.update({ content: `❌ That user's binder is completely empty!`, components: [] });
+      }
+
+      // 🛡️ THE EQUIVALENCE CHECK
+      const targetUniqueIds = [...new Set(targetStats.inventory)];
+      const targetEquivalentCards = CARD_POOL.filter(c => targetUniqueIds.includes(c.id) && c.rarity === offeredCard.rarity);
+
+      if (targetEquivalentCards.length === 0) {
+          return interaction.update({ content: `❌ **${targetStats.username || 'That player'}** doesn't have any equivalent **${offeredCard.rarity}** cards to trade back!`, components: [] });
+      }
+
+      // Build Menu 2 for the Target
+      const options2 = targetEquivalentCards.slice(0, 25).map(card => {
+        return {
+          label: card.name,
+          description: `Rarity: ${card.rarity}`,
+          value: `${interaction.user.id}|${offeredCard.id}|${card.id}`, 
+          emoji: card.emoji
+        };
+      });
+
+      const menu2 = new StringSelectMenuBuilder()
+        .setCustomId(`trade_receive_${targetId}`) 
+        .setPlaceholder(`Choose a ${offeredCard.rarity} card to give...`)
+        .addOptions(options2);
+
+      const row2 = new ActionRowBuilder().addComponents(menu2);
+
+      // Send the public ping to the target
+      await interaction.channel.send({
+          content: `📢 <@${targetId}>! <@${interaction.user.id}> wants to trade!\n\nThey are offering **${offeredCard.name}** ${offeredCard.emoji} [${offeredCard.rarity}].\nPick an equivalent **${offeredCard.rarity}** card from your binder below to accept! *(Cost to initiator: ${fee} ${DORAYAKI_EMOJI})*`,
+          components: [row2]
+      });
+
+      return interaction.update({ content: `✅ Trade offer sent to <@${targetId}>!`, components: [] });
+    }
+
+    // --- TRADE: MENU 2 (Target selects card and accepts) ---
+    if (interaction.customId.startsWith('trade_receive_')) {
+      const targetId = interaction.customId.replace('trade_receive_', '');
+
+      // Security check: Only the target can touch this menu
+      if (interaction.user.id !== targetId) {
+          return interaction.reply({ content: `❌ This trade offer is not for you!`, flags: MessageFlags.Ephemeral });
+      }
+
+      await interaction.deferUpdate(); 
+
+      const [initiatorId, offeredCardId, returnCardId] = interaction.values[0].split('|');
+
+      const offeredCard = CARD_POOL.find(c => c.id === offeredCardId);
+      const returnCard = CARD_POOL.find(c => c.id === returnCardId);
+
+      // 💰 DYNAMIC FEE DICTIONARY
+      const TRADE_FEES = { 'Common': 50, 'Rare': 150, 'Epic': 500, 'Mythic': 1500, 'Legendary': 5000 };
+      const fee = TRADE_FEES[offeredCard.rarity] || 50;
+
+      const p1Stats = await getPlayerStats(initiatorId, "Unknown");
+      const p2Stats = await getPlayerStats(targetId, interaction.user.username);
+      
+      // 1. Final Safety Checks
+      if (p1Stats.dorayaki < fee) return interaction.followUp({ content: `❌ Trade failed: The initiator no longer has enough Dorayaki to pay the ${fee} coin fee!`, flags: MessageFlags.Ephemeral });
+
+      const p1CardIndex = p1Stats.inventory.indexOf(offeredCardId);
+      const p2CardIndex = p2Stats.inventory.indexOf(returnCardId);
+
+      if (p1CardIndex === -1) return interaction.followUp({ content: `❌ Trade failed: The initiator no longer owns the offered card!`, flags: MessageFlags.Ephemeral });
+      if (p2CardIndex === -1) return interaction.followUp({ content: `❌ Trade failed: You no longer own the card you tried to trade!`, flags: MessageFlags.Ephemeral });
+
+      // 2. Execute Swap (Remove exactly 1 instance of the card)
+      p1Stats.inventory.splice(p1CardIndex, 1);
+      p2Stats.inventory.splice(p2CardIndex, 1);
+
+      p1Stats.inventory.push(returnCardId);
+      p2Stats.inventory.push(offeredCardId);
+
+      // 3. Deduct specific rarity fee
+      p1Stats.dorayaki -= fee;
+
+      await p1Stats.save();
+      await p2Stats.save();
+
+      // 4. Announce Success!
+      const embed = new EmbedBuilder()
+        .setColor('#00FF00')
+        .setTitle('🔄 Trade Successful!')
+        .setDescription(`<@${initiatorId}> and <@${targetId}> successfully traded equivalent **${offeredCard.rarity}** cards!`)
+        .addFields(
+            { name: `${p1Stats.username} received:`, value: `${returnCard.emoji} **${returnCard.name}**`, inline: true },
+            { name: `${p2Stats.username} received:`, value: `${offeredCard.emoji} **${offeredCard.name}**`, inline: true }
+        )
+        .setFooter({ text: `Trade Fee: ${fee} Dorayaki paid by initiator.` });
+
+      await interaction.message.edit({ content: `✅ **Trade Completed!**`, components: [] });
+      return interaction.channel.send({ embeds: [embed] });
+    }
+
 
 
     // --- 1. HELP MENU LOGIC ---
@@ -1792,6 +1906,56 @@ if (interaction.customId === 'open_pack') {
     return interaction.editReply({ embeds: [embed], components: [row] });
   }
   
+  // =========================
+  // /TRADE (EQUIVALENT RARITY)
+  // =========================
+  if (interaction.commandName === 'trade') {
+    const targetUser = interaction.options.getUser('user');
+    
+    if (targetUser.bot) return interaction.reply({ content: "❌ Bots don't collect cards!", flags: MessageFlags.Ephemeral });
+    if (targetUser.id === interaction.user.id) return interaction.reply({ content: "❌ You can't trade with yourself!", flags: MessageFlags.Ephemeral });
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const p1Stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+    
+    // Check for the bare minimum fee to even open the menu
+    if (p1Stats.dorayaki < 50) {
+      return interaction.editReply(`❌ You need at least **50** ${DORAYAKI_EMOJI} to initiate a trade!`);
+    }
+
+    const inventoryIds = p1Stats.inventory || [];
+    if (inventoryIds.length === 0) {
+      return interaction.editReply(`❌ Your binder is empty! You have nothing to trade.`);
+    }
+
+    const uniqueOwnedIds = [...new Set(inventoryIds)];
+    const ownedCards = CARD_POOL.filter(c => uniqueOwnedIds.includes(c.id));
+
+    // Map cards into a dropdown using the custom value format: targetId|cardId
+    const options = ownedCards.slice(0, 25).map(card => {
+      const count = inventoryIds.filter(id => id === card.id).length;
+      return {
+        label: card.name,
+        description: `Rarity: ${card.rarity} | Owned: x${count}`,
+        value: `${targetUser.id}|${card.id}`, 
+        emoji: card.emoji
+      };
+    });
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId('trade_offer_menu')
+      .setPlaceholder('Choose a card to offer...')
+      .addOptions(options);
+
+    const row = new ActionRowBuilder().addComponents(menu);
+
+    return interaction.editReply({
+      content: `🔄 **Initiate Trade**\nSelect a card from your binder to offer to **${targetUser.username}**.\n*(Fees scale by rarity: Common 50 | Rare 150 | Epic 500 | Mythic 1500 | Legendary 5000)*`,
+      components: [row]
+    });
+  }
+
   
     // --- /IMAGE (POWERED BY POLLINATIONS FLUX - 100% FREE) ---
     if (interaction.commandName === 'image') {
