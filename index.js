@@ -1215,15 +1215,23 @@ if (interaction.customId === 'open_pack') {
           if (i < 5) rewardsText += `**${i + 1}. ${p.username}** — ${p.damage} DMG (+${coinsEarned} ${DORAYAKI_EMOJI})\n`;
         }
 
+        // 🛑 NEW: Edit the original message to show 0 HP and remove the button
+        const endedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+          .setTitle(`🛑 Mythic Boss Raid — ENDED`)
+          .setDescription(`**Boss:** ${updatedBoss.bossName}\n**Remaining HP:** 0 / ${updatedBoss.maxHp.toLocaleString()} HP\n\n\`░░░░░░░░░░\` **0.0%**\n\n💀 **This boss has been defeated!**`);
+
+        await interaction.update({ embeds: [endedEmbed], components: [] });
+
+        // 🎉 NEW: Send the leaderboard and rewards as a new standalone message!
         const deadEmbed = new EmbedBuilder()
           .setColor('#00FF00')
           .setTitle(`🎉 BOSS DEFEATED!`)
           .setDescription(`**${updatedBoss.bossName}** was successfully taken down!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`)
           .setImage(updatedBoss.imageUrl);
 
-        await interaction.update({ embeds: [deadEmbed], components: [] });
-        return interaction.followUp({ content: `💥 **${interaction.user.username}** used the **${selectedGadget.name}** and landed the final blow!` });
+        return interaction.followUp({ content: `💥 **${interaction.user.username}** used the **${selectedGadget.name}** and landed the final blow!`, embeds: [deadEmbed] });
       }
+
 
       // 5. UPDATE HEALTH BAR & RECENT LOGS
       let logsText = '';
