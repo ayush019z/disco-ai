@@ -1925,21 +1925,31 @@ for (let i = 0; i < updatedBoss.damageLeaderboard.length; i++) {
   const coinsEarned = Math.floor(p.damage * 0.8);
 
   // ==========================================
-  // 🎴 RAID DROP ROLL
-  //
-  // 3%  = 2 Card Packs
-  // 10% = 1 Card Pack
-  // 87% = No Card Pack
-  // ==========================================
-  const dropRoll = Math.random();
+// 🎁 RAID DROP ROLL
+// ==========================================
+//
+// 🍀 1%  = 1 Lucky Pack
+// 🎴 3%  = 2 Cards Packs
+// 🎴 10% = 1 Cards Pack
+// ❌ 86% = Nothing
+//
+const dropRoll = Math.random();
 
-  let cardPacksEarned = 0;
+let cardPacksEarned = 0;
+let luckyPacksEarned = 0;
 
-  if (dropRoll < 0.03) {
-    cardPacksEarned = 2;
-  } else if (dropRoll < 0.13) {
-    cardPacksEarned = 1;
-  }
+if (dropRoll < 0.01) {
+  // 🍀 JACKPOT DROP
+  luckyPacksEarned = 1;
+
+} else if (dropRoll < 0.04) {
+  // 3%
+  cardPacksEarned = 2;
+
+} else if (dropRoll < 0.14) {
+  // 10%
+  cardPacksEarned = 1;
+}
 
   try {
     const playerStatsData = await getPlayerStats(
@@ -1954,6 +1964,11 @@ for (let i = 0; i < updatedBoss.damageLeaderboard.length; i++) {
         playerStatsData.cardPacks =
           (playerStatsData.cardPacks || 0) +
           cardPacksEarned;
+      }
+      if (luckyPacksEarned > 0) {
+  playerStatsData.luckyPacks =
+    (playerStatsData.luckyPacks || 0) +
+    luckyPacksEarned;
       }
 
       await playerStatsData.save();
@@ -1973,7 +1988,8 @@ for (let i = 0; i < updatedBoss.damageLeaderboard.length; i++) {
     damage: p.damage,
     placement: i + 1,
     dorayaki: coinsEarned,
-    cardPacks: cardPacksEarned
+    cardPacks: cardPacksEarned,
+    luckyPacks: luckyPacksEarned
   });
 
   // Public leaderboard = DAMAGE ONLY
