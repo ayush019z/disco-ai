@@ -252,7 +252,14 @@ const CARD_POOL = [
   { id: 'r_door', name: 'Anywhere Door', rarity: 'Rare', emoji: '<:carddoor:1539924942026571797>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765410629427371/file_000000002abc82119a7231f18215eec6.png?ex=6a8781c9&is=6a863049&hm=d258279aa07330659b586b54c8245783aed34d1a26b8c50ac658d94b3c2da5a6&' },
   { id: 'r_cannon', name: 'Air Cannon', rarity: 'Rare', emoji: '<:cannon:1539925398094225478>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539909534884171827/file_000000003150821183a2318aacb6c0da.png?ex=6a880803&is=6a86b683&hm=b8958da799ec87fb11f230bfc16ef1af98cade4ab0854ff081071e6e51840432&' },
   { id: 'r_big_light', name: 'Big Light', rarity: 'Rare', emoji: '<:biglight:1539925395858788443>', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539910663592484904/file_000000001f7c8211b76754fc23ee9f25.png?ex=6a880910&is=6a86b790&hm=549af9dece2023de97d7d2e47f7cac46f72b1e7a3319a88cc1b685a6c33c2e42&' },
+{
+  id: 'r_nobita',
+  name: 'Nobita',
+  rarity: 'Rare',
+  emoji: '<:cardnobi:1539924944253620244>',
+  color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765395051774012/file_00000000befc821181e9130966e264c0.png?ex=6a8781c5&is=6a863045&hm=fbf0be43e9a3b7414f6ba6bee02c00d82c58e7e8e5eb19a59630cfc85b9ac6e8&', shinyUrl: 'https://cdn.discordapp.com/attachments/1539765062183555182/1540086664985059338/file_00000000fe3482088e31091ff672060b.png?ex=6a88acfa&is=6a875b7a&hm=c1d56fdb627aefbb5cea93d9d73332a57b09f701d4ad7d46b6c94a5ce206e102&'},
 
+  
   // Epics (12.0% chance)
   { id: 'e_dorami', name: 'Dorami', rarity: 'Epic', emoji: '<:dorami:1539924953393012836>', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766878631632946/file_00000000bfac8211a92355beb397f218.png?ex=6a878327&is=6a8631a7&hm=e9159a61cfc79ba8d1a67daea974cbb91e2d782373147c738eb208854dfe94bb&' },
   { id: 'e_time_machine', name: 'Time Machine', rarity: 'Epic', emoji: '<:timeMachine:1539924955368529940>', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539767461287559188/file_0000000035d082119a518f801a1b3b4a.png?ex=6a8783b2&is=6a863232&hm=4cf7494df151b573cf79d7af44230616f74f5fe6ae2f2d7cea11b33571eb0ccb&' },
@@ -261,7 +268,13 @@ const CARD_POOL = [
 
   // Mythics (5.0% chance)
   { id: 'm_doraemon', name: 'Doraemon', rarity: 'Mythic', emoji: '<:doracard:1539924935248711690>', color: '#FFD700', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765130324086904/file_00000000397c820789fe31e639754b26.png?ex=6a878186&is=6a863006&hm=acc1d2adb6b3eeeabe0bc23b605241f13b606c2da594d142553ea474fe7b241a&' },
-
+{
+  id: 'm_doraemon',
+  name: 'Doraemon',
+  rarity: 'Mythic',
+  emoji: '<:doracard:1539924935248711690>',
+  color: '#FFD700', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765130324086904/file_00000000397c820789fe31e639754b26.png?ex=6a878186&is=6a863006&hm=acc1d2adb6b3eeeabe0bc23b605241f13b606c2da594d142553ea474fe7b241a&', shinyUrl: 'https://cdn.discordapp.com/attachments/1539765062183555182/1540086371153084436/file_00000000c6f48211955db9948de92370.png?ex=6a88acb4&is=6a875b34&hm=0ea7ff9766b523eaa2378d8e38a271a75e8539e9072c7162d11b9b1fc985db4c&'
+},
   // Legendary (0.5% chance)
   { id: 'l_dora_nobi', name: 'Dora × Nobi', rarity: 'Legendary', emoji: '<:legendary:1539924946510151770>', color: '#FF0055', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765488446611523/file_000000009354820882ad9631546ea9d0.png?ex=6a8781db&is=6a86305b&hm=0b697bc59200feb3dfbc74019b0a62d7c4e5b83f8030ff7ffc8b2e07f1ece791&' }
 ];
@@ -1213,16 +1226,44 @@ if (interaction.customId === 'open_pack') {
 
   if (!stats.inventory) stats.inventory = [];
 
+  if (!stats.inventory) stats.inventory = [];
+  
+// ==========================================
+// ✨ SHINY CHECK
+// ==========================================
+let isShiny = false;
+
+// Only cards that actually have a shinyUrl can become shiny
+if (pulledCard.shinyUrl) {
+  isShiny = Math.random() < 0.01; // 1% chance
+}
+
+// Store shiny and normal cards differently
+if (isShiny) {
+  stats.inventory.push(`shiny_${pulledCard.id}`);
+} else {
   stats.inventory.push(pulledCard.id);
-  await stats.save();
+}
+
+await stats.save();
 
   const embed = new EmbedBuilder()
-    .setColor(pulledCard.color)
-    .setTitle(`✨ You ripped open a pack and pulled a ${pulledCard.rarity} Card!`)
-    .setDescription(
-      `**${pulledCard.name}** was added to your pocket.\n📦 **Packs Remaining:** ${stats.cardPacks}`
-    )
-    .setImage(pulledCard.url);
+  .setColor(isShiny ? '#FFFFFF' : pulledCard.color)
+  .setTitle(
+    isShiny
+      ? `✨✨ SHINY PULL! ✨✨`
+      : `✨ You ripped open a pack and pulled a ${pulledCard.rarity} Card!`
+  )
+  .setDescription(
+    isShiny
+      ? `🌟 **SHINY ${pulledCard.name}** [${pulledCard.rarity}] was added to your pocket!\n📦 **Packs Remaining:** ${stats.cardPacks}`
+      : `**${pulledCard.name}** was added to your pocket.\n📦 **Packs Remaining:** ${stats.cardPacks}`
+  )
+  .setImage(
+    isShiny
+      ? pulledCard.shinyUrl
+      : pulledCard.url
+  );
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
