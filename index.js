@@ -238,7 +238,8 @@ imageUrl: { type: String },           // 👈 ADD THIS LINE
   damage: Number,
   placement: Number,
   dorayaki: Number,
-  cardPacks: { type: Number, default: 0 }
+  cardPacks: { type: Number, default: 0 },
+     luckyPacks: { type: Number, default: 0 }
   }]
 });
 const BossRaid = mongoose.model('BossRaid', bossRaidSchema);
