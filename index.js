@@ -1101,6 +1101,89 @@ if (interaction.customId === 'set_featured_card') {
   });
 }
 
+    // ==========================================
+// 📦 PACK TYPE SELECTOR
+// ==========================================
+if (
+  interaction.customId ===
+  'pack_type_menu'
+) {
+  const packType =
+    interaction.values[0];
+
+  const stats =
+    await getPlayerStats(
+      interaction.user.id,
+      interaction.user.username
+    );
+
+  // Safety check
+  if (
+    packType === 'normal' &&
+    (!stats.cardPacks ||
+      stats.cardPacks <= 0)
+  ) {
+    return interaction.update({
+      content:
+        '❌ You no longer have any Cards Packs.',
+      components: []
+    });
+  }
+
+  if (
+    packType === 'lucky' &&
+    (!stats.luckyPacks ||
+      stats.luckyPacks <= 0)
+  ) {
+    return interaction.update({
+      content:
+        '❌ You no longer have any Lucky Packs.',
+      components: []
+    });
+  }
+
+  try {
+    const embed =
+      await openCardPack(
+        stats,
+        packType
+      );
+
+    const remaining =
+      (stats.cardPacks || 0) +
+      (stats.luckyPacks || 0);
+
+    const row =
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('open_pack')
+          .setLabel('Open Another')
+          .setEmoji('📦')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(
+            remaining <= 0
+          )
+      );
+
+    return interaction.update({
+      content: null,
+      embeds: [embed],
+      components: [row]
+    });
+
+  } catch (err) {
+    console.error(
+      'Pack Selector Error:',
+      err
+    );
+
+    return interaction.update({
+      content:
+        '⚠️ Failed to open the selected pack.',
+      components: []
+    });
+  }
+}
     
     // --- 1. HELP MENU LOGIC ---
     if (interaction.customId === 'help_menu') {
@@ -1486,115 +1569,173 @@ if (
       }
     }
 
-    
-      // --- OPEN CARDS PACK BUTTON ---
+    // ==========================================
+// 📦 OPEN PACK BUTTON
+// ==========================================
 if (interaction.customId === 'open_pack') {
   const stats = await getPlayerStats(
     interaction.user.id,
     interaction.user.username
   );
 
-  if (!stats.cardPacks || stats.cardPacks <= 0) {
+  const normalPacks =
+    stats.cardPacks || 0;
+
+  const luckyPacks =
+    stats.luckyPacks || 0;
+
+  // Has absolutely no packs
+  if (
+    normalPacks <= 0 &&
+    luckyPacks <= 0
+  ) {
     return interaction.reply({
-      content: `❌ You don't have any unopened Cards Packs! Buy some from the \`/shop\`.`,
+      content:
+        `❌ You don't have any unopened packs!`,
       flags: MessageFlags.Ephemeral
     });
   }
 
-  stats.cardPacks -= 1;
+  // ==========================================
+  // ONLY NORMAL PACKS
+  // → OPEN DIRECTLY
+  // ==========================================
+  if (
+    normalPacks > 0 &&
+    luckyPacks <= 0
+  ) {
+    try {
+      const embed =
+        await openCardPack(
+          stats,
+          'normal'
+        );
 
-  const roll = Math.random();
-  let pulledRarity = 'Common';
+      const remaining =
+        (stats.cardPacks || 0) +
+        (stats.luckyPacks || 0);
 
-  if (roll > 0.995) pulledRarity = 'Legendary';
-  else if (roll > 0.945) pulledRarity = 'Mythic';
-  else if (roll > 0.825) pulledRarity = 'Epic';
-  else if (roll > 0.525) pulledRarity = 'Rare';
+      const row =
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('open_pack')
+            .setLabel('Open Another')
+            .setEmoji('📦')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(
+              remaining <= 0
+            )
+        );
 
-  let pulledCard;
+      return interaction.reply({
+        embeds: [embed],
+        components: [row]
+      });
 
-  if (pulledRarity === 'Common') {
-    const commonRoll = Math.random();
-
-    if (commonRoll < 0.15) {
-      pulledCard = CARD_POOL.find(c => c.id === 'c_small_light');
-    } else {
-      const regularCommons = CARD_POOL.filter(
-        c => c.rarity === 'Common' && c.id !== 'c_small_light'
+    } catch (err) {
+      console.error(
+        'Normal Pack Error:',
+        err
       );
 
-      pulledCard =
-        regularCommons[Math.floor(Math.random() * regularCommons.length)];
+      return interaction.reply({
+        content:
+          '⚠️ Failed to open the pack.',
+        flags: MessageFlags.Ephemeral
+      });
     }
-  } else {
-    const availableCards = CARD_POOL.filter(
-      c => c.rarity === pulledRarity
-    );
-
-    pulledCard =
-      availableCards[Math.floor(Math.random() * availableCards.length)];
   }
 
-  if (!stats.inventory) stats.inventory = [];
+  // ==========================================
+  // ONLY LUCKY PACKS
+  // → OPEN DIRECTLY
+  // ==========================================
+  if (
+    luckyPacks > 0 &&
+    normalPacks <= 0
+  ) {
+    try {
+      const embed =
+        await openCardPack(
+          stats,
+          'lucky'
+        );
 
-  if (!stats.inventory) stats.inventory = [];
-  
-// ==========================================
-// ✨ SHINY CHECK
-// ==========================================
-let isShiny = false;
+      const remaining =
+        (stats.cardPacks || 0) +
+        (stats.luckyPacks || 0);
 
-// Only cards that actually have a shinyUrl can become shiny
-if (pulledCard.shinyUrl) {
-  isShiny = Math.random() < 0.01; // 1% chance
-}
+      const row =
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('open_pack')
+            .setLabel('Open Another')
+            .setEmoji('📦')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(
+              remaining <= 0
+            )
+        );
 
-// Store shiny and normal cards differently
-if (isShiny) {
-  stats.inventory.push(`shiny_${pulledCard.id}`);
-} else {
-  stats.inventory.push(pulledCard.id);
-}
+      return interaction.reply({
+        embeds: [embed],
+        components: [row]
+      });
 
-await stats.save();
+    } catch (err) {
+      console.error(
+        'Lucky Pack Error:',
+        err
+      );
 
-  const embed = new EmbedBuilder()
-  .setColor(isShiny ? '#FFFFFF' : pulledCard.color)
-  .setTitle(
-    isShiny
-      ? `✨✨ SHINY PULL! ✨✨`
-      : `✨ You ripped open a pack and pulled a ${pulledCard.rarity} Card!`
-  )
-  .setDescription(
-    isShiny
-      ? `🌟 **SHINY ${pulledCard.name}** [${pulledCard.rarity}] was added to your pocket!\n📦 **Packs Remaining:** ${stats.cardPacks}`
-      : `**${pulledCard.name}** was added to your pocket.\n📦 **Packs Remaining:** ${stats.cardPacks}`
-  )
-  .setImage(
-    isShiny
-      ? pulledCard.shinyUrl
-      : pulledCard.url
-  );
+      return interaction.reply({
+        content:
+          '⚠️ Failed to open the Lucky Pack.',
+        flags: MessageFlags.Ephemeral
+      });
+    }
+  }
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('open_pack')
-      .setLabel('Open Another')
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('📦')
-      .setDisabled(stats.cardPacks <= 0)
-  );
+  // ==========================================
+  // PLAYER HAS BOTH
+  // → SHOW PACK TYPE DROPDOWN
+  // ==========================================
+  const menu =
+    new StringSelectMenuBuilder()
+      .setCustomId('pack_type_menu')
+      .setPlaceholder(
+        'Which pack do you want to open?'
+      )
+      .addOptions([
+        {
+          label: 'Cards Pack',
+          description:
+            `Normal rarity odds • ${normalPacks} owned`,
+          value: 'normal',
+          emoji: '📦'
+        },
+
+        {
+          label: 'Lucky Pack',
+          description:
+            `Boosted rarity odds • ${luckyPacks} owned`,
+          value: 'lucky',
+          emoji: '🍀'
+        }
+      ]);
+
+  const row =
+    new ActionRowBuilder()
+      .addComponents(menu);
 
   return interaction.reply({
-    embeds: [embed],
+    content:
+      `📦 **Choose a pack to open:**`,
     components: [row],
-    ephemeral: false
+    flags: MessageFlags.Ephemeral
   });
 }
 
-  
-
-    
     // --- MINI-DORA BUTTONS ---
     if (interaction.customId === 'md_feed') {
       const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
@@ -2894,6 +3035,10 @@ imageUrl: imageUrl, // 👈 Make sure this is here!
     const uniqueOwned = new Set(inventoryIds).size;
     const totalCards = CARD_POOL.length;
     const packs = stats.cardPacks || 0;
+const luckyPacks = stats.luckyPacks || 0;
+
+const totalPacks =
+  packs + luckyPacks;
 
     // 2. Count Duplicates and Group by Rarity
     const cardCounts = {};
@@ -2921,8 +3066,14 @@ imageUrl: imageUrl, // 👈 Make sure this is here!
     if (displayList === '') displayList = '\n*Your binder is empty! Buy a Cards Pack from the `/shop`.*';
 
     // 4. Construct the Embed
-    const desc = `Welcome to your 4D Pocket!\n\n📦 **Unopened Packs:** **${packs}**\n🎴 **Cards Collected:** **${uniqueOwned} / ${totalCards}**\n\n**📖 YOUR BINDER:**${displayList}`;
+    const desc = `Welcome to your 4D Pocket!
 
+📦 **Cards Packs:** **${packs}**
+🍀 **Lucky Packs:** **${luckyPacks}**
+🎴 **Cards Collected:** **${uniqueOwned} / ${totalCards}**
+
+**📖 YOUR BINDER:**${displayList}`;
+    
     const embed = new EmbedBuilder()
       .setColor('#00BFFF')
       .setTitle(`🎒 ${interaction.user.username}'s Collection`)
@@ -2931,13 +3082,21 @@ imageUrl: imageUrl, // 👈 Make sure this is here!
 
     // 5. Build the "Open Pack" button
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('open_pack')
-        .setLabel(packs > 0 ? `Open Pack (${packs})` : 'No Packs Owned')
-        .setStyle(packs > 0 ? ButtonStyle.Success : ButtonStyle.Secondary)
-        .setEmoji('📦')
-        .setDisabled(packs <= 0)
-    );
+  new ButtonBuilder()
+    .setCustomId('open_pack')
+    .setLabel(
+      totalPacks > 0
+        ? `Open Pack (${totalPacks})`
+        : 'No Packs Owned'
+    )
+    .setStyle(
+      totalPacks > 0
+        ? ButtonStyle.Success
+        : ButtonStyle.Secondary
+    )
+    .setEmoji('📦')
+    .setDisabled(totalPacks <= 0)
+);
 
     return interaction.editReply({ embeds: [embed], components: [row] });
   }
