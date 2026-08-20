@@ -1570,31 +1570,105 @@ if (interaction.customId === 'open_pack') {
     return interaction.reply({ embeds: [embed], components: [row] });
   }
 
- // --- /SHOP COMMAND ---
-  if (interaction.commandName === 'shop') {
+ // =========================
+// /SHOP COMMAND
+// =========================
+if (interaction.commandName === 'shop') {
+  try {
+    // ==========================================
+    // ⭐ CHECK FEATURED CARD
+    // ==========================================
+    let featured = await FeaturedShop.findOne({
+      configId: 'featured_shop'
+    });
+
+    if (
+      featured &&
+      featured.enabled &&
+      featured.expiresAt <= Date.now()
+    ) {
+      featured.enabled = false;
+      featured.cardId = null;
+      featured.price = 0;
+      featured.expiresAt = 0;
+
+      await featured.save();
+
+      featured = null;
+    }
+
+    let featuredCard = null;
+
+    if (
+      featured &&
+      featured.enabled &&
+      featured.cardId
+    ) {
+      featuredCard = CARD_POOL.find(
+        c => c.id === featured.cardId
+      );
+    }
+
+    // ==========================================
+    // SHOP EMBED
+    // ==========================================
     const embed = new EmbedBuilder()
       .setColor('#FF9900')
       .setTitle(`🛒 Doraemon's Secret Gadget Shop`)
-      .setDescription(`Welcome to the shop! Spend your hard-earned Dorayaki ${DORAYAKI_EMOJI} on exciting gambles, exclusive server perks, and permanent profile badges.\n\n👇 **Browse today's stock using the menu below!**`)
-      .setFooter({ text: 'No refunds!' });
+      .setDescription(
+        `Welcome to the shop! Spend your hard-earned Dorayaki ${DORAYAKI_EMOJI} on exciting gambles, exclusive server perks, pets and cards.\n\n` +
+        `👇 **Browse today's stock using the menu below!**`
+      )
+      .setFooter({
+        text: 'No refunds!'
+      });
 
-    const row = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('shop_menu')
-        .setPlaceholder('Choose a gadget to buy...')
-        .addOptions([
-          { label: 'Cards Pack', description: 'Cost: 500 Dorayaki. Buy a pack to open in your pocket!', value: 'buy_cardpack', emoji: '🎴' }, // 👈 ADD THIS HERE
-          { label: 'Mystery Box', description: 'Cost: 250 Dorayaki. Test your luck for a coin payout!', value: 'buy_box', emoji: '🎲' },
-          { label: 'VIP Role (7 Days)', description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.', value: 'buy_vip', emoji: '1538990239832612914' },
-          { label: 'Time TV Lottery Ticket', description: 'Cost: 50 Dorayaki. 10% chance to win 1000 Dorayaki!', value: 'buy_lottery', emoji: '1538990835574509638' },
-          { label: 'Mini-Dora Pet', description: 'Cost: 3000 Dorayaki. Generates passive income!', value: 'buy_minidora', emoji: '1539615957562163261' }, // 👈 Updated here!
-          { label: 'Ultimate Profile Badge', description: 'Cost: 5000 Dorayaki. Unlocks a permanent flex badge!', value: 'buy_badge', emoji: '1538976662987735040' }
-        ];
-                     // ==========================================
+    // ==========================================
+    // NORMAL SHOP OPTIONS
+    // ==========================================
+    const shopOptions = [
+      {
+        label: 'Cards Pack',
+        description: 'Cost: 500 Dorayaki. Buy a pack to open in your pocket!',
+        value: 'buy_cardpack',
+        emoji: '🎴'
+      },
+      {
+        label: 'Mystery Box',
+        description: 'Cost: 250 Dorayaki. Test your luck for a coin payout!',
+        value: 'buy_box',
+        emoji: '🎲'
+      },
+      {
+        label: 'VIP Role (7 Days)',
+        description: 'Cost: 1500 Dorayaki. Get the exclusive server VIP role.',
+        value: 'buy_vip',
+        emoji: '1538990239832612914'
+      },
+      {
+        label: 'Time TV Lottery Ticket',
+        description: 'Cost: 50 Dorayaki. 10% chance to win 1000 Dorayaki!',
+        value: 'buy_lottery',
+        emoji: '1538990835574509638'
+      },
+      {
+        label: 'Mini-Dora Pet',
+        description: 'Cost: 3000 Dorayaki. Generates passive income!',
+        value: 'buy_minidora',
+        emoji: '1539615957562163261'
+      },
+      {
+        label: 'Ultimate Profile Badge',
+        description: 'Cost: 5000 Dorayaki. Unlocks a permanent flex badge!',
+        value: 'buy_badge',
+        emoji: '1538976662987735040'
+      }
+    ];
+
+    // ==========================================
     // ⭐ SLOT 7 — FEATURED CARD
     // ==========================================
     if (featuredCard && featured) {
-
       shopOptions.push({
         label: `⭐ ${featuredCard.name}`,
         description:
@@ -1603,28 +1677,25 @@ if (interaction.customId === 'open_pack') {
         emoji: featuredCard.emoji || '⭐'
       });
 
-      // Show Featured Card in the main /shop embed
       embed.addFields({
         name: '⭐ Today\'s Featured Card',
         value:
           `${featuredCard.emoji || '🎴'} **${featuredCard.name}** [${featuredCard.rarity}]\n` +
           `💰 **${featured.price.toLocaleString()}** ${DORAYAKI_EMOJI}\n` +
-          `⏰ Available until <t:${Math.floor(featured.expiresAt / 1000)}:t>`
+          `⏰ Resets <t:${Math.floor(featured.expiresAt / 1000)}:R>`
       });
 
-      // Use the card's existing CARD_POOL image
       if (featuredCard.url) {
         embed.setImage(featuredCard.url);
       }
     } else {
-
       embed.addFields({
         name: '⭐ Today\'s Featured Card',
-        value:
-          `No featured card has been selected yet.`
+        value: 'No featured card has been selected yet.'
       });
     }
-        // ==========================================
+
+    // ==========================================
     // BUILD DROPDOWN
     // ==========================================
     const menu = new StringSelectMenuBuilder()
@@ -1635,26 +1706,21 @@ if (interaction.customId === 'open_pack') {
     const row = new ActionRowBuilder()
       .addComponents(menu);
 
-    // ==========================================
-    // SEND SHOP
-    // ==========================================
     return interaction.reply({
       embeds: [embed],
       components: [row]
     });
 
   } catch (err) {
-
     console.error('Shop Command Error:', err);
 
     return interaction.reply({
-      content:
-        '⚠️ Something went wrong while opening Doraemon\'s shop.',
+      content: '⚠️ Something went wrong while opening Doraemon\'s shop.',
       flags: MessageFlags.Ephemeral
     });
-
   }
-          }
+}
+  
   // =========================
   // /QUESTS (RANDOMIZED DAILY TASKS)
   // =========================
