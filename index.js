@@ -4163,13 +4163,22 @@ if (interaction.commandName === 'minidora') {
       );
 
     row.addComponents(
-      new ButtonBuilder()
-        .setCustomId('md_wait')
-        .setLabel('Exploring...')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(true)
-    );
+  new ButtonBuilder()
+    .setCustomId('md_wait')
+    .setLabel('Exploring...')
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(true)
+);
 
+if (level < 5) {
+  row.addComponents(
+    new ButtonBuilder()
+      .setCustomId('md_upgrade')
+      .setLabel(`Upgrade (${upgradeCosts[level]} 🪙)`)
+      .setEmoji('⬆️')
+      .setStyle(ButtonStyle.Success)
+    );
+}
   // ==========================================
   // STATE 3 — READY TO CLAIM
   // ==========================================
