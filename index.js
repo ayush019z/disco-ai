@@ -679,6 +679,44 @@ client.on(Events.InteractionCreate, async interaction => {
       return interaction.channel.send({ embeds: [embed] });
     }
 
+    // --- SELL CARD MENU ---
+    if (interaction.customId === 'sell_card_menu') {
+      const cardId = interaction.values[0].replace('sell_', '');
+      const targetCard = CARD_POOL.find(c => c.id === cardId);
+
+      if (!targetCard) return interaction.update({ content: `❌ Card not found.`, components: [] });
+
+      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+      const cardIndex = stats.inventory.indexOf(cardId);
+
+      // Security check
+      if (cardIndex === -1) {
+        return interaction.update({ content: `❌ You no longer own this card!`, components: [] });
+      }
+
+      // 🛡️ SAFETY CHECK: Don't let them sell their active Raid buff!
+      const count = stats.inventory.filter(id => id === cardId).length;
+      if (stats.equippedCard === cardId && count === 1) {
+         return interaction.update({ 
+           content: `❌ You cannot sell **${targetCard.name}** because it is currently equipped for Boss Raids and it's your only copy!\n*(Use \`/equip\` to unequip it first).*`, 
+           components: [] 
+         });
+      }
+
+      // 💰 DYNAMIC SELL DICTIONARY (UPDATED)
+      const SELL_PRICES = { 'Common': 50, 'Rare': 150, 'Epic': 300, 'Mythic': 800, 'Legendary': 5000 };
+      const sellValue = SELL_PRICES[targetCard.rarity] || 50;
+
+      // Execute Sale
+      stats.inventory.splice(cardIndex, 1); // Removes exactly 1 instance
+      stats.dorayaki += sellValue;
+      await stats.save();
+
+      return interaction.update({
+        content: `✅ You successfully sold a ${targetCard.emoji} **${targetCard.name}** [${targetCard.rarity}] for **${sellValue}** ${DORAYAKI_EMOJI}!\n💰 **New Balance:** ${stats.dorayaki.toLocaleString()} ${DORAYAKI_EMOJI}`,
+        components: []
+      });
+    }
 
 
     // --- 1. HELP MENU LOGIC ---
@@ -1955,6 +1993,51 @@ if (interaction.customId === 'open_pack') {
       components: [row]
     });
   }
+
+  // =========================
+  // /SELL (EXCHANGE CARDS FOR COINS)
+  // =========================
+  if (interaction.commandName === 'sell') {
+    await interaction.deferReply({ ephemeral: true });
+    const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+
+    const inventoryIds = stats.inventory || [];
+    if (inventoryIds.length === 0) {
+      return interaction.editReply(`❌ Your binder is completely empty! You have nothing to sell.`);
+    }
+
+    const uniqueOwnedIds = [...new Set(inventoryIds)];
+    const ownedCards = CARD_POOL.filter(c => uniqueOwnedIds.includes(c.id));
+
+    // 💰 DYNAMIC SELL DICTIONARY (UPDATED)
+    const SELL_PRICES = { 'Common': 50, 'Rare': 150, 'Epic': 300, 'Mythic': 800, 'Legendary': 5000 };
+
+    // Map cards into a dropdown (Max 25 items)
+    const options = ownedCards.slice(0, 25).map(card => {
+      const count = inventoryIds.filter(id => id === card.id).length;
+      const isEquipped = stats.equippedCard === card.id ? " (Equipped)" : "";
+      
+      return {
+        label: `${card.name}${isEquipped}`,
+        description: `Sell Value: ${SELL_PRICES[card.rarity]} 🪙 | Owned: x${count}`,
+        value: `sell_${card.id}`,
+        emoji: card.emoji
+      };
+    });
+
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId('sell_card_menu')
+      .setPlaceholder('Choose a duplicate card to sell...')
+      .addOptions(options);
+
+    const row = new ActionRowBuilder().addComponents(menu);
+
+    return interaction.editReply({
+      content: `💰 **Card Sell-Back System**\nSelect a card from your binder to sell for Dorayaki!\n\n*(Values: Common 50 | Rare 150 | Epic 300 | Mythic 800 | Legendary 5000)*`,
+      components: [row]
+    });
+  }
+
 
   
     // --- /IMAGE (POWERED BY POLLINATIONS FLUX - 100% FREE) ---
