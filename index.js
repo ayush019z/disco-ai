@@ -704,7 +704,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       // 💰 DYNAMIC SELL DICTIONARY (UPDATED)
-      const SELL_PRICES = { 'Common': 50, 'Rare': 150, 'Epic': 300, 'Mythic': 800, 'Legendary': 5000 };
+      const SELL_PRICES = { 'Common': 75, 'Rare': 200, 'Epic': 300, 'Mythic': 800, 'Legendary': 5000 };
       const sellValue = SELL_PRICES[targetCard.rarity] || 50;
 
       // Execute Sale
@@ -2010,7 +2010,7 @@ if (interaction.customId === 'open_pack') {
     const ownedCards = CARD_POOL.filter(c => uniqueOwnedIds.includes(c.id));
 
     // 💰 DYNAMIC SELL DICTIONARY (UPDATED)
-    const SELL_PRICES = { 'Common': 50, 'Rare': 150, 'Epic': 300, 'Mythic': 800, 'Legendary': 5000 };
+    const SELL_PRICES = { 'Common': 75, 'Rare': 200, 'Epic': 300, 'Mythic': 800, 'Legendary': 5000 };
 
     // Map cards into a dropdown (Max 25 items)
     const options = ownedCards.slice(0, 25).map(card => {
