@@ -766,61 +766,85 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
     }
 
     
-      
+      // --- OPEN CARDS PACK BUTTON ---
+if (interaction.customId === 'open_pack') {
+  const stats = await getPlayerStats(
+    interaction.user.id,
+    interaction.user.username
+  );
 
-            // 1. Consume 1 pack
-      stats.cardPacks -= 1;
+  if (!stats.cardPacks || stats.cardPacks <= 0) {
+    return interaction.reply({
+      content: `❌ You don't have any unopened Cards Packs! Buy some from the \`/shop\`.`,
+      flags: MessageFlags.Ephemeral
+    });
+  }
 
-      // 2. Roll the RNG for Rarity (Legendary locked at 0.5%, Commons reduced)
-      const roll = Math.random();
-      let pulledRarity = 'Common';
-      
-      if (roll > 0.995) pulledRarity = 'Legendary';   // 0.5% chance (Unchanged)
-      else if (roll > 0.945) pulledRarity = 'Mythic'; // 5.0% chance
-      else if (roll > 0.825) pulledRarity = 'Epic';   // 12.0% chance
-      else if (roll > 0.525) pulledRarity = 'Rare';   // 30.0% chance
-      // else Common (52.5% chance)
+  stats.cardPacks -= 1;
 
-      let pulledCard;
+  const roll = Math.random();
+  let pulledRarity = 'Common';
 
-      if (pulledRarity === 'Common') {
-        // Keeps your weighted rule for Small Light being a bit rarer among commons
-        const commonRoll = Math.random();
-        if (commonRoll < 0.15) {
-          pulledCard = CARD_POOL.find(c => c.id === 'c_small_light');
-        } else {
-          const regularCommons = CARD_POOL.filter(c => c.rarity === 'Common' && c.id !== 'c_small_light');
-          pulledCard = regularCommons[Math.floor(Math.random() * regularCommons.length)];
-        }
-      } else {
-        // Standard random picker for other tiers
-        const availableCards = CARD_POOL.filter(c => c.rarity === pulledRarity);
-        pulledCard = availableCards[Math.floor(Math.random() * availableCards.length)];
-      }
+  if (roll > 0.995) pulledRarity = 'Legendary';
+  else if (roll > 0.945) pulledRarity = 'Mythic';
+  else if (roll > 0.825) pulledRarity = 'Epic';
+  else if (roll > 0.525) pulledRarity = 'Rare';
 
-      if (!stats.inventory) stats.inventory = [];
-      stats.inventory.push(pulledCard.id);
-      await stats.save();
+  let pulledCard;
 
-      // 4. Build the Reveal
-      const embed = new EmbedBuilder()
-        .setColor(pulledCard.color)
-        .setTitle(`✨ You ripped open a pack and pulled a ${pulledCard.rarity} Card!`)
-        .setDescription(`**${pulledCard.name}** was added to your pocket.\n📦 **Packs Remaining:** ${stats.cardPacks}`)
-        .setImage(pulledCard.url);
-      
-      // Build the button so they can keep opening more
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('open_pack')
-          .setLabel('Open Another')
-          .setStyle(ButtonStyle.Primary)
-          .setEmoji('📦')
-          .setDisabled(stats.cardPacks <= 0)
+  if (pulledRarity === 'Common') {
+    const commonRoll = Math.random();
+
+    if (commonRoll < 0.15) {
+      pulledCard = CARD_POOL.find(c => c.id === 'c_small_light');
+    } else {
+      const regularCommons = CARD_POOL.filter(
+        c => c.rarity === 'Common' && c.id !== 'c_small_light'
       );
 
-      return interaction.reply({ embeds: [embed], components: [row], ephemeral: false });
+      pulledCard =
+        regularCommons[Math.floor(Math.random() * regularCommons.length)];
     }
+  } else {
+    const availableCards = CARD_POOL.filter(
+      c => c.rarity === pulledRarity
+    );
+
+    pulledCard =
+      availableCards[Math.floor(Math.random() * availableCards.length)];
+  }
+
+  if (!stats.inventory) stats.inventory = [];
+
+  stats.inventory.push(pulledCard.id);
+  await stats.save();
+
+  const embed = new EmbedBuilder()
+    .setColor(pulledCard.color)
+    .setTitle(`✨ You ripped open a pack and pulled a ${pulledCard.rarity} Card!`)
+    .setDescription(
+      `**${pulledCard.name}** was added to your pocket.\n📦 **Packs Remaining:** ${stats.cardPacks}`
+    )
+    .setImage(pulledCard.url);
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('open_pack')
+      .setLabel('Open Another')
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji('📦')
+      .setDisabled(stats.cardPacks <= 0)
+  );
+
+  return interaction.reply({
+    embeds: [embed],
+    components: [row],
+    ephemeral: false
+  });
+}
+
+  
+
     
     // --- MINI-DORA BUTTONS ---
     if (interaction.customId === 'md_feed') {
