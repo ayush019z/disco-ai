@@ -236,6 +236,11 @@ const commands = [
     ),
   
   new SlashCommandBuilder()
+    .setName('equip')
+    .setDescription('Equip a rare card from your binder to get damage buffs in Boss Raids!'),
+
+
+  new SlashCommandBuilder()
     .setName('flex')
     .setDescription('Flex your rare cards or choose one from your binder to show off!'),
   
