@@ -231,8 +231,10 @@ const BossRaid = mongoose.model('BossRaid', bossRaidSchema);
 // GACHA CARD POOL
 // =========================
 const CARD_POOL = [
-  // Commons (65% chance)
+  // Commons (65% total chance)
   { id: 'c_bamboo', name: 'Bamboo Copter', rarity: 'Common', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539767761478090763/file_0000000091e88211a96086e47840ccb0.png?ex=6a8783f9&is=6a863279&hm=04212c54bffb1bc250d58e7a0e0d65b5caa01da7928f4fe47621df8b5ffad59c&' },
+  { id: 'c_jelly', name: 'Translation Jelly', rarity: 'Common', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539909521856798740/file_000000009700821188a0f710227e554c.png?ex=6a880800&is=6a86b680&hm=87fa4b3b8872a89a29d5160ac31b7e4548c51b2b1900baceeedeacf8144226dc&' },
+  { id: 'c_small_light', name: 'Small Light', rarity: 'Common', color: '#BDBDBD', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539910553995182080/file_00000000055482118241cb2a1c94baf5.png?ex=6a8808f6&is=6a86b776&hm=6212744ccfc40841a414fe2482e4ec58c1534dd30c710bb8cf9ba32d3b91ab16&' },
 
   // Rares (23% chance)
   { id: 'r_nobita', name: 'Nobita', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765395051774012/file_00000000befc821181e9130966e264c0.png?ex=6a8781c5&is=6a863045&hm=fbf0be43e9a3b7414f6ba6bee02c00d82c58e7e8e5eb19a59630cfc85b9ac6e8&' },
@@ -240,6 +242,8 @@ const CARD_POOL = [
   { id: 'r_suneo', name: 'Suneo', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766533398466710/file_0000000068c08211bdf19ffa1bbbfcf3.png?ex=6a8782d5&is=6a863155&hm=ed44ff1e8fce7677280707f93573f4c20d6adb0bfe600a0a9df0fade995cca4a&' },
   { id: 'r_gian', name: 'Gian', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765291234369649/file_00000000dd988208b16eb24b64a0e80f.png?ex=6a8781ac&is=6a86302c&hm=a3e7d1b6a768a8e326ce50196f6a1ba33142d97bebe97100226d05b4756c44b9&' },
   { id: 'r_door', name: 'Anywhere Door', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765410629427371/file_000000002abc82119a7231f18215eec6.png?ex=6a8781c9&is=6a863049&hm=d258279aa07330659b586b54c8245783aed34d1a26b8c50ac658d94b3c2da5a6&' },
+  { id: 'r_cannon', name: 'Air Cannon', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539909534884171827/file_000000003150821183a2318aacb6c0da.png?ex=6a880803&is=6a86b683&hm=b8958da799ec87fb11f230bfc16ef1af98cade4ab0854ff081071e6e51840432&' },
+  { id: 'r_big_light', name: 'Big Light', rarity: 'Rare', color: '#00BFFF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539910663592484904/file_000000001f7c8211b76754fc23ee9f25.png?ex=6a880910&is=6a86b790&hm=549af9dece2023de97d7d2e47f7cac46f72b1e7a3319a88cc1b685a6c33c2e42&' },
 
   // Epics (9% chance)
   { id: 'e_dorami', name: 'Dorami', rarity: 'Epic', color: '#9933FF', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539766878631632946/file_00000000bfac8211a92355beb397f218.png?ex=6a878327&is=6a8631a7&hm=e9159a61cfc79ba8d1a67daea974cbb91e2d782373147c738eb208854dfe94bb&' },
@@ -253,6 +257,12 @@ const CARD_POOL = [
   // Legendary (0.5% chance)
   { id: 'l_dora_nobi', name: 'Dora × Nobi', rarity: 'Legendary', color: '#FF0055', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765488446611523/file_000000009354820882ad9631546ea9d0.png?ex=6a8781db&is=6a86305b&hm=0b697bc59200feb3dfbc74019b0a62d7c4e5b83f8030ff7ffc8b2e07f1ece791&' }
 ];
+
+
+  
+  
+
+  
 
 
 // Helper function to safely fetch or initialize user stats
@@ -755,28 +765,38 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
       }
     }
 
-    // --- OPEN CARDS PACK BUTTON ---
-    if (interaction.customId === 'open_pack') {
-      const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
+    
       
-      if (!stats.cardPacks || stats.cardPacks <= 0) {
-        return interaction.reply({ content: `❌ You don't have any unopened Cards Packs! Buy some from the \`/shop\`.`, ephemeral: true });
-      }
 
-      // 1. Consume 1 pack
+            // 1. Consume 1 pack
       stats.cardPacks -= 1;
 
-      // 2. Roll the RNG for Rarity
+      // 2. Roll the RNG for Rarity (Legendary locked at 0.5%, Commons reduced)
       const roll = Math.random();
       let pulledRarity = 'Common';
-      if (roll > 0.995) pulledRarity = 'Legendary';   
-      else if (roll > 0.970) pulledRarity = 'Mythic'; 
-      else if (roll > 0.880) pulledRarity = 'Epic';   
-      else if (roll > 0.650) pulledRarity = 'Rare';   
+      
+      if (roll > 0.995) pulledRarity = 'Legendary';   // 0.5% chance (Unchanged)
+      else if (roll > 0.945) pulledRarity = 'Mythic'; // 5.0% chance
+      else if (roll > 0.825) pulledRarity = 'Epic';   // 12.0% chance
+      else if (roll > 0.525) pulledRarity = 'Rare';   // 30.0% chance
+      // else Common (52.5% chance)
 
-      // 3. Pick random card & save
-      const availableCards = CARD_POOL.filter(c => c.rarity === pulledRarity);
-      const pulledCard = availableCards[Math.floor(Math.random() * availableCards.length)];
+      let pulledCard;
+
+      if (pulledRarity === 'Common') {
+        // Keeps your weighted rule for Small Light being a bit rarer among commons
+        const commonRoll = Math.random();
+        if (commonRoll < 0.15) {
+          pulledCard = CARD_POOL.find(c => c.id === 'c_small_light');
+        } else {
+          const regularCommons = CARD_POOL.filter(c => c.rarity === 'Common' && c.id !== 'c_small_light');
+          pulledCard = regularCommons[Math.floor(Math.random() * regularCommons.length)];
+        }
+      } else {
+        // Standard random picker for other tiers
+        const availableCards = CARD_POOL.filter(c => c.rarity === pulledRarity);
+        pulledCard = availableCards[Math.floor(Math.random() * availableCards.length)];
+      }
 
       if (!stats.inventory) stats.inventory = [];
       stats.inventory.push(pulledCard.id);
