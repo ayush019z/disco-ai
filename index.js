@@ -268,7 +268,38 @@ const CARD_POOL = [
 
 
   
-  
+  const featuredShopSchema = new mongoose.Schema({
+  configId: {
+    type: String,
+    default: 'featured_shop',
+    unique: true
+  },
+
+  cardId: {
+    type: String,
+    default: null
+  },
+
+  price: {
+    type: Number,
+    default: 0
+  },
+
+  expiresAt: {
+    type: Number,
+    default: 0
+  },
+
+  enabled: {
+    type: Boolean,
+    default: false
+  }
+});
+
+const FeaturedShop = mongoose.model(
+  'FeaturedShop',
+  featuredShopSchema
+);
 
   
 
@@ -736,7 +767,92 @@ client.on(Events.InteractionCreate, async interaction => {
       });
     }
 
+// ==========================================
+// ⭐ OWNER FEATURED CARD PICKER
+// ==========================================
+if (interaction.customId === 'set_featured_card') {
 
+  if (interaction.user.id !== OWNER_ID) {
+    return interaction.reply({
+      content: '🚫 Only the bot owner can use this menu.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const [cardId, priceString] =
+    interaction.values[0].split('|');
+
+  const price = Number(priceString);
+
+  const card = CARD_POOL.find(
+    c => c.id === cardId
+  );
+
+  if (!card) {
+    return interaction.update({
+      content: '❌ Card not found.',
+      components: []
+    });
+  }
+
+  // ==========================================
+  // CALCULATE NEXT MIDNIGHT IST
+  // ==========================================
+  const now = Date.now();
+
+  const istOffset =
+    5.5 * 60 * 60 * 1000;
+
+  const currentIST =
+    now + istOffset;
+
+  const oneDay =
+    24 * 60 * 60 * 1000;
+
+  const nextMidnightIST =
+    currentIST -
+    (currentIST % oneDay) +
+    oneDay;
+
+  const expiresAt =
+    nextMidnightIST - istOffset;
+
+  await FeaturedShop.findOneAndUpdate(
+    {
+      configId: 'featured_shop'
+    },
+    {
+      cardId: card.id,
+      price: price,
+      expiresAt: expiresAt,
+      enabled: true
+    },
+    {
+      upsert: true,
+      new: true
+    }
+  );
+
+  const embed = new EmbedBuilder()
+    .setColor(card.color)
+    .setTitle('⭐ Featured Card Set!')
+    .setDescription(
+      `${card.emoji} **${card.name}**\n` +
+      `✨ **Rarity:** ${card.rarity}\n` +
+      `💰 **Price:** ${price.toLocaleString()} ${DORAYAKI_EMOJI}\n\n` +
+      `⏰ Available until <t:${Math.floor(expiresAt / 1000)}:F>\n` +
+      `*Resets <t:${Math.floor(expiresAt / 1000)}:R>*`
+    )
+    .setImage(card.url);
+
+  return interaction.update({
+    content: null,
+    embeds: [embed],
+    components: []
+  });
+}
+
+    
     // --- 1. HELP MENU LOGIC ---
     if (interaction.customId === 'help_menu') {
       const selected = interaction.values[0];
@@ -936,6 +1052,71 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
 
         return interaction.reply({ content: `<:dora:1539615957562163261> **SUCCESS!** You purchased a Mini-Dora! Type \`/minidora\` to feed it and start generating passive income!`, flags: MessageFlags.Ephemeral });
       }
+// ==========================================
+// ⭐ 7. FEATURED CARD PURCHASE
+// ==========================================
+if (selectedValue === 'buy_featured_card') {
+  const featured = await FeaturedShop.findOne({
+    configId: 'featured_shop',
+    enabled: true
+  });
+
+  if (!featured || featured.expiresAt <= Date.now()) {
+    return interaction.reply({
+      content: `⏰ Today's Featured Card is no longer available.`,
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const card = CARD_POOL.find(
+    c => c.id === featured.cardId
+  );
+
+  if (!card) {
+    return interaction.reply({
+      content: '❌ Featured Card could not be found.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const stats = await getPlayerStats(
+    interaction.user.id,
+    interaction.user.username
+  );
+
+  if (stats.dorayaki < featured.price) {
+    return interaction.reply({
+      content:
+        `❌ You need **${featured.price.toLocaleString()}** ${DORAYAKI_EMOJI} to buy **${card.name}**!\n` +
+        `💰 Balance: **${stats.dorayaki.toLocaleString()}** ${DORAYAKI_EMOJI}`,
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  stats.dorayaki -= featured.price;
+
+  if (!stats.inventory) {
+    stats.inventory = [];
+  }
+
+  stats.inventory.push(card.id);
+
+  await stats.save();
+
+  const featuredEmbed = new EmbedBuilder()
+    .setColor(card.color)
+    .setTitle('⭐ FEATURED CARD PURCHASED!')
+    .setDescription(
+      `${card.emoji || '🎴'} **${card.name}** [${card.rarity}]\n\n` +
+      `💰 Paid: **${featured.price.toLocaleString()}** ${DORAYAKI_EMOJI}\n` +
+      `💳 New Balance: **${stats.dorayaki.toLocaleString()}** ${DORAYAKI_EMOJI}`
+    )
+    .setImage(card.url);
+
+  return interaction.reply({
+    embeds: [featuredEmbed]
+  });
+}
     return; // <--- CRITICAL MAGIC LINE: Stops Discord from breaking!
   }
   }
@@ -1408,12 +1589,72 @@ if (interaction.customId === 'open_pack') {
           { label: 'Time TV Lottery Ticket', description: 'Cost: 50 Dorayaki. 10% chance to win 1000 Dorayaki!', value: 'buy_lottery', emoji: '1538990835574509638' },
           { label: 'Mini-Dora Pet', description: 'Cost: 3000 Dorayaki. Generates passive income!', value: 'buy_minidora', emoji: '1539615957562163261' }, // 👈 Updated here!
           { label: 'Ultimate Profile Badge', description: 'Cost: 5000 Dorayaki. Unlocks a permanent flex badge!', value: 'buy_badge', emoji: '1538976662987735040' }
-        ])
-    );
+        ];
+                     // ==========================================
+    // ⭐ SLOT 7 — FEATURED CARD
+    // ==========================================
+    if (featuredCard && featured) {
 
-    return interaction.reply({ embeds: [embed], components: [row] });
+      shopOptions.push({
+        label: `⭐ ${featuredCard.name}`,
+        description:
+          `${featuredCard.rarity} Card • Cost: ${featured.price.toLocaleString()} Dorayaki`,
+        value: 'buy_featured_card',
+        emoji: featuredCard.emoji || '⭐'
+      });
+
+      // Show Featured Card in the main /shop embed
+      embed.addFields({
+        name: '⭐ Today\'s Featured Card',
+        value:
+          `${featuredCard.emoji || '🎴'} **${featuredCard.name}** [${featuredCard.rarity}]\n` +
+          `💰 **${featured.price.toLocaleString()}** ${DORAYAKI_EMOJI}\n` +
+          `⏰ Available until <t:${Math.floor(featured.expiresAt / 1000)}:t>`
+      });
+
+      // Use the card's existing CARD_POOL image
+      if (featuredCard.url) {
+        embed.setImage(featuredCard.url);
+      }
+    } else {
+
+      embed.addFields({
+        name: '⭐ Today\'s Featured Card',
+        value:
+          `No featured card has been selected yet.`
+      });
+    }
+        // ==========================================
+    // BUILD DROPDOWN
+    // ==========================================
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId('shop_menu')
+      .setPlaceholder('Choose a gadget or card to buy...')
+      .addOptions(shopOptions);
+
+    const row = new ActionRowBuilder()
+      .addComponents(menu);
+
+    // ==========================================
+    // SEND SHOP
+    // ==========================================
+    return interaction.reply({
+      embeds: [embed],
+      components: [row]
+    });
+
+  } catch (err) {
+
+    console.error('Shop Command Error:', err);
+
+    return interaction.reply({
+      content:
+        '⚠️ Something went wrong while opening Doraemon\'s shop.',
+      flags: MessageFlags.Ephemeral
+    });
+
   }
-
+          }
   // =========================
   // /QUESTS (RANDOMIZED DAILY TASKS)
   // =========================
@@ -1469,7 +1710,51 @@ if (interaction.customId === 'open_pack') {
     return interaction.editReply({ embeds: [embed], components: [row] });
   }
   
+// =========================
+// /SETSHOPCARD
+// =========================
+if (interaction.commandName === 'setshopcard') {
 
+  if (interaction.user.id !== OWNER_ID) {
+    return interaction.reply({
+      content: '🚫 Only the bot owner can set the Featured Card.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const price = interaction.options.getInteger('price');
+
+  if (!price || price < 1) {
+    return interaction.reply({
+      content: '❌ Enter a valid price.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  // Automatically generate list from CARD_POOL
+  const options = CARD_POOL.map(card => ({
+    label: card.name,
+    description: `${card.rarity} • Featured price: ${price.toLocaleString()} Dorayaki`,
+    value: `${card.id}|${price}`,
+    emoji: card.emoji
+  }));
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('set_featured_card')
+    .setPlaceholder('Choose today\'s Featured Card...')
+    .addOptions(options);
+
+  const row = new ActionRowBuilder()
+    .addComponents(menu);
+
+  return interaction.reply({
+    content:
+      `⭐ **Choose today's Featured Card**\n` +
+      `💰 Shop Price: **${price.toLocaleString()} ${DORAYAKI_EMOJI}**`,
+    components: [row],
+    flags: MessageFlags.Ephemeral
+  });
+}
     // --- /STATS COMMAND ---
   if (interaction.commandName === 'stats') {
     // Fetch the permanent stats from MongoDB
