@@ -390,8 +390,11 @@ client.once(Events.ClientReady, () => {
   // 2. Post every 30 minutes (30 minutes * 60 seconds * 1000 milliseconds)
   setInterval(postBotStats, 30 * 60 * 1000);
 
-  // ==========================================
-  // 🛡️ GIAN RAID RECOVERY & PAYOUT INTERVAL
+  
+          
+          
+        // ==========================================
+  // 🛡️ BOSS RAID RECOVERY & PAYOUT INTERVAL
   // ==========================================
   setInterval(async () => {
     try {
@@ -428,25 +431,34 @@ client.once(Events.ClientReady, () => {
       if (deadBoss.channelId) {
         const channel = await client.channels.fetch(deadBoss.channelId).catch(() => null);
         if (channel) {
+          
+          // 1. UPDATE THE ORIGINAL POST TO SHOW 0 HP AND "ENDED"
           if (deadBoss.messageId) {
             const oldMsg = await channel.messages.fetch(deadBoss.messageId).catch(() => null);
-            if (oldMsg) {
-              await oldMsg.edit({ components: [] }).catch(() => {});
+            if (oldMsg && oldMsg.embeds.length > 0) {
+              const endedEmbed = EmbedBuilder.from(oldMsg.embeds[0])
+                .setTitle(`🛑 Mythic Boss Raid — ENDED`)
+                .setDescription(`**Boss:** ${deadBoss.bossName}\n**Remaining HP:** 0 / ${deadBoss.maxHp.toLocaleString()} HP\n\n\`░░░░░░░░░░\` **0.0%**\n\n💀 **This boss has been defeated!**`);
+              await oldMsg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
             }
           }
 
+          // 2. SEND THE UNIVERSAL SUCCESS PAYOUT MESSAGE
           const deadEmbed = new EmbedBuilder()
             .setColor('#00FF00')
-            .setTitle(`🎉 GIAN DEFEATED!`)
-            .setDescription(`**${deadBoss.bossName}**'s terrible concert was stopped!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`);
+            .setTitle(`🎉 BOSS DEFEATED!`)
+            .setDescription(`**${deadBoss.bossName}** was successfully taken down!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`)
+            // Fallback to Gian image if it's an older raid in the database
+            .setImage(deadBoss.imageUrl || 'https://i.ibb.co/6ccFh3PR/7mxjacjq6yc91.jpg'); 
 
           await channel.send({ embeds: [deadEmbed] });
         }
       }
     } catch (err) {
-      console.error('Gian Raid recovery interval error:', err);
+      console.error('Boss Raid recovery interval error:', err);
     }
   }, 10000);
+
 
   // 👆 NEW RECOVERY LOOP ENDS HERE 👆
 
