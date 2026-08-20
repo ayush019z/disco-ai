@@ -675,75 +675,306 @@ client.once(Events.ClientReady, () => {
   // 2. Post every 30 minutes (30 minutes * 60 seconds * 1000 milliseconds)
   setInterval(postBotStats, 30 * 60 * 1000);
 
-  
-          
-          
-        // ==========================================
-  // 🛡️ BOSS RAID RECOVERY & PAYOUT INTERVAL
   // ==========================================
-  setInterval(async () => {
-    try {
-      const deadBoss = await BossRaid.findOne({ currentHp: { $lte: 0 }, rewarded: false });
-      if (!deadBoss) return;
+// 🛡️ BOSS RAID RECOVERY & PAYOUT INTERVAL
+// ==========================================
+setInterval(async () => {
+  try {
 
-      deadBoss.rewarded = true;
-      deadBoss.isActive = false;
-      await deadBoss.save();
+    const deadBoss = await BossRaid.findOne({
+      currentHp: { $lte: 0 },
+      rewarded: false
+    });
 
-      deadBoss.damageLeaderboard.sort((a, b) => b.damage - a.damage);
-      let rewardsText = '';
+    if (!deadBoss) return;
 
-      for (let i = 0; i < deadBoss.damageLeaderboard.length; i++) {
-        const p = deadBoss.damageLeaderboard[i];
-        const coinsEarned = Math.floor(p.damage * 0.8);
-        
-        try {
-          const stats = await getPlayerStats(p.userId, p.username);
-          if (stats) {
-            stats.dorayaki += coinsEarned;
-            await stats.save();
-          }
-        } catch (e) {
-          console.error('Background recovery failed to reward player:', e);
-        }
+    // ==========================================
+    // 🔒 CLAIM THIS RAID FOR RECOVERY
+    // ==========================================
+    // Mark immediately so another interval
+    // cannot reward it again.
+    deadBoss.rewarded = true;
+    deadBoss.isActive = false;
+    deadBoss.currentHp = 0;
 
-        if (i < 5) {
-          rewardsText += `**${i + 1}. ${p.username}** — ${p.damage} DMG (+${coinsEarned} ${DORAYAKI_EMOJI})\n`;
-        }
+    await deadBoss.save();
+
+    // ==========================================
+    // 🏆 SORT DAMAGE
+    // ==========================================
+    deadBoss.damageLeaderboard.sort(
+      (a, b) => b.damage - a.damage
+    );
+
+    let leaderboardText = '';
+    const raidRewards = [];
+
+    // ==========================================
+    // 🎁 PAY EVERY PARTICIPANT
+    // ==========================================
+    for (
+      let i = 0;
+      i < deadBoss.damageLeaderboard.length;
+      i++
+    ) {
+
+      const p =
+        deadBoss.damageLeaderboard[i];
+
+      const coinsEarned =
+        Math.floor(p.damage * 0.8);
+
+      // ==========================================
+      // 🎲 RAID DROP
+      // ==========================================
+      const dropRoll = Math.random();
+
+      let cardPacksEarned = 0;
+      let luckyPacksEarned = 0;
+
+      // 🍀 1% Lucky Pack
+      if (dropRoll < 0.01) {
+
+        luckyPacksEarned = 1;
+
+      // 🎴 3% Two normal packs
+      } else if (dropRoll < 0.04) {
+
+        cardPacksEarned = 2;
+
+      // 🎴 10% One normal pack
+      } else if (dropRoll < 0.14) {
+
+        cardPacksEarned = 1;
       }
 
-      // Post victory message to the channel
-      if (deadBoss.channelId) {
-        const channel = await client.channels.fetch(deadBoss.channelId).catch(() => null);
-        if (channel) {
-          
-          // 1. UPDATE THE ORIGINAL POST TO SHOW 0 HP AND "ENDED"
-          if (deadBoss.messageId) {
-            const oldMsg = await channel.messages.fetch(deadBoss.messageId).catch(() => null);
-            if (oldMsg && oldMsg.embeds.length > 0) {
-              const endedEmbed = EmbedBuilder.from(oldMsg.embeds[0])
-                .setTitle(`🛑 Mythic Boss Raid — ENDED`)
-                .setDescription(`**Boss:** ${deadBoss.bossName}\n**Remaining HP:** 0 / ${deadBoss.maxHp.toLocaleString()} HP\n\n\`░░░░░░░░░░\` **0.0%**\n\n💀 **This boss has been defeated!**`);
-              await oldMsg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
-            }
+      // ==========================================
+      // 💰 GIVE REWARDS
+      // ==========================================
+      try {
+
+        const stats =
+          await getPlayerStats(
+            p.userId,
+            p.username
+          );
+
+        if (stats) {
+
+          stats.dorayaki +=
+            coinsEarned;
+
+          if (cardPacksEarned > 0) {
+
+            stats.cardPacks =
+              (stats.cardPacks || 0) +
+              cardPacksEarned;
           }
 
-          // 2. SEND THE UNIVERSAL SUCCESS PAYOUT MESSAGE
-          const deadEmbed = new EmbedBuilder()
-            .setColor('#00FF00')
-            .setTitle(`🎉 BOSS DEFEATED!`)
-            .setDescription(`**${deadBoss.bossName}** was successfully taken down!\n\n🏆 **Top Attackers & Rewards:**\n${rewardsText || 'No rewards calculated.'}`)
-            // Fallback to Gian image if it's an older raid in the database
-            .setImage(deadBoss.imageUrl || 'https://i.ibb.co/6ccFh3PR/7mxjacjq6yc91.jpg'); 
+          if (luckyPacksEarned > 0) {
 
-          await channel.send({ embeds: [deadEmbed] });
+            stats.luckyPacks =
+              (stats.luckyPacks || 0) +
+              luckyPacksEarned;
+          }
+
+          await stats.save();
         }
+
+      } catch (e) {
+
+        console.error(
+          'Background recovery failed to reward player:',
+          e
+        );
       }
-    } catch (err) {
-      console.error('Boss Raid recovery interval error:', err);
+
+      // ==========================================
+      // 💾 SAVE PRIVATE RAID REWARD
+      // ==========================================
+      raidRewards.push({
+        userId: p.userId,
+        username: p.username,
+        damage: p.damage,
+        placement: i + 1,
+        dorayaki: coinsEarned,
+        cardPacks: cardPacksEarned,
+        luckyPacks: luckyPacksEarned
+      });
+
+      // ==========================================
+      // 🏆 PUBLIC TOP 5 — DAMAGE ONLY
+      // ==========================================
+      if (i < 5) {
+
+        const medal =
+          i === 0 ? '🥇' :
+          i === 1 ? '🥈' :
+          i === 2 ? '🥉' :
+          `${i + 1}.`;
+
+        leaderboardText +=
+          `${medal} **${p.username}** — **${p.damage.toLocaleString()} DMG**\n`;
+      }
     }
-  }, 10000);
 
+    // ==========================================
+    // 💾 SAVE RAID REWARDS
+    // ==========================================
+    deadBoss.raidRewards =
+      raidRewards;
+
+    await deadBoss.save();
+
+    // ==========================================
+    // 📢 GET RAID CHANNEL
+    // ==========================================
+    if (!deadBoss.channelId) return;
+
+    const channel =
+      await client.channels
+        .fetch(deadBoss.channelId)
+        .catch(() => null);
+
+    if (!channel) return;
+
+    // ==========================================
+    // 🛑 UPDATE ORIGINAL RAID POST
+    // ==========================================
+    if (deadBoss.messageId) {
+
+      const oldMsg =
+        await channel.messages
+          .fetch(deadBoss.messageId)
+          .catch(() => null);
+
+      if (
+        oldMsg &&
+        oldMsg.embeds.length > 0
+      ) {
+
+        const endedEmbed =
+          EmbedBuilder
+            .from(oldMsg.embeds[0])
+            .setTitle(
+              `🛑 Mythic Boss Raid — ENDED`
+            )
+            .setDescription(
+              `**Boss:** ${deadBoss.bossName}\n` +
+              `**Remaining HP:** 0 / ${deadBoss.maxHp.toLocaleString()} HP\n\n` +
+              `\`░░░░░░░░░░\` **0.0%**\n\n` +
+              `💀 **This boss has been defeated!**`
+            );
+
+        await oldMsg.edit({
+          embeds: [endedEmbed],
+          components: []
+        }).catch(() => {});
+      }
+    }
+
+    // ==========================================
+    // 🎁 CHECK REWARDS BUTTON
+    // ==========================================
+    const rewardsRow =
+      new ActionRowBuilder()
+        .addComponents(
+
+          new ButtonBuilder()
+            .setCustomId(
+              `raid_rewards_${deadBoss._id}`
+            )
+            .setLabel(
+              'Check My Rewards'
+            )
+            .setEmoji('🎁')
+            .setStyle(
+              ButtonStyle.Success
+            )
+        );
+
+    // ==========================================
+    // ❌ CREATE DEFEATED IMAGE
+    // ==========================================
+    const defeatedBuffer =
+      await createDefeatedBossImage(
+        deadBoss.imageUrl
+      );
+
+    let defeatedAttachment = null;
+
+    if (defeatedBuffer) {
+
+      defeatedAttachment =
+        new AttachmentBuilder(
+          defeatedBuffer,
+          {
+            name:
+              'defeated-boss.png'
+          }
+        );
+    }
+
+    // ==========================================
+    // 🏆 VICTORY EMBED
+    // ==========================================
+    const deadEmbed =
+      new EmbedBuilder()
+        .setColor('#00FF00')
+        .setTitle(
+          `🎉 BOSS DEFEATED!`
+        )
+        .setDescription(
+          `**${deadBoss.bossName}** was successfully taken down!\n\n` +
+
+          `🏆 **Top 5 Damage Dealers**\n` +
+          `${leaderboardText || 'No damage recorded.'}\n\n` +
+
+          `🎁 **Participated in the raid?**\n` +
+          `Press the button below to see your personal rewards!`
+        );
+
+    // ==========================================
+    // ❌ USE CROSSED IMAGE
+    // ==========================================
+    if (defeatedAttachment) {
+
+      deadEmbed.setImage(
+        'attachment://defeated-boss.png'
+      );
+
+    } else if (deadBoss.imageUrl) {
+
+      deadEmbed.setImage(
+        deadBoss.imageUrl
+      );
+    }
+
+    // ==========================================
+    // 📤 SEND RECOVERED RAID RESULT
+    // ==========================================
+    await channel.send({
+      embeds: [deadEmbed],
+      components: [rewardsRow],
+
+      files: defeatedAttachment
+        ? [defeatedAttachment]
+        : []
+    });
+
+    console.log(
+      `✅ Recovered and rewarded dead raid: ${deadBoss.bossName}`
+    );
+
+  } catch (err) {
+
+    console.error(
+      'Boss Raid recovery interval error:',
+      err
+    );
+  }
+
+}, 10000);
 
   // 👆 NEW RECOVERY LOOP ENDS HERE 👆
 
