@@ -2859,7 +2859,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
       targetStats.bountyPosts.push({ channelId: bountyChannel.id, messageId: sentMsg.id });
       await targetStats.save();
     }
-  
+  }
 
     // =========================
   // /PROFILE (FULL STATS CARD)
