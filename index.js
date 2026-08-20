@@ -2837,7 +2837,7 @@ Structure: {"story":"...","choices":["Choice A","Choice B","Choice C"]}`;
     await interaction.editReply(`✅ You successfully paid **${amount}** ${DORAYAKI_EMOJI} to place a hit on **${target.username}**!`);
 
         // 2. 📢 SEND THE PUBLIC ANNOUNCEMENT TO A SPECIFIC CHANNEL!
-    const ANNOUNCEMENT_CHANNEL_ID = 'PUT_YOUR_CHANNEL_ID_HERE'; // 👈 Replace with your channel ID
+    const ANNOUNCEMENT_CHANNEL_ID = '1521168222181785682'; // 👈 Replace with your channel ID
     const bountyChannel = await interaction.client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID).catch(() => null);
 
     if (bountyChannel) {
