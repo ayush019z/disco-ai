@@ -142,6 +142,17 @@ const commands = [
   enableDMs(new SlashCommandBuilder()
     .setName('shop')
     .setDescription('Open the gadget shop to gamble boxes or buy VIP roles!')),
+
+  enableDMs(new SlashCommandBuilder()
+    .setName('setshopcard')
+    .setDescription("Set today's featured card in the shop")
+    .addIntegerOption(option =>
+        option
+            .setName('price')
+            .setDescription('Featured card price in Dorayaki')
+            .setRequired(true)
+            .setMinValue(1)
+    )),
   
   // --- GIVEAWAY COMMAND (WITH DURATION TIMER) ---
   enableDMs(new SlashCommandBuilder()
