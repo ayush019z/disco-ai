@@ -253,6 +253,27 @@ const commands = [
     .setDescription('Flex your rare cards or choose one from your binder to show off!'),
   
   new SlashCommandBuilder()
+    .setName('customraid')
+    .setDescription('Spawn a fully custom Boss Raid! (Owner Only)')
+    .addStringOption(option => 
+      option.setName('name')
+      .setDescription('The name of your custom boss')
+      .setRequired(true))
+    .addIntegerOption(option => 
+      option.setName('hp')
+      .setDescription('The total health points (HP) of the boss')
+      .setRequired(true))
+    .addStringOption(option => 
+      option.setName('action_text')
+      .setDescription('The text to display describing the boss')
+      .setRequired(true))
+    .addAttachmentOption(option => 
+      option.setName('image')
+      .setDescription('Upload an image for the boss')
+      .setRequired(true)),
+
+
+  new SlashCommandBuilder()
     .setName('sell')
     .setDescription('Sell duplicate cards from your binder for Dorayaki!'),
 
