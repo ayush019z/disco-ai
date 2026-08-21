@@ -2504,7 +2504,11 @@ if (isEnraged) {
   buffMessage += `\n🔥 **ENRAGED PHASE BONUS!** (+20% Damage)`;
 }
 
-const damage = Math.floor(baseDamage * multiplier);
+let damage = Math.floor(baseDamage * multiplier);
+
+// 🛡️ DAMAGE CAP — max 7% of boss HP
+const maxDamageCap = Math.floor(boss.maxHp * 0.07);
+damage = Math.min(damage, maxDamageCap);
 
       // ----------------------------------------------------
       // 🚀 ATOMIC DATABASE UPDATES (PREVENTS CRASHES!)
