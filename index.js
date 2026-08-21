@@ -299,6 +299,18 @@ const CARD_POOL = [
   raidExclusive: true,
   url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1540312695184556072/file_0000000089a8821196a1cc69f54e595f.png?ex=6a897f7c&is=6a882dfc&hm=8f6ca5cdcf823d7c368a9ea6f04f41d6c189aeebd9e80aca4f42d50ad27a8e71&'
 },
+  {
+  id: 'm_leviathan',
+  name: 'Leviathan',
+  rarity: 'Mythic',
+  emoji: '🌊',
+  color: '#1565C0',
+
+  // 👹 Cannot be pulled from packs
+  raidExclusive: true,
+
+  url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1540316433953849435/file_00000000d6748208949da30981c5917e.png?ex=6a8982f7&is=6a883177&hm=70f639ad9ed6491553ca22c0b802d5a779744b0d12a0ab6607faa8d1778d8860&'
+},
   // Legendary (0.5% chance)
   { id: 'l_dora_nobi', name: 'Dora × Nobi', rarity: 'Legendary', emoji: '<:legendary:1539924946510151770>', color: '#FF0055', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765488446611523/file_000000009354820882ad9631546ea9d0.png?ex=6a8781db&is=6a86305b&hm=0b697bc59200feb3dfbc74019b0a62d7c4e5b83f8030ff7ffc8b2e07f1ece791&' }
 ];
