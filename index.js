@@ -1867,7 +1867,7 @@ return interaction.reply({ content: `👑 **Success!** You purchased the **VIP R
         stats.dorayaki -= 50;
         
         // 10% chance to win 1000
-        const won = Math.random() < 0.10; 
+        const won = Math.random() < 0.04; 
         
         if (won) {
           stats.dorayaki += 1000;
