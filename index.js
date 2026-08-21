@@ -2454,64 +2454,96 @@ if (interaction.customId === 'md_claim') {
   // ==========================================
   // 🎁 BONUS DROP
   // ==========================================
-  let bonusText = '';
-
-  const roll = Math.random();
-
   // ==========================================
-  // LEVEL 5
-  // 🍀 1% Lucky Pack
-  // 🎴 5% Normal Pack
-  // ==========================================
-  if (level >= 5) {
+// 🎒 MINI-DORA FINDS
+// ==========================================
+let bonusText = '';
 
-    if (roll < 0.01) {
+const roll = Math.random();
 
-      stats.luckyPacks =
-        (stats.luckyPacks || 0) + 1;
+// ==========================================
+// ⭐ LEVEL 5
+// ==========================================
+if (level >= 5) {
 
-      bonusText =
-        `\n\n🍀 **JACKPOT! Mini-Dora found a Lucky Pack!**`;
+  if (roll < 0.01) {
+    // 1% Lucky Pack
+    stats.luckyPacks =
+      (stats.luckyPacks || 0) + 1;
 
-    } else if (roll < 0.06) {
+    bonusText =
+      `\n\n🍀 **Mini-Dora found a Lucky Pack!**`;
 
-      stats.cardPacks =
-        (stats.cardPacks || 0) + 1;
+  } else if (roll < 0.06) {
+    // Next 5% = normal pack
+    stats.cardPacks =
+      (stats.cardPacks || 0) + 1;
 
-      bonusText =
-        `\n\n🎴 **Mini-Dora found a Cards Pack!**`;
-    }
+    bonusText =
+      `\n\n🎴 **Mini-Dora found a Cards Pack!**`;
 
-  // ==========================================
-  // LEVEL 4
-  // 🎴 5% Normal Pack
-  // ==========================================
-  } else if (level === 4) {
+  } else if (roll < 0.16) {
+    // Next 10% = bonus Dorayaki
+    stats.dorayaki += 100;
 
-    if (roll < 0.05) {
-
-      stats.cardPacks =
-        (stats.cardPacks || 0) + 1;
-
-      bonusText =
-        `\n\n🎴 **Mini-Dora found a Cards Pack!**`;
-    }
-
-  // ==========================================
-  // LEVEL 3
-  // 🎴 3% Normal Pack
-  // ==========================================
-  } else if (level === 3) {
-
-    if (roll < 0.03) {
-
-      stats.cardPacks =
-        (stats.cardPacks || 0) + 1;
-
-      bonusText =
-        `\n\n🎴 **Mini-Dora found a Cards Pack!**`;
-    }
+    bonusText =
+      `\n\n💰 **Mini-Dora found an extra 100 Dorayaki!** ${DORAYAKI_EMOJI}`;
   }
+
+
+// ==========================================
+// ⭐ LEVEL 4
+// ==========================================
+} else if (level === 4) {
+
+  if (roll < 0.05) {
+    stats.cardPacks =
+      (stats.cardPacks || 0) + 1;
+
+    bonusText =
+      `\n\n🎴 **Mini-Dora found a Cards Pack!**`;
+
+  } else if (roll < 0.13) {
+    stats.dorayaki += 75;
+
+    bonusText =
+      `\n\n💰 **Mini-Dora found an extra 75 Dorayaki!** ${DORAYAKI_EMOJI}`;
+  }
+
+
+// ==========================================
+// ⭐ LEVEL 3
+// ==========================================
+} else if (level === 3) {
+
+  if (roll < 0.03) {
+    stats.cardPacks =
+      (stats.cardPacks || 0) + 1;
+
+    bonusText =
+      `\n\n🎴 **Mini-Dora found a Cards Pack!**`;
+
+  } else if (roll < 0.08) {
+    stats.dorayaki += 50;
+
+    bonusText =
+      `\n\n💰 **Mini-Dora found an extra 50 Dorayaki!** ${DORAYAKI_EMOJI}`;
+  }
+
+
+// ==========================================
+// ⭐ LEVEL 2
+// ==========================================
+} else if (level === 2) {
+
+  if (roll < 0.05) {
+    stats.dorayaki += 50;
+
+    bonusText =
+      `\n\n💰 **Mini-Dora found an extra 50 Dorayaki!** ${DORAYAKI_EMOJI}`;
+  }
+}
+      
 
   await stats.save();
 
@@ -2644,12 +2676,12 @@ if (interaction.customId === 'md_upgrade') {
   };
 
   const perks = {
-    1: 'Basic Explorer',
-    2: '💰 Improved Income',
-    3: '🎴 3% Cards Pack chance',
-    4: '🎴 5% Cards Pack chance',
-    5: '🍀 5% Cards Pack + 1% Lucky Pack chance'
-  };
+  1: '🎒 Basic Explorer',
+  2: '💰 Can find bonus Dorayaki',
+  3: '💰 Bonus Dorayaki + 🎴 Cards Pack finds',
+  4: '💰 Better finds + 🎴 5% Cards Pack chance',
+  5: '🌟 Best finds + 🎴 Cards Packs + 🍀 Lucky Packs'
+};
 
   const embed =
     new EmbedBuilder()
