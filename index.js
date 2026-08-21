@@ -3897,7 +3897,15 @@ if (interaction.commandName === 'setshopcard') {
     const attachedImage = interaction.options.getAttachment('image');
     const imageUrl = attachedImage ? attachedImage.url : 'https://i.ibb.co/6ccFh3PR/7mxjacjq6yc91.jpg'; // Fallback to wanted poster just in case
 
-    await BossRaid.updateMany({}, { isActive: false }); // End old raids
+    await BossRaid.updateMany(
+  {
+    guildId: interaction.guildId,
+    isActive: true
+  },
+  {
+    $set: { isActive: false }
+  }
+);
 
     // 1. Build the Embed FIRST
     const percentage = 100;
@@ -3929,6 +3937,7 @@ imageUrl: imageUrl, // 👈 Make sure this is here!
       actionText: "Gian has started singing! Use your gadgets to attack him and save everyone's ears!", // 👈 And this!
       recentAttacks: [],
       playerCooldowns: [],
+      guildId: interaction.guildId,
       damageLeaderboard: [] 
     });
 
@@ -3949,8 +3958,16 @@ imageUrl: imageUrl, // 👈 Make sure this is here!
     const actionText = interaction.options.getString('action_text');
     const bossImage = interaction.options.getAttachment('image'); 
 
-    await BossRaid.updateMany({}, { isActive: false }); // End old raids
-
+    await BossRaid.updateMany(
+  {
+    guildId: interaction.guildId,
+    isActive: true
+  },
+  {
+    $set: { isActive: false }
+  }
+);
+    
     // 1. Build the Custom Embed
     const healthBar = '██████████';
 
