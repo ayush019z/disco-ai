@@ -2708,36 +2708,7 @@ const nextAttackTime =
         updateQuery,
         { new: true, arrayFilters: arrayFilters.length > 0 ? arrayFilters : undefined }
       );
-// ==========================================
-// 🔔 FIRST-TIME RAID NOTIFICATION QUESTION
-// ==========================================
-if (!stats.raidNotifyAsked) {
-
-  const notifyRow =
-    new ActionRowBuilder().addComponents(
-
-      new ButtonBuilder()
-        .setCustomId(
-          `raid_notify_yes_${boss._id}_${nextAttackTime}`
-        )
-        .setLabel('Yes, notify me')
-        .setEmoji('🔔')
-        .setStyle(ButtonStyle.Success),
-
-      new ButtonBuilder()
-        .setCustomId('raid_notify_no')
-        .setLabel('No thanks')
-        .setStyle(ButtonStyle.Secondary)
-    );
-
-  await interaction.followUp({
-    content:
-      `🔔 **Raid Notifications**\n` +
-      `Would you like DoraBot to DM you whenever your raid attack cooldown ends?`,
-    components: [notifyRow],
-    flags: MessageFlags.Ephemeral
-  });
-}
+      
       // ==========================================
 // ⏰ EXISTING SUBSCRIBERS
 // ==========================================
@@ -2990,11 +2961,51 @@ return;
   `${updatedBoss.actionText || 'Attack to save the day!'}\n\n` +
   `📜 **Recent Attacks**\n${logsText}`
 )
-      await interaction.update({ embeds: [updatedEmbed], components: interaction.message.components });
-      return interaction.followUp({ 
-        content: `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to **${updatedBoss.bossName}**!${buffMessage}\n⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`, 
-        flags: MessageFlags.Ephemeral 
-      });
+      await interaction.update({
+  embeds: [updatedEmbed],
+  components: interaction.message.components
+});
+
+// ==========================================
+// 🔔 FIRST-TIME RAID NOTIFICATION QUESTION
+// ==========================================
+if (!stats.raidNotifyAsked) {
+
+  const notifyRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(
+        `raid_notify_yes_${boss._id}_${nextAttackTime}`
+      )
+      .setLabel('Yes, notify me')
+      .setEmoji('🔔')
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId('raid_notify_no')
+      .setLabel('No thanks')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return interaction.followUp({
+    content:
+      `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to **${updatedBoss.bossName}**!${buffMessage}\n` +
+      `⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*\n\n` +
+      `🔔 **Raid Notifications**\n` +
+      `Would you like DoraBot to DM you when your raid attack is ready again?`,
+    components: [notifyRow],
+    flags: MessageFlags.Ephemeral
+  });
+}
+
+// ==========================================
+// NORMAL ATTACK RESPONSE
+// ==========================================
+return interaction.followUp({
+  content:
+    `🎒 You pulled out the **${selectedGadget.name}** [${selectedGadget.rarity}] and dealt **${damage} damage** to **${updatedBoss.bossName}**!${buffMessage}\n` +
+    `⏳ *Your damage has been recorded. Wait 20 minutes to attack again.*`,
+  flags: MessageFlags.Ephemeral
+});
     }
 
     
