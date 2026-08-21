@@ -3098,7 +3098,18 @@ if (eligibleCardPlayers.length > 0) {
 for (let i = 0; i < updatedBoss.damageLeaderboard.length; i++) {
   const p = updatedBoss.damageLeaderboard[i];
 
-  let coinsEarned = Math.floor(p.damage * 0.8);
+  let raidMultiplier = 0.8;
+
+if (updatedBoss.maxHp >= 50000) {
+  raidMultiplier = 0.4;
+}
+
+if (updatedBoss.maxHp >= 100000) {
+  raidMultiplier = 0.3;
+}
+
+const coinsEarned =
+  Math.floor(p.damage * raidMultiplier);
   // ==========================================
 // 🎁 RAID DROP ROLL
 // ==========================================
