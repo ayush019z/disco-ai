@@ -3487,7 +3487,7 @@ if (interaction.commandName === 'shop') {
       },
       {
         label: 'Time TV Lottery Ticket',
-        description: 'Cost: 50 Dorayaki. 10% chance to win 1000 Dorayaki!',
+        description: 'Cost: 50 Dorayaki. 4% chance to win 1000 Dorayaki!',
         value: 'buy_lottery',
         emoji: '1538990835574509638'
       },
