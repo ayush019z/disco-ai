@@ -290,6 +290,15 @@ const CARD_POOL = [
   emoji: '<:doracard:1539924935248711690>',
   color: '#FFD700', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765130324086904/file_00000000397c820789fe31e639754b26.png?ex=6a878186&is=6a863006&hm=acc1d2adb6b3eeeabe0bc23b605241f13b606c2da594d142553ea474fe7b241a&', shinyUrl: 'https://cdn.discordapp.com/attachments/1539765062183555182/1540086371153084436/file_00000000c6f48211955db9948de92370.png?ex=6a88acb4&is=6a875b34&hm=0ea7ff9766b523eaa2378d8e38a271a75e8539e9072c7162d11b9b1fc985db4c&'
 },
+  {
+  id: 'm_mufaga',
+  name: 'Mufaga',
+  rarity: 'Mythic',
+  emoji: '🔥',
+  color: '#FF3B30',
+  raidExclusive: true,
+  url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1540312695184556072/file_0000000089a8821196a1cc69f54e595f.png?ex=6a897f7c&is=6a882dfc&hm=8f6ca5cdcf823d7c368a9ea6f04f41d6c189aeebd9e80aca4f42d50ad27a8e71&'
+},
   // Legendary (0.5% chance)
   { id: 'l_dora_nobi', name: 'Dora × Nobi', rarity: 'Legendary', emoji: '<:legendary:1539924946510151770>', color: '#FF0055', url: 'https://cdn.discordapp.com/attachments/1539765062183555182/1539765488446611523/file_000000009354820882ad9631546ea9d0.png?ex=6a8781db&is=6a86305b&hm=0b697bc59200feb3dfbc74019b0a62d7c4e5b83f8030ff7ffc8b2e07f1ece791&' }
 ];
