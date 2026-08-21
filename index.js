@@ -2978,6 +2978,29 @@ if (
 let leaderboardText = '';
 const raidRewards = [];
 
+        // ==========================================
+// 🎴 RAID-SPECIFIC CARD WINNER
+// ==========================================
+
+// Player must deal at least 5% of boss HP
+const minimumCardDamage =
+  Math.floor(updatedBoss.maxHp * 0.05);
+
+// Take Top 5, then remove anyone below minimum damage
+const eligibleCardPlayers =
+  updatedBoss.damageLeaderboard
+    .slice(0, 5)
+    .filter(p => p.damage >= minimumCardDamage);
+
+let raidCardWinner = null;
+
+// Randomly choose ONE eligible player
+if (eligibleCardPlayers.length > 0) {
+  raidCardWinner =
+    eligibleCardPlayers[
+      Math.floor(Math.random() * eligibleCardPlayers.length)
+    ];
+}
 // ==========================================
 // 🎁 CALCULATE + PAY RAID REWARDS
 // ==========================================
@@ -3138,14 +3161,21 @@ const deadEmbed = new EmbedBuilder()
   .setColor('#00FF00')
   .setTitle(`🎉 BOSS DEFEATED!`)
   .setDescription(
-    `**${updatedBoss.bossName}** was successfully taken down!\n\n` +
+  `**${updatedBoss.bossName}** was successfully taken down!\n\n` +
 
-    `🏆 **Top 5 Damage Dealers**\n` +
-    `${leaderboardText || 'No damage recorded.'}\n\n` +
+  `🏆 **Top 5 Damage Dealers**\n` +
+  `${leaderboardText || 'No damage recorded.'}\n\n` +
 
-    `🎁 **Participated in the raid?**\n` +
-    `Press the button below to see your personal rewards!`
-  )
+  `🎴 **RAID-SPECIFIC CARD WINNER**\n` +
+  `${raidCardWinner
+    ? `🎉 **${raidCardWinner.username}** was randomly selected!\n` +
+      `They have won the exclusive raid card!`
+    : `Nobody reached the minimum damage requirement.`
+  }\n\n` +
+
+  `🎁 **Participated in the raid?**\n` +
+  `Press the button below to see your personal rewards!`
+)
   .setImage(updatedBoss.imageUrl);
 
 if (defeatedAttachment) {
