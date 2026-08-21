@@ -717,10 +717,14 @@ function scheduleRaidReminder(
       const user =
         await client.users.fetch(userId);
 
-      await user.send(
-        `⚔️ **Your raid attack is ready!**\n\n` +
-        `You can attack **${boss.bossName}** again now!`
-      );
+      const raidLink =
+  `https://discord.com/channels/${boss.guildId}/${boss.channelId}/${boss.messageId}`;
+
+await user.send(
+  `⚔️ **Your raid attack is ready!**\n\n` +
+  `You can attack **${boss.bossName}** again now!\n\n` +
+  `🔗 **[Return to the raid](${raidLink})**`
+);
 
     } catch (err) {
 
