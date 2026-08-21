@@ -330,7 +330,59 @@ const FeaturedShop = mongoose.model(
 );
 
   
+client.on(Events.MessageCreate, async message => {
+  if (message.author.bot) return;
 
+  if (
+    message.content === '!fixraidrewards' &&
+    message.author.id === OWNER_ID
+  ) {
+    try {
+      // Find the most recently finished raid
+      const raid = await BossRaid.findOne({
+        rewarded: true,
+        isActive: false
+      }).sort({ _id: -1 });
+
+      if (!raid) {
+        return message.reply('❌ No completed raid found.');
+      }
+
+      if (!raid.raidRewards || raid.raidRewards.length === 0) {
+        return message.reply(
+          '❌ That raid has no saved rewards.'
+        );
+      }
+
+      const rewardsRow =
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`raid_rewards_${raid._id}`)
+            .setLabel('Check My Rewards')
+            .setEmoji('🎁')
+            .setStyle(ButtonStyle.Success)
+        );
+
+      await message.channel.send({
+        content:
+          `🎁 **${raid.bossName} Raid Rewards**\n` +
+          `The raid has ended! Participants can check their personal rewards below.`,
+        components: [rewardsRow]
+      });
+
+      await message.reply(
+        `✅ Rewards button restored for **${raid.bossName}**.`
+      );
+
+    } catch (err) {
+      console.error('Fix raid rewards error:', err);
+
+      await message.reply(
+        '⚠️ Failed to restore the raid rewards button.'
+      );
+    }
+  }
+});
 
 // Helper function to safely fetch or initialize user stats
 async function getPlayerStats(userId, username) {
