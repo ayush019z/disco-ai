@@ -776,11 +776,11 @@ async function openCardPack(stats, packType) {
       );
     } else {
       const regularCommons = CARD_POOL.filter(
-        c =>
-          c.rarity === 'Common' &&
-          c.id !== 'c_small_light'
-      );
-
+  c =>
+    c.rarity === 'Common' &&
+    c.id !== 'c_small_light' &&
+    !c.raidExclusive
+);
       pulledCard =
         regularCommons[
           Math.floor(
@@ -790,16 +790,18 @@ async function openCardPack(stats, packType) {
     }
 
   } else {
-    const availableCards = CARD_POOL.filter(
-      c => c.rarity === pulledRarity
-    );
+  const availableCards = CARD_POOL.filter(
+    c =>
+      c.rarity === pulledRarity &&
+      !c.raidExclusive
+  );
 
-    pulledCard =
-      availableCards[
-        Math.floor(
-          Math.random() * availableCards.length
-        )
-      ];
+  pulledCard =
+    availableCards[
+      Math.floor(
+        Math.random() * availableCards.length
+      )
+    ];
   }
 
   if (!pulledCard) {
