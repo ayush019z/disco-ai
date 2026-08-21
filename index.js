@@ -1844,6 +1844,76 @@ if (reward.luckyPacks > 0) {
     flags: MessageFlags.Ephemeral
   });
 }
+
+// ==========================================
+// 🔔 RAID NOTIFICATIONS — YES
+// ==========================================
+if (
+  interaction.customId.startsWith(
+    'raid_notify_yes_'
+  )
+) {
+
+  const parts =
+    interaction.customId.split('_');
+
+  const bossId = parts[3];
+
+  const nextAttackTime =
+    Number(parts[4]);
+
+  const stats =
+    await getPlayerStats(
+      interaction.user.id,
+      interaction.user.username
+    );
+
+  stats.raidNotifyAsked = true;
+  stats.raidNotifications = true;
+
+  await stats.save();
+
+  // Schedule THIS first attack too
+  scheduleRaidReminder(
+    interaction.user.id,
+    interaction.user.username,
+    bossId,
+    nextAttackTime
+  );
+
+  return interaction.update({
+    content:
+      `🔔 **Raid notifications enabled!**\n` +
+      `I'll DM you whenever your raid attack is ready again.`,
+    components: []
+  });
+}
+    // ==========================================
+// 🔕 RAID NOTIFICATIONS — NO
+// ==========================================
+if (
+  interaction.customId ===
+  'raid_notify_no'
+) {
+
+  const stats =
+    await getPlayerStats(
+      interaction.user.id,
+      interaction.user.username
+    );
+
+  stats.raidNotifyAsked = true;
+  stats.raidNotifications = false;
+
+  await stats.save();
+
+  return interaction.update({
+    content:
+      `🔕 **Raid notifications disabled.**`,
+    components: []
+  });
+}
+
     
     // --- QUEST CLAIM BUTTON ---
     if (interaction.customId === 'claim_quests') {
@@ -2638,7 +2708,51 @@ const nextAttackTime =
         updateQuery,
         { new: true, arrayFilters: arrayFilters.length > 0 ? arrayFilters : undefined }
       );
+// ==========================================
+// 🔔 FIRST-TIME RAID NOTIFICATION QUESTION
+// ==========================================
+if (!stats.raidNotifyAsked) {
 
+  const notifyRow =
+    new ActionRowBuilder().addComponents(
+
+      new ButtonBuilder()
+        .setCustomId(
+          `raid_notify_yes_${boss._id}_${nextAttackTime}`
+        )
+        .setLabel('Yes, notify me')
+        .setEmoji('🔔')
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId('raid_notify_no')
+        .setLabel('No thanks')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+  await interaction.followUp({
+    content:
+      `🔔 **Raid Notifications**\n` +
+      `Would you like DoraBot to DM you whenever your raid attack cooldown ends?`,
+    components: [notifyRow],
+    flags: MessageFlags.Ephemeral
+  });
+}
+      // ==========================================
+// ⏰ EXISTING SUBSCRIBERS
+// ==========================================
+if (
+  stats.raidNotifyAsked &&
+  stats.raidNotifications
+) {
+
+  scheduleRaidReminder(
+    interaction.user.id,
+    interaction.user.username,
+    boss._id,
+    nextAttackTime
+  );
+}
       if (updatedBoss.currentHp < 0) updatedBoss.currentHp = 0;
 
       if (updatedBoss.currentHp > 0) {
