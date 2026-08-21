@@ -440,6 +440,80 @@ async function createDefeatedBossImage(imageUrl) {
 }
 
 // ==========================================
+// 🔔 RAID COOLDOWN DM REMINDER
+// ==========================================
+function scheduleRaidReminder(
+  userId,
+  username,
+  bossId,
+  nextAttackTime
+) {
+
+  const delay = Math.max(
+    0,
+    nextAttackTime - Date.now()
+  );
+
+  setTimeout(async () => {
+    try {
+
+      // Check whether this raid still exists
+      const boss =
+        await BossRaid.findById(bossId);
+
+      // Don't DM if boss is already dead
+      if (
+        !boss ||
+        !boss.isActive ||
+        boss.currentHp <= 0
+      ) {
+        return;
+      }
+
+      // Check user still wants notifications
+      const stats =
+        await getPlayerStats(
+          userId,
+          username
+        );
+
+      if (!stats.raidNotifications) {
+        return;
+      }
+
+      // Extra safety:
+      // make sure THIS is still their latest cooldown
+      const cooldown =
+        boss.playerCooldowns.find(
+          p => p.userId === userId
+        );
+
+      if (
+        !cooldown ||
+        cooldown.nextAttack > Date.now()
+      ) {
+        return;
+      }
+
+      const user =
+        await client.users.fetch(userId);
+
+      await user.send(
+        `⚔️ **Your raid attack is ready!**\n\n` +
+        `You can attack **${boss.bossName}** again now!`
+      );
+
+    } catch (err) {
+
+      console.log(
+        `Could not send raid cooldown DM to ${username}:`,
+        err.message
+      );
+    }
+  }, delay);
+}
+
+// ==========================================
 // 📦 OPEN NORMAL / LUCKY CARD PACK
 // ==========================================
 async function openCardPack(stats, packType) {
@@ -2530,15 +2604,24 @@ damage = Math.min(damage, maxDamageCap);
           }
         }
       };
-
+      
+const nextAttackTime =
+  Date.now() + (20 * 60 * 1000);
       const setOps = {};
       const arrayFilters = [];
 
       if (hasCooldown) {
-        setOps['playerCooldowns.$[cd].nextAttack'] = Date.now() + (20 * 60 * 1000);
-        arrayFilters.push({ 'cd.userId': interaction.user.id });
-      } else {
-        updateQuery.$push.playerCooldowns = { userId: interaction.user.id, nextAttack: Date.now() + (20 * 60 * 1000) };
+  setOps['playerCooldowns.$[cd].nextAttack'] =
+    nextAttackTime;
+
+  arrayFilters.push({
+    'cd.userId': interaction.user.id
+  });
+} else {
+  updateQuery.$push.playerCooldowns = {
+    userId: interaction.user.id,
+    nextAttack: nextAttackTime
+  };
       }
 
       if (hasLeaderboard) {
