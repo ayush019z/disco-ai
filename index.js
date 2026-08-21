@@ -329,7 +329,9 @@ const FeaturedShop = mongoose.model(
   featuredShopSchema
 );
 
-  
+  // ==========================================
+// 🔧 TEMP COMMAND: FIX LAST RAID POST
+// ==========================================
 client.on(Events.MessageCreate, async message => {
   if (message.author.bot) return;
 
@@ -338,47 +340,191 @@ client.on(Events.MessageCreate, async message => {
     message.author.id === OWNER_ID
   ) {
     try {
-      // Find the most recently finished raid
+      // ==========================================
+      // 1. FIND MOST RECENT COMPLETED RAID
+      // ==========================================
       const raid = await BossRaid.findOne({
         rewarded: true,
         isActive: false
       }).sort({ _id: -1 });
 
       if (!raid) {
-        return message.reply('❌ No completed raid found.');
-      }
-
-      if (!raid.raidRewards || raid.raidRewards.length === 0) {
         return message.reply(
-          '❌ That raid has no saved rewards.'
+          '❌ No completed raid was found.'
         );
       }
 
-      const rewardsRow =
-        new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`raid_rewards_${raid._id}`)
-            .setLabel('Check My Rewards')
-            .setEmoji('🎁')
-            .setStyle(ButtonStyle.Success)
+      // ==========================================
+      // 2. GET ORIGINAL RAID CHANNEL
+      // ==========================================
+      if (!raid.channelId) {
+        return message.reply(
+          '❌ This raid has no saved channel ID.'
         );
+      }
 
-      await message.channel.send({
-        content:
-          `🎁 **${raid.bossName} Raid Rewards**\n` +
-          `The raid has ended! Participants can check their personal rewards below.`,
+      const raidChannel =
+        await client.channels
+          .fetch(raid.channelId)
+          .catch(() => null);
+
+      if (!raidChannel) {
+        return message.reply(
+          '❌ Could not find the original raid channel.'
+        );
+      }
+
+      // ==========================================
+      // 3. GET ORIGINAL RAID MESSAGE
+      // ==========================================
+      let raidMessage = null;
+
+      if (raid.messageId) {
+        raidMessage =
+          await raidChannel.messages
+            .fetch(raid.messageId)
+            .catch(() => null);
+      }
+
+      // ==========================================
+      // 4. CREATE CROSSED-OUT BOSS IMAGE
+      // ==========================================
+      let defeatedAttachment = null;
+
+      if (raid.imageUrl) {
+        const defeatedBuffer =
+          await createDefeatedBossImage(
+            raid.imageUrl
+          );
+
+        if (defeatedBuffer) {
+          defeatedAttachment =
+            new AttachmentBuilder(
+              defeatedBuffer,
+              {
+                name: 'defeated-boss.png'
+              }
+            );
+        }
+      }
+
+      // ==========================================
+      // 5. BUILD ENDED RAID EMBED
+      // ==========================================
+      const endedEmbed =
+        new EmbedBuilder()
+          .setColor('#555555')
+          .setTitle(
+            `☠️ ${raid.bossName} — RAID ENDED`
+          )
+          .setDescription(
+            `**Boss:** ${raid.bossName}\n` +
+            `**Remaining HP:** 0 / ${raid.maxHp.toLocaleString()} HP\n\n` +
+            `\`░░░░░░░░░░\` **0.0%**\n\n` +
+            `💀 **The boss has been defeated!**`
+          );
+
+      // Crossed image if available
+      if (defeatedAttachment) {
+        endedEmbed.setImage(
+          'attachment://defeated-boss.png'
+        );
+      } else if (raid.imageUrl) {
+        endedEmbed.setImage(
+          raid.imageUrl
+        );
+      }
+
+      // ==========================================
+      // 6. EDIT ORIGINAL RAID MESSAGE
+      // ==========================================
+      if (raidMessage) {
+        await raidMessage.edit({
+          embeds: [endedEmbed],
+          components: [],
+          files: defeatedAttachment
+            ? [defeatedAttachment]
+            : []
+        });
+      }
+
+      // ==========================================
+      // 7. BUILD TOP 5 LEADERBOARD
+      // ==========================================
+      const sorted =
+        [...(raid.damageLeaderboard || [])]
+          .sort(
+            (a, b) =>
+              b.damage - a.damage
+          )
+          .slice(0, 5);
+
+      let leaderboardText = '';
+
+      sorted.forEach((p, i) => {
+        const medal =
+          i === 0 ? '🥇' :
+          i === 1 ? '🥈' :
+          i === 2 ? '🥉' :
+          `${i + 1}.`;
+
+        leaderboardText +=
+          `${medal} **${p.username}** — **${p.damage.toLocaleString()} DMG**\n`;
+      });
+
+      // ==========================================
+      // 8. CHECK REWARDS BUTTON
+      // ==========================================
+      const rewardsRow =
+        new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId(
+                `raid_rewards_${raid._id}`
+              )
+              .setLabel(
+                'Check My Rewards'
+              )
+              .setEmoji('🎁')
+              .setStyle(
+                ButtonStyle.Success
+              )
+          );
+
+      // ==========================================
+      // 9. SEND RESULTS MESSAGE
+      // ==========================================
+      const resultEmbed =
+        new EmbedBuilder()
+          .setColor('#00FF00')
+          .setTitle(
+            '🎉 RAID RESULTS'
+          )
+          .setDescription(
+            `**${raid.bossName}** has been defeated!\n\n` +
+            `🏆 **Top 5 Damage Dealers**\n` +
+            `${leaderboardText || 'No damage recorded.'}\n\n` +
+            `🎁 **Raid participant?**\n` +
+            `Press the button below to check your personal rewards.`
+          );
+
+      await raidChannel.send({
+        embeds: [resultEmbed],
         components: [rewardsRow]
       });
 
-      await message.reply(
-        `✅ Rewards button restored for **${raid.bossName}**.`
+      return message.reply(
+        `✅ Fixed the raid post and restored rewards for **${raid.bossName}**.`
       );
 
     } catch (err) {
-      console.error('Fix raid rewards error:', err);
+      console.error(
+        'Fix raid rewards error:',
+        err
+      );
 
-      await message.reply(
-        '⚠️ Failed to restore the raid rewards button.'
+      return message.reply(
+        '⚠️ Failed to repair the raid post.'
       );
     }
   }
