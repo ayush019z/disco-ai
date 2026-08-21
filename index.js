@@ -2952,8 +2952,7 @@ const raidRewards = [];
 for (let i = 0; i < updatedBoss.damageLeaderboard.length; i++) {
   const p = updatedBoss.damageLeaderboard[i];
 
-  const coinsEarned = Math.floor(p.damage * 0.8);
-
+  let coinsEarned = Math.floor(p.damage * 0.8);
   // ==========================================
 // 🎁 RAID DROP ROLL
 // ==========================================
@@ -2981,6 +2980,14 @@ if (dropRoll < 0.01) {
   cardPacksEarned = 1;
 }
 
+// ==========================================
+// 👑 RAID MVP BONUS — #1 DAMAGE DEALER
+// ==========================================
+if (i === 0) {
+  coinsEarned += 500;
+  cardPacksEarned += 1;
+}
+  
   try {
     const playerStatsData = await getPlayerStats(
       p.userId,
