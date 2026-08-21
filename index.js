@@ -230,6 +230,7 @@ imageUrl: { type: String },           // 👈 ADD THIS LINE
   }],
   playerCooldowns: [{ 
     userId: String,
+    guildId: { type: String },
     nextAttack: Number
   }],
   damageLeaderboard: [{ 
