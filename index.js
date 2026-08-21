@@ -2529,7 +2529,9 @@ if (interaction.customId === 'md_upgrade') {
         const unixTimer = Math.floor(cooldownData.nextAttack / 1000);
         return interaction.reply({ content: `⏳ You are recovering from your last attack! You can strike again **<t:${unixTimer}:R>**`, flags: MessageFlags.Ephemeral });
       }
-
+// ✅ ACKNOWLEDGE THE BUTTON EARLY
+// Gives us plenty of time for DB/reward/image work
+await interaction.deferUpdate();
       // 1.5 FETCH STATS FOR BUFFS
       const stats = await getPlayerStats(interaction.user.id, interaction.user.username);
 
@@ -2855,7 +2857,7 @@ const endedEmbed =
       `💀 **This boss has been defeated!**`
     );
 
-await interaction.update({
+await interaction.editReply({
   embeds: [endedEmbed],
   components: []
 });
