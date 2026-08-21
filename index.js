@@ -3874,6 +3874,7 @@ imageUrl: imageUrl, // 👈 Make sure this is here!
       currentHp: bossHp,
       phase: 1,
       isActive: true,
+      guildId: interaction.guildId,
       channelId: interaction.channel.id, 
       messageId: bossMessage.id,         
       imageUrl: bossImage.url,           
