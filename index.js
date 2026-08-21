@@ -2387,16 +2387,74 @@ if (interaction.customId === 'md_upgrade') {
 
       // 2. DYNAMIC GADGET "CARD" POOL SYSTEM (Scales with ANY Boss HP!)
       const gadgets = [
-        { name: '🔫 Air Pistol', minPct: 0.01, maxPct: 0.03, rarity: 'Common' },               // 1% - 3%
-        { name: '🎧 Sound Cancelling Earplugs', minPct: 0.01, maxPct: 0.03, rarity: 'Common' }, // 1% - 3%
-        { name: '💘 Friendship Arrow', minPct: 0.01, maxPct: 0.03, rarity: 'Common' },         // 1% - 3%
-        { name: '🍌 Banana Leaf Fan', minPct: 0.04, maxPct: 0.07, rarity: 'Rare' },             // 4% - 7%
-        { name: '💨 Air Cannon', minPct: 0.08, maxPct: 0.12, rarity: 'Epic' },                  // 8% - 12%
-        { name: '🥊 Champion Gloves', minPct: 0.08, maxPct: 0.12, rarity: 'Epic' },             // 8% - 12%
-        { name: '⚡ Electrical Sword', minPct: 0.08, maxPct: 0.12, rarity: 'Epic' },             // 8% - 12%
-        { name: '🚨 Emergency Button', minPct: 0.15, maxPct: 0.22, rarity: '🌟 MYTHIC 🌟' },    // 15% - 22%
-        { name: '👩‍🦱 Gian\'s Mom', minPct: 0.20, maxPct: 0.30, rarity: '🌟 MYTHIC 🌟' }        // 20% - 30%
-      ];
+  // COMMON — 0.5% to 1.2%
+  {
+    name: '🔫 Air Pistol',
+    minPct: 0.005,
+    maxPct: 0.012,
+    rarity: 'Common'
+  },
+
+  {
+    name: '🎧 Sound Cancelling Earplugs',
+    minPct: 0.005,
+    maxPct: 0.012,
+    rarity: 'Common'
+  },
+
+  {
+    name: '💘 Friendship Arrow',
+    minPct: 0.005,
+    maxPct: 0.012,
+    rarity: 'Common'
+  },
+
+  // RARE — 1.2% to 2.2%
+  {
+    name: '🍌 Banana Leaf Fan',
+    minPct: 0.012,
+    maxPct: 0.022,
+    rarity: 'Rare'
+  },
+
+  // EPIC — 2% to 3.5%
+  {
+    name: '💨 Air Cannon',
+    minPct: 0.020,
+    maxPct: 0.035,
+    rarity: 'Epic'
+  },
+
+  {
+    name: '🥊 Champion Gloves',
+    minPct: 0.020,
+    maxPct: 0.035,
+    rarity: 'Epic'
+  },
+
+  {
+    name: '⚡ Electrical Sword',
+    minPct: 0.020,
+    maxPct: 0.035,
+    rarity: 'Epic'
+  },
+
+  // MYTHIC — 3.5% to 5%
+  {
+    name: '🚨 Emergency Button',
+    minPct: 0.035,
+    maxPct: 0.050,
+    rarity: '🌟 MYTHIC 🌟'
+  },
+
+  // STRONGEST MYTHIC — 4.5% to 6%
+  {
+    name: '👩‍🦱 Gian\'s Mom',
+    minPct: 0.045,
+    maxPct: 0.060,
+    rarity: '🌟 MYTHIC 🌟'
+  }
+];
 
       const roll = Math.random();
       let selectedGadget;
