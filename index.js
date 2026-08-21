@@ -659,6 +659,8 @@ async function createDefeatedBossImage(imageUrl) {
   }
 }
 
+
+
 // ==========================================
 // 🔔 RAID COOLDOWN DM REMINDER
 // ==========================================
@@ -732,6 +734,50 @@ await user.send(
       console.log(
         `Could not send raid cooldown DM to ${username}:`,
         err.message
+      );
+    }
+  }, delay);
+}
+
+function scheduleMiniDoraReminder(
+  userId,
+  returnTime
+) {
+  const delay = Math.max(
+    0,
+    returnTime - Date.now()
+  );
+
+  setTimeout(async () => {
+    try {
+      const stats =
+        await PlayerStats.findOne({
+          userId
+        });
+
+      if (!stats) return;
+
+      // Don't DM if Mini-Dora was already claimed/restarted
+      if (
+        stats.miniDoraTimer === 0 ||
+        stats.miniDoraTimer > Date.now()
+      ) {
+        return;
+      }
+
+      const user =
+        await client.users.fetch(userId);
+
+      await user.send(
+        `🎒 **Mini-Dora has returned!**\n\n` +
+        `Your Mini-Dora is back from its adventure with rewards waiting for you!\n\n` +
+        `Use \`/minidora\` to claim them.`
+      );
+
+    } catch (err) {
+      console.error(
+        'Mini-Dora reminder DM failed:',
+        err
       );
     }
   }, delay);
@@ -2390,7 +2436,10 @@ const hours = explorationHours[level] || 12;
 
 stats.miniDoraTimer =
   Date.now() + (hours * 60 * 60 * 1000);
-
+scheduleMiniDoraReminder(
+  interaction.user.id,
+  stats.miniDoraTimer
+);
   await stats.save();
 
   const rewards = {
