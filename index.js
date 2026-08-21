@@ -720,9 +720,21 @@ function scheduleRaidReminder(
       const user =
         await client.users.fetch(userId);
 
-      const raidLink =
-  `https://discord.com/channels/${boss.guildId}/${boss.channelId}/${boss.messageId}`;
+      // Get the raid channel
+const channel = await client.channels
+  .fetch(boss.channelId)
+  .catch(() => null);
 
+if (!channel) return;
+
+// Get server ID automatically from the channel
+const guildId = channel.guild.id;
+
+// Build direct link to raid
+const raidLink =
+  `https://discord.com/channels/${guildId}/${boss.channelId}/${boss.messageId}`;
+
+// Send reminder
 await user.send(
   `⚔️ **Your raid attack is ready!**\n\n` +
   `You can attack **${boss.bossName}** again now!\n\n` +
