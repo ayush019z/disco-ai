@@ -19,6 +19,8 @@ const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 
 
 const OpenAI = require('openai');
+const express = require('express');
+const path = require('path');
 
 const client = new Client({
   intents: [
@@ -26,6 +28,32 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent
   ]
+});
+
+// ==========================================
+// 🌐 DORABOT WEBSITE
+// ==========================================
+const app = express();
+
+const PORT = process.env.PORT || 3000;
+
+// Serve everything inside /public
+app.use(
+  express.static(
+    path.join(__dirname, 'public')
+  )
+);
+
+// Health check
+app.get('/health', (req, res) => {
+  res.status(200).send('DoraBot is online!');
+});
+
+// Start Railway web server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(
+    `🌐 DoraBot website running on port ${PORT}`
+  );
 });
 
 /*
