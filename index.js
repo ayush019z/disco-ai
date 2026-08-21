@@ -147,6 +147,10 @@ adventuresCompleted: { type: Number, default: 0 }, // 👈 Added here
   hasMiniDora: { type: Boolean, default: false },
   miniDoraTimer: { type: Number, default: 0 },
   miniDoraLevel: { type: Number, default: 1 },
+
+  // 🔔 Raid Notification Settings
+raidNotifyAsked: { type: Boolean, default: false },
+raidNotifications: { type: Boolean, default: false },
     
   // 🎴 Gacha Inventory (ADD THESE TWO LINES)
   inventory: { type: [String], default: [] },
