@@ -2963,7 +2963,7 @@ return;
   `${updatedBoss.actionText || 'Attack to save the day!'}\n\n` +
   `📜 **Recent Attacks**\n${logsText}`
 )
-      await interaction.update({
+      await interaction.editReply({
   embeds: [updatedEmbed],
   components: interaction.message.components
 });
