@@ -826,6 +826,86 @@ function scheduleMiniDoraReminder(
 }
 
 // ==========================================
+// 🖼️ !bossimage — CHANGE ACTIVE RAID IMAGE
+// ==========================================
+client.on(Events.MessageCreate, async message => {
+
+  if (message.author.bot) return;
+
+  if (!message.content.toLowerCase().startsWith('!bossimage')) {
+    return;
+  }
+
+  // 👑 OWNER ONLY
+  if (message.author.id !== OWNER_ID) {
+    return;
+  }
+
+  // Must attach an image
+  const attachment = message.attachments.first();
+
+  if (!attachment) {
+    return message.reply(
+      '❌ Attach the new boss image with `!bossimage`.'
+    );
+  }
+
+  try {
+
+    // Find active boss ONLY in this server
+    const boss = await BossRaid.findOne({
+      isActive: true,
+      guildId: message.guild.id
+    });
+
+    if (!boss) {
+      return message.reply(
+        '❌ There is no active raid in this server.'
+      );
+    }
+
+    // Save new image
+    boss.imageUrl = attachment.url;
+    await boss.save();
+
+    // Find original raid message
+    const raidChannel =
+      await client.channels.fetch(boss.channelId);
+
+    const raidMessage =
+      await raidChannel.messages.fetch(boss.messageId);
+
+    // Copy existing embed and change ONLY image
+    const updatedEmbed =
+      EmbedBuilder
+        .from(raidMessage.embeds[0])
+        .setImage(attachment.url);
+
+    await raidMessage.edit({
+      embeds: [updatedEmbed]
+    });
+
+    // Remove !bossimage message
+    await message.delete().catch(() => {});
+
+    console.log(
+      `🖼️ ${boss.bossName} raid image changed.`
+    );
+
+  } catch (err) {
+
+    console.error(
+      'Boss image change error:',
+      err
+    );
+
+    await message.reply(
+      '⚠️ Could not change the boss image.'
+    );
+  }
+});
+
+// ==========================================
 // 📦 OPEN NORMAL / LUCKY CARD PACK
 // ==========================================
 async function openCardPack(stats, packType) {
