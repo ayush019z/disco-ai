@@ -270,6 +270,7 @@ imageUrl: { type: String },           // 👈 ADD THIS LINE
   userId: String,
   username: String,
   damage: Number,
+  exclusiveCardWinner: { type: String, default: null },
   placement: Number,
   dorayaki: Number,
   cardPacks: { type: Number, default: 0 },
@@ -905,6 +906,68 @@ client.on(Events.MessageCreate, async message => {
   }
 });
 
+client.on(Events.MessageCreate, async message => {
+  if (message.author.bot) return;
+
+  if (
+    message.content === '!raidcardwinner' &&
+    message.author.id === OWNER_ID
+  ) {
+    try {
+      const raid = await BossRaid.findOne({
+        rewarded: true,
+        isActive: false
+      }).sort({ _id: -1 });
+
+      if (!raid) {
+        return message.reply(
+          '❌ No completed raid found.'
+        );
+      }
+
+      const sorted = [...(raid.damageLeaderboard || [])]
+        .sort((a, b) => b.damage - a.damage)
+        .slice(0, 5);
+
+      const minimumDamage =
+        Math.floor(raid.maxHp * 0.05);
+
+      const eligible = sorted.filter(
+        p => p.damage >= minimumDamage
+      );
+
+      if (eligible.length === 0) {
+        return message.reply(
+          `❌ Nobody in the Top 5 reached the minimum damage of **${minimumDamage.toLocaleString()}**.`
+        );
+      }
+
+      const winner =
+        eligible[
+          Math.floor(Math.random() * eligible.length)
+        ];
+
+      return message.reply(
+        `🎴 **RAID EXCLUSIVE CARD WINNER**\n\n` +
+        `👹 **Boss:** ${raid.bossName}\n` +
+        `🏆 **Winner:** <@${winner.userId}>\n` +
+        `💥 **Damage:** ${winner.damage.toLocaleString()}\n` +
+        `🎯 **Minimum required:** ${minimumDamage.toLocaleString()}\n\n` +
+        `Give them the exclusive raid card manually.`
+      );
+
+    } catch (err) {
+      console.error(
+        'Raid card winner command error:',
+        err
+      );
+
+      return message.reply(
+        '⚠️ Could not choose the raid card winner.'
+      );
+    }
+  }
+});
 // ==========================================
 // 📦 OPEN NORMAL / LUCKY CARD PACK
 // ==========================================
