@@ -43,7 +43,14 @@ nav {
   font-weight: 800;
   color: #45d6ff;
 }
-
+.bot-icon img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  margin: 0 auto;
+}
 .nav-links {
   display: flex;
   gap: 24px;
